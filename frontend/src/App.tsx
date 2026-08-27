@@ -22,7 +22,6 @@ import Notifications from './pages/Notifications';
 import Announcements from './pages/Announcements';
 import ManageStudents from './pages/ManageStudents';
 import ManageUsers from './pages/ManageUsers';
-import UpdateSubjects from './pages/UpdateSubjects';
 import ManageDepartments from './pages/ManageDepartments';
 import AcademicHistory from './pages/AcademicHistory';
 
@@ -65,27 +64,27 @@ function AppRoutes() {
         path="*"
         element={
           <ProtectedRoute>
-            <div className="flex h-screen bg-slate-50 text-slate-900">
+            <div className="flex flex-col md:flex-row h-screen bg-slate-50 text-slate-900 overflow-hidden">
               <Sidebar />
-              <main className="flex-1 flex flex-col min-h-0 bg-slate-50 relative">
+              <main className="flex-1 flex flex-col min-h-0 bg-slate-50 relative pb-16 md:pb-0 overflow-y-auto">
                 {isAuthenticated && user && user.role === 'student' && (
-                  <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between shadow-sm shrink-0 select-none">
+                  <div className="bg-white border-b border-slate-200 px-4 md:px-6 py-2.5 md:py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-xs shrink-0 select-none">
                     <div className="flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
                       <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Student Console</span>
                     </div>
-                    <div className="text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-150 px-3.5 py-1.5 rounded-xl flex items-center gap-4">
+                    <div className="text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-150 px-3 py-1 rounded-xl flex items-center justify-between sm:justify-start gap-2 sm:gap-4 flex-wrap">
                       <div>
                         Name: <span className="text-slate-900 font-extrabold">{user.name || user.username}</span>
                       </div>
-                      <div className="w-px h-3 bg-slate-350"></div>
+                      <div className="hidden sm:block w-px h-3 bg-slate-350"></div>
                       <div>
-                        Roll Number: <span className="text-slate-900 font-extrabold">{user.roll_number || '2373A01001'}</span>
+                        Roll: <span className="text-slate-900 font-extrabold">{user.roll_number || '2373A01001'}</span>
                       </div>
                     </div>
                   </div>
                 )}
-                <div className="flex-1 overflow-y-auto min-h-0 relative">
+                <div className="flex-1 min-h-0 relative">
                   <Routes>
                     {/* Common Routes */}
                     <Route path="/profile" element={<Profile />} />
