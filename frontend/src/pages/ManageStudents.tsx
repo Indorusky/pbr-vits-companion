@@ -77,7 +77,7 @@ const ManageStudents = () => {
           id: String(st.id),
           name: st.name || st.username,
           roll: st.roll_number || `ROLL-${st.id}`,
-          attendance: st.attendance,
+          attendance: st.attendance || 85,
           attendedClasses: 35,
           totalClasses: 40,
           marks: { 'Math': st.marks || 90, 'Physics': 85, 'CS': 95 },
@@ -85,12 +85,16 @@ const ManageStudents = () => {
           profilePhoto: st.profile_photo
         }));
         setRoster(mapped);
+        return;
       }
     } catch (e) {
       console.warn("Backend fetch roster failed, local storage fallback", e);
-      const saved = localStorage.getItem('campus_ai_roster');
-      if (saved) setRoster(JSON.parse(saved));
-      else setRoster(DEFAULT_ROSTER);
+    }
+    const saved = localStorage.getItem('campus_ai_roster');
+    if (saved !== null) {
+      setRoster(JSON.parse(saved));
+    } else {
+      setRoster(DEFAULT_ROSTER);
     }
   };
 
@@ -99,9 +103,7 @@ const ManageStudents = () => {
   }, []);
 
   useEffect(() => {
-    if (roster.length > 0) {
-      localStorage.setItem('campus_ai_roster', JSON.stringify(roster));
-    }
+    localStorage.setItem('campus_ai_roster', JSON.stringify(roster));
   }, [roster]);
 
   const handleEditClick = (student: StudentRecord) => {
@@ -198,9 +200,23 @@ const ManageStudents = () => {
     setShowAddModal(false);
   };
 
-  const handleDeleteStudent = (id: string) => {
+  const handleDeleteStudent = async (id: string) => {
     if (window.confirm('Are you sure you want to remove this student?')) {
-      setRoster(prev => prev.filter(st => st.id !== id));
+      const stToDelete = roster.find(st => st.id === id);
+      const nextRoster = roster.filter(st => st.id !== id);
+      setRoster(nextRoster);
+      localStorage.setItem('campus_ai_roster', JSON.stringify(nextRoster));
+
+      try {
+        if (stToDelete) {
+          await fetch(`${API_BASE_URL}/students/${id}`, { method: 'DELETE' });
+          if (stToDelete.roll) {
+            await fetch(`${API_BASE_URL}/users/${stToDelete.roll}`, { method: 'DELETE' });
+          }
+        }
+      } catch (e) {
+        console.warn("Backend delete student failed", e);
+      }
     }
   };
 

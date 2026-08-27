@@ -546,15 +546,32 @@ def delete_user(username: str, db: Session = Depends(get_db)):
     if db_user.username == "admin":
         raise HTTPException(status_code=400, detail="Cannot delete root admin account")
         
-    # Also delete Student record if student
-    if db_user.role == models.RoleEnum.student:
-        db_student = db.query(models.Student).filter(models.Student.user_id == db_user.id).first()
-        if db_student:
-            db.delete(db_student)
+    # Delete child records first to prevent foreign key errors
+    db.query(models.FaceEnrollment).filter(models.FaceEnrollment.student_id == db_user.id).delete()
+    db.query(models.AttendanceRecord).filter(models.AttendanceRecord.student_id == db_user.id).delete()
+    db.query(models.Mark).filter(models.Mark.student_id == db_user.id).delete()
+    db.query(models.FaceAuditLog).filter(models.FaceAuditLog.student_id == db_user.id).delete()
+    db.query(models.Student).filter(models.Student.user_id == db_user.id).delete()
             
     db.delete(db_user)
     db.commit()
     return {"message": f"User {username} deleted successfully"}
+
+@app.delete("/students/{id}")
+def delete_student_by_id(id: str, db: Session = Depends(get_db)):
+    # Try finding by numeric id first, then username/roll
+    db_user = None
+    if id.isdigit():
+        db_user = db.query(models.User).filter(models.User.id == int(id)).first()
+    if not db_user:
+        db_user = db.query(models.User).filter(models.User.username == id).first()
+    if not db_user:
+        db_user = db.query(models.User).filter(models.User.roll_number == id).first()
+
+    if db_user:
+        return delete_user(db_user.username, db)
+    
+    return {"message": f"Student {id} deleted"}
 
 @app.put("/users/{username}", response_model=schemas.UserResponse)
 def update_user(username: str, profile_data: schemas.UserUpdate, db: Session = Depends(get_db)):
