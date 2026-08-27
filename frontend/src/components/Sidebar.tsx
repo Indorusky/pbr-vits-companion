@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { 
   Home, 
@@ -20,7 +20,9 @@ import {
   Building,
   Menu,
   X,
-  TrendingUp
+  TrendingUp,
+  Smartphone,
+  Download
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -28,6 +30,28 @@ const Sidebar = () => {
   const { user, logout, viewMode, setViewMode } = useAuth();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+  useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstallApp = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const choice = await deferredPrompt.userChoice;
+      if (choice.outcome === 'accepted') {
+        setDeferredPrompt(null);
+      }
+    } else {
+      alert("📱 Mobile App Installation Guide:\n\n1. Open this website in Chrome (Android) or Safari (iOS).\n2. Tap the Menu (⋮) or Share button.\n3. Tap 'Add to Home Screen' or 'Install App'.\n\nYour PBR VITS Mobile App icon will be added to your phone's home screen!");
+    }
+  };
 
   const handleLogout = () => {
     logout();
@@ -194,6 +218,18 @@ const Sidebar = () => {
           <Settings className="w-4 h-4" />
           <span>Settings</span>
         </NavLink>
+
+        {/* PWA Mobile App Installer Button */}
+        <button
+          onClick={handleInstallApp}
+          className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-xl transition-all border border-blue-200 shadow-xs mb-1"
+        >
+          <span className="flex items-center gap-2">
+            <Smartphone className="w-3.5 h-3.5 text-blue-600" />
+            <span>Install App</span>
+          </span>
+          <Download className="w-3.5 h-3.5 text-blue-600" />
+        </button>
 
         <div className="pt-2 border-t border-slate-150 flex items-center space-x-2.5 px-3 py-1">
           <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
