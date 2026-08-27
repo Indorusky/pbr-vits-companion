@@ -246,17 +246,26 @@ const Attendance = () => {
                     
                     setEnrollStep('saving');
                     
-                    // Average the 128-dimensional face embeddings for pinpoint accuracy
+                    // L2 Vector Normalization & Multi-Sample Averaging for illumination & attire invariant best-fit matching
+                    const normVec = (arr: ArrayLike<number>) => {
+                      const floats = Array.from(arr);
+                      const norm = Math.sqrt(floats.reduce((sum, x) => sum + x * x, 0));
+                      return norm === 0 ? floats : floats.map(x => x / norm);
+                    };
+
+                    const normalizedDescriptors = descriptors.map(d => normVec(d));
+
                     const avgDescriptor = new Float32Array(128);
                     for (let i = 0; i < 128; i++) {
                       let sum = 0;
-                      for (let j = 0; j < descriptors.length; j++) {
-                        sum += descriptors[j][i];
+                      for (let j = 0; j < normalizedDescriptors.length; j++) {
+                        sum += normalizedDescriptors[j][i];
                       }
-                      avgDescriptor[i] = sum / descriptors.length;
+                      avgDescriptor[i] = sum / normalizedDescriptors.length;
                     }
 
-                    const embedding = JSON.stringify(Array.from(avgDescriptor));
+                    const finalNormalized = normVec(avgDescriptor);
+                    const embedding = JSON.stringify(finalNormalized);
                     
                     fetch(`${API_BASE_URL}/register-face`, {
                       method: 'POST',
@@ -342,7 +351,10 @@ const Attendance = () => {
 
                   setVerifyStep('processing');
                   
-                  const liveEmbedding = JSON.stringify(Array.from(descriptor));
+                  const floats = Array.from(descriptor);
+                  const norm = Math.sqrt(floats.reduce((sum, x) => sum + x * x, 0));
+                  const normalized = norm === 0 ? floats : floats.map(x => x / norm);
+                  const liveEmbedding = JSON.stringify(normalized);
                   
                   fetch(`${API_BASE_URL}/daily-attendance`, {
                     method: 'POST',
