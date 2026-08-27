@@ -28,6 +28,11 @@ def get_db():
 
 def seed_timetable(db):
     try:
+        # Skip re-seeding if faculty users already exist in the database
+        if db.query(models.User).filter(models.User.role == models.RoleEnum.faculty).first() is not None:
+            print("Database already seeded. Skipping re-seed.")
+            return
+
         # Clear existing timetable entries to allow clean re-seeding under the new department schema
         db.query(models.TimetableEntry).delete()
         db.query(models.Faculty).delete()
