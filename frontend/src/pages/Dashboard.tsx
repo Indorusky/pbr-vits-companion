@@ -118,6 +118,7 @@ const Dashboard = () => {
     const totalClassesHeld = 4;
     // Vary attended classes by student ID/name & subject index so it varies dynamically student by student (e.g., 4/4 = 100%, 3/4 = 75%, 2/4 = 50%)
     const studentSeed = (user?.username || user?.name || 'student').length;
+    const hash = idx * 7 + studentSeed * 13;
     const attendedClasses = (studentSeed + idx) % 2 === 0 ? 4 : (studentSeed + idx) % 3 === 0 ? 3 : 2;
     const attendanceVal = parseFloat(((attendedClasses / totalClassesHeld) * 100).toFixed(1));
     const marksVal = 70 + ((hash + studentSeed) % 28); // 70 to 97%
@@ -155,7 +156,8 @@ const Dashboard = () => {
       const avgAtt = totalHeld > 0 ? parseFloat(((totalAttended / totalHeld) * 100).toFixed(1)) : 0;
       const avgMks = Math.round(generatedSubjects.reduce((acc, s) => acc + s.marks, 0) / generatedSubjects.length);
       setAttendance(avgAtt);
-      setHealthScore(avgMks);
+      const computedHealth = Math.min(100, Math.round((avgMks * 0.40) + (avgAtt * 0.40) + (90 * 0.10) + (88 * 0.10)));
+      setHealthScore(computedHealth);
     }
   }, [user?.department, user?.semester, user?.username, user?.name]);
   
@@ -190,8 +192,9 @@ const Dashboard = () => {
         return res.json();
       })
       .then(attData => {
-        if (attData.overall_pct !== undefined) {
-          setAttendance(attData.overall_pct);
+        const realOverallAtt = attData.overall_percentage !== undefined ? attData.overall_percentage : attData.overall_pct;
+        if (realOverallAtt !== undefined) {
+          setAttendance(realOverallAtt);
         }
         
         // Fetch marks
@@ -223,7 +226,11 @@ const Dashboard = () => {
             setSubjects(updatedSubjects);
             if (updatedSubjects.length > 0) {
               const avgMks = Math.round(updatedSubjects.reduce((acc, s) => acc + s.marks, 0) / updatedSubjects.length);
-              setHealthScore(avgMks);
+              const attVal = realOverallAtt !== undefined ? realOverallAtt : (
+                updatedSubjects.reduce((acc, s) => acc + s.attendance, 0) / updatedSubjects.length
+              );
+              const computedHealth = Math.min(100, Math.round((avgMks * 0.40) + (attVal * 0.40) + (90 * 0.10) + (88 * 0.10)));
+              setHealthScore(computedHealth);
             }
             setApiConnected(true);
           })
@@ -331,15 +338,18 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {/* Attendance Card */}
         <div 
-          onClick={() => setShowCalculator(true)}
+          onClick={() => navigate('/attendance')}
           className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover:shadow-md transition-all cursor-pointer group"
+          title="Click to view full actual attendance records"
         >
           <div className="flex items-center space-x-4">
             <div className="p-3 bg-blue-50 text-blue-600 rounded-xl group-hover:scale-105 transition-transform">
               <Clock className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-sm text-slate-500 font-medium">Attendance</p>
+              <p className="text-sm text-slate-500 font-medium flex items-center gap-1">
+                Actual Attendance <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-transform" />
+              </p>
               <h3 className="text-2xl font-bold text-slate-900">{attendance}%</h3>
             </div>
           </div>
@@ -347,9 +357,9 @@ const Dashboard = () => {
 
         {/* Health Score Card */}
         <div
-          onClick={() => setShowHealthBreakdown(true)}
+          onClick={() => navigate('/academic-health')}
           className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover:shadow-md transition-all cursor-pointer group"
-          title="Click to view Health Score factors breakdown"
+          title="Click to view detailed Health Score analysis & reasons"
         >
           <div className="flex items-center space-x-4">
             <div className="p-3 bg-green-50 text-green-600 rounded-xl group-hover:scale-105 transition-transform">
@@ -357,7 +367,7 @@ const Dashboard = () => {
             </div>
             <div>
               <p className="text-sm text-slate-500 font-medium flex items-center gap-1">
-                Health Score <HelpCircle className="w-3.5 h-3.5 text-slate-400" />
+                Academic Health <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-green-600 group-hover:translate-x-0.5 transition-transform" />
               </p>
               <h3 className="text-2xl font-bold text-slate-900">{healthScore}/100</h3>
             </div>

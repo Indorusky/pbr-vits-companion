@@ -24,6 +24,7 @@ import ManageStudents from './pages/ManageStudents';
 import ManageUsers from './pages/ManageUsers';
 import ManageDepartments from './pages/ManageDepartments';
 import AcademicHistory from './pages/AcademicHistory';
+import AcademicHealth from './pages/AcademicHealth';
 
 const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode, allowedRoles?: string[] }) => {
   const { isAuthenticated, user } = useAuth();
@@ -92,6 +93,7 @@ function AppRoutes() {
 
                     {/* Student Routes */}
                     <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['student']}><Dashboard /></ProtectedRoute>} />
+                    <Route path="/academic-health" element={<ProtectedRoute allowedRoles={['student']}><AcademicHealth /></ProtectedRoute>} />
                     <Route path="/timetable" element={<ProtectedRoute allowedRoles={['student']}><Timetable /></ProtectedRoute>} />
                     <Route path="/attendance" element={<ProtectedRoute allowedRoles={['student']}><Attendance /></ProtectedRoute>} />
                     <Route path="/marks" element={<ProtectedRoute allowedRoles={['student']}><Marks /></ProtectedRoute>} />

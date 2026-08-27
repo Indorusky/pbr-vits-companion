@@ -19,7 +19,8 @@ import {
   Bell,
   Building,
   Menu,
-  X
+  X,
+  TrendingUp
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -35,6 +36,7 @@ const Sidebar = () => {
 
   const studentNavItems = [
     { name: 'Dashboard', icon: Home, path: '/dashboard' },
+    { name: 'Academic Health', icon: TrendingUp, path: '/academic-health' },
     { name: 'Timetable', icon: Calendar, path: '/timetable' },
     { name: 'Attendance', icon: Percent, path: '/attendance' },
     { name: 'Internal Marks', icon: BarChart3, path: '/marks' },
