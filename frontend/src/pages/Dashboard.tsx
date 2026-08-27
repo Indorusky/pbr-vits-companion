@@ -286,7 +286,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="p-6 md:p-8 max-w-6xl mx-auto space-y-8 min-h-screen">
+    <div className="p-4 sm:p-6 md:p-8 max-w-6xl mx-auto space-y-6 sm:space-y-8 min-h-screen">
       {/* Attendance Warning Alert Banner */}
       {subjects.some(s => s.attendance < 75) && (
         <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-xl shadow-sm flex items-start gap-3 animate-bounce-subtle">
@@ -310,17 +310,17 @@ const Dashboard = () => {
       {/* Top Header */}
       <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
             Welcome back, {user?.name || 'Student'}!
           </h1>
-          <p className="text-slate-500 mt-1 font-medium text-sm">
+          <p className="text-slate-500 mt-1 font-medium text-xs sm:text-sm">
             Here is your academic overview for today.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <button
             onClick={() => setShowCalculator(true)}
-            className="flex items-center space-x-2 px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 font-medium text-sm rounded-xl border border-slate-200 shadow-sm transition-all"
+            className="flex items-center space-x-2 px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 font-medium text-xs sm:text-sm rounded-xl border border-slate-200 shadow-sm transition-all"
           >
             <Calculator className="w-4 h-4 text-blue-600" />
             <span>Attendance Predictor</span>
@@ -335,22 +335,22 @@ const Dashboard = () => {
       </header>
 
       {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6">
         {/* Attendance Card */}
         <div 
           onClick={() => navigate('/attendance')}
-          className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover:shadow-md transition-all cursor-pointer group"
+          className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-100 hover:shadow-md transition-all cursor-pointer group"
           title="Click to view full actual attendance records"
         >
-          <div className="flex items-center space-x-4">
-            <div className="p-3 bg-blue-50 text-blue-600 rounded-xl group-hover:scale-105 transition-transform">
-              <Clock className="w-6 h-6" />
+          <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+            <div className="p-2.5 sm:p-3 bg-blue-50 text-blue-600 rounded-xl group-hover:scale-105 transition-transform shrink-0">
+              <Clock className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
-            <div>
-              <p className="text-sm text-slate-500 font-medium flex items-center gap-1">
-                Actual Attendance <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-transform" />
+            <div className="min-w-0">
+              <p className="text-xs sm:text-sm text-slate-500 font-medium flex items-center gap-1 truncate">
+                Attendance <ChevronRight className="w-3 h-3 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-transform" />
               </p>
-              <h3 className="text-2xl font-bold text-slate-900">{attendance}%</h3>
+              <h3 className="text-xl sm:text-2xl font-bold text-slate-900 mt-0.5">{attendance}%</h3>
             </div>
           </div>
         </div>
@@ -358,93 +358,96 @@ const Dashboard = () => {
         {/* Health Score Card */}
         <div
           onClick={() => navigate('/academic-health')}
-          className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover:shadow-md transition-all cursor-pointer group"
-          title="Click to view detailed Health Score analysis & reasons"
+          className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-100 hover:shadow-md transition-all cursor-pointer group"
+          title="Click to view full health score factor analysis"
         >
-          <div className="flex items-center space-x-4">
-            <div className="p-3 bg-green-50 text-green-600 rounded-xl group-hover:scale-105 transition-transform">
-              <TrendingUp className="w-6 h-6" />
+          <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+            <div className="p-2.5 sm:p-3 bg-emerald-50 text-emerald-600 rounded-xl group-hover:scale-105 transition-transform shrink-0">
+              <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
-            <div>
-              <p className="text-sm text-slate-500 font-medium flex items-center gap-1">
-                Academic Health <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-green-600 group-hover:translate-x-0.5 transition-transform" />
+            <div className="min-w-0">
+              <p className="text-xs sm:text-sm text-slate-500 font-medium flex items-center gap-1 truncate">
+                Health Score <ChevronRight className="w-3 h-3 text-slate-400 group-hover:text-emerald-600 group-hover:translate-x-0.5 transition-transform" />
               </p>
-              <h3 className="text-2xl font-bold text-slate-900">{healthScore}/100</h3>
+              <h3 className="text-xl sm:text-2xl font-bold text-slate-900 mt-0.5">{healthScore}/100</h3>
             </div>
           </div>
         </div>
 
         {/* AI Insight Card */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover:shadow-md transition-all md:col-span-2 relative group">
-          <div className="flex items-start space-x-4 h-full">
-            <div className="p-3 bg-purple-50 text-purple-600 rounded-xl shrink-0 mt-0.5">
-              <Award className="w-6 h-6" />
+        <div className="col-span-2 bg-gradient-to-r from-purple-50 to-indigo-50/50 rounded-2xl p-4 sm:p-6 shadow-sm border border-purple-100 flex items-start space-x-3 sm:space-x-4">
+          <div className="p-2.5 sm:p-3 bg-purple-100 text-purple-600 rounded-xl shrink-0 mt-0.5">
+            <Sparkles className="w-5 h-5 sm:w-6 sm:h-6" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between">
+              <p className="text-xs sm:text-sm text-purple-900 font-bold">AI Insight</p>
+              <button 
+                onClick={handleRefreshInsights}
+                className="text-purple-600 hover:text-purple-800 text-xs font-semibold p-1 hover:bg-purple-100 rounded-lg transition-colors flex items-center gap-1 shrink-0"
+                title="Generate fresh AI academic insight"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+              </button>
             </div>
-            <div className="flex-1 pr-6">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-slate-500 font-medium">AI Insight</p>
-                <button
-                  onClick={handleRefreshInsights}
-                  title="Refresh AI Insights"
-                  className="text-slate-400 hover:text-purple-600 p-1 rounded-lg hover:bg-purple-50 transition-colors"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-                </button>
-              </div>
-              <p className="text-sm font-medium text-slate-800 mt-1 leading-relaxed">
-                {aiInsight}
-              </p>
-            </div>
+            <p className="text-xs sm:text-sm text-purple-950 font-medium mt-1 leading-snug">
+              {aiInsight}
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Main Content Grid: Current Subjects & Announcements */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Current Subjects */}
-        <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col">
-          <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+      {/* Main Content Grid: Subjects & Announcements */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Subjects List (Takes 2 cols on desktop) */}
+        <div className="lg:col-span-2 bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-100 space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-4">
             <div>
-              <h2 className="text-lg font-bold text-slate-900">Enrolled Subjects (Year-Wise)</h2>
-              <p className="text-xs text-slate-500 mt-0.5">Click any subject to view detailed report & AI study help</p>
+              <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+                <Book className="w-5 h-5 text-blue-600" />
+                Enrolled Subjects (Year-Wise)
+              </h2>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">
+                Click any subject to view detailed report & AI study help
+              </p>
             </div>
-            <span className="text-xs font-semibold bg-slate-100 text-slate-600 px-3 py-1 rounded-full">
+            <span className="bg-slate-100 text-slate-700 text-xs font-bold px-2.5 py-1 rounded-lg shrink-0">
               {subjects.length} Enrolled
             </span>
           </div>
 
-          <div className="p-6 space-y-6 flex-1">
+          <div className="space-y-6">
             {['1st Year', '2nd Year', '3rd Year', 'Final Year'].map((yr) => {
               const yrSubjects = subjects.filter(s => s.year === yr);
               if (yrSubjects.length === 0) return null;
               return (
                 <div key={yr} className="space-y-2">
-                  <h4 className="text-xs font-bold text-slate-450 uppercase tracking-wider">{yr} Curriculum</h4>
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">{yr} CURRICULUM</h4>
                   <div className="space-y-3">
                     {yrSubjects.map((subj) => (
                       <div
                         key={subj.name}
                         onClick={() => setSelectedSubject(subj)}
-                        className={`flex items-center justify-between p-4 bg-slate-50 hover:bg-blue-50/50 rounded-xl border transition-all cursor-pointer group ${
+                        className={`flex flex-col sm:flex-row sm:items-center justify-between p-3.5 sm:p-4 bg-slate-50 hover:bg-blue-50/50 rounded-xl border transition-all cursor-pointer group gap-3 ${
                           subj.attendance < 75 ? 'border-red-100 bg-red-50/10 hover:bg-red-50/20' : 'border-transparent hover:border-blue-100'
                         }`}
                       >
-                        <div className="flex items-center space-x-4">
-                          <div className={`p-2.5 rounded-xl shadow-sm group-hover:shadow ${
+                        <div className="flex items-start sm:items-center space-x-3 sm:space-x-4 min-w-0 flex-1">
+                          <div className={`p-2.5 rounded-xl shadow-sm group-hover:shadow shrink-0 mt-0.5 sm:mt-0 ${
                             subj.attendance < 75 ? 'bg-red-100 text-red-600' : 'bg-white text-indigo-500'
                           }`}>
                             <Book className="w-5 h-5" />
                           </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <h4 className="font-semibold text-slate-800 text-base">{subj.name}</h4>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <h4 className="font-bold text-slate-900 text-sm sm:text-base leading-snug break-words">{subj.name}</h4>
                               {subj.attendance < 75 && (
                                 <span className="bg-red-100 text-red-800 text-[10px] px-2 py-0.5 rounded-full font-extrabold flex items-center gap-0.5 shrink-0">
                                   <AlertTriangle className="w-3 h-3" /> Warning
                                 </span>
                               )}
                             </div>
-                            <p className="text-xs text-slate-500">
+                            <p className="text-xs text-slate-500 mt-0.5">
                               {subj.code} • Attendance:{' '}
                               <span className={subj.attendance < 75 ? 'text-red-600 font-bold' : ''}>
                                 {subj.attendance}%
@@ -453,12 +456,12 @@ const Dashboard = () => {
                           </div>
                         </div>
 
-                        <div className="flex items-center space-x-4">
-                          <div className="text-right">
-                            <p className="text-xs text-slate-500 font-medium">Internal Marks</p>
-                            <p className="font-bold text-slate-900 text-lg">{subj.marks}%</p>
+                        <div className="flex items-center justify-between sm:justify-end space-x-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200/60">
+                          <div className="text-left sm:text-right">
+                            <p className="text-[11px] sm:text-xs text-slate-500 font-medium">Internal Marks</p>
+                            <p className="font-extrabold text-slate-900 text-base sm:text-lg">{subj.marks}%</p>
                           </div>
-                          <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all" />
+                          <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all shrink-0" />
                         </div>
                       </div>
                     ))}

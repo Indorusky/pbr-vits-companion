@@ -274,15 +274,15 @@ const Sidebar = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {user?.name && (
-            <div className="text-[11px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-lg truncate max-w-[120px]">
+            <div className="text-[10px] sm:text-[11px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-lg truncate max-w-[85px] xs:max-w-[110px] sm:max-w-[140px] shrink-0">
               {user.name}
             </div>
           )}
           <button
             onClick={() => setMobileMenuOpen(true)}
-            className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-colors"
+            className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-colors shrink-0"
             aria-label="Open Navigation Menu"
           >
             <Menu className="w-5 h-5" />
