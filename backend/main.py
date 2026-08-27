@@ -316,7 +316,7 @@ def seed_timetable(db):
         # Update each faculty's assigned departments, subjects, and semesters from their scheduled classes
         all_faculties = db.query(models.Faculty).all()
         for f in all_faculties:
-            username = f.faculty_id.lower()
+            username = f.name
             classes = db.query(models.TimetableEntry).filter(models.TimetableEntry.faculty_username == username).all()
             
             depts = sorted(list(set(c.department for c in classes)))
@@ -1975,5 +1975,68 @@ def update_faculty_profile(faculty_id: str, req: FacultyProfileUpdateSchema, db:
     db.commit()
     db.refresh(fac)
     return fac
+
+@app.get("/departments")
+def get_departments():
+    return [
+        {"id": "1", "name": "Electrical and Electronics Engineering (EEE)", "code": "EEE"},
+        {"id": "2", "name": "CSE AI", "code": "CSE-AI"},
+        {"id": "3", "name": "CSE AIML", "code": "CSE-AIML"},
+        {"id": "4", "name": "Computer Science and Engineering (CSE)", "code": "CSE"},
+        {"id": "5", "name": "Electronics and Communication Engineering (ECE)", "code": "ECE"},
+        {"id": "6", "name": "Civil Engineering", "code": "CE"}
+    ]
+
+@app.get("/subjects")
+def get_subjects(department_id: Optional[str] = None, db: Session = Depends(get_db)):
+    dept_map = {
+        "1": "Electrical and Electronics Engineering (EEE)",
+        "2": "CSE AI",
+        "3": "CSE AIML",
+        "4": "Computer Science and Engineering (CSE)",
+        "5": "Electronics and Communication Engineering (ECE)",
+        "6": "Civil Engineering"
+    }
+    
+    entries = db.query(models.TimetableEntry).all()
+    
+    seen = {}
+    result = []
+    
+    dept_str_to_id = {v: k for k, v in dept_map.items()}
+    
+    for entry in entries:
+        dept_id = dept_str_to_id.get(entry.department, "4")
+        if department_id and dept_id != department_id:
+            continue
+            
+        key = f"{dept_id}_{entry.semester}_{entry.subject}"
+        if key not in seen:
+            sem = entry.semester or "1-1"
+            year = "1st Year"
+            if sem in ["2-1", "2-2"]:
+                year = "2nd Year"
+            elif sem in ["3-1", "3-2"]:
+                year = "3rd Year"
+            elif sem in ["4-1", "4-2"]:
+                year = "4th Year"
+                
+            code_prefix = entry.department.split()[0][:2].upper()
+            sub_id = str(len(result) + 1)
+            code = f"{code_prefix}{sem.replace('-', '')}{sub_id.zfill(2)}"
+            
+            item = {
+                "id": sub_id,
+                "name": entry.subject,
+                "code": code,
+                "departmentId": dept_id,
+                "year": year,
+                "semester": sem,
+                "facultyUsername": entry.faculty_username
+            }
+            seen[key] = item
+            result.append(item)
+            
+    return result
 
 
