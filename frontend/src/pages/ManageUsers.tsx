@@ -166,20 +166,30 @@ const ManageUsers = () => {
       return;
     }
     if (window.confirm(`Are you sure you want to remove account: "${uName}"?`)) {
-      try {
-        const response = await fetch(`${API_BASE_URL}/users/${uName}`, {
-          method: 'DELETE'
-        });
-        if (response.ok) {
-          fetchUsers();
-          return;
-        }
-      } catch (e) {
-        console.warn("Backend delete failed, falling back to local simulation", e);
+      const targetAcc = accounts.find(acc => acc.username === uName || acc.roll_number === uName);
+      const updatedAccounts = accounts.filter(acc => acc.username !== uName && acc.roll_number !== uName);
+      setAccounts(updatedAccounts);
+      localStorage.setItem('campus_ai_accounts', JSON.stringify(updatedAccounts));
+
+      // Also clean from student roster cache
+      const savedRoster = localStorage.getItem('campus_ai_roster');
+      if (savedRoster) {
+        try {
+          const parsedRoster = JSON.parse(savedRoster);
+          const filteredRoster = parsedRoster.filter((st: any) => st.roll !== uName && st.roll !== targetAcc?.roll_number && st.name !== targetAcc?.name);
+          localStorage.setItem('campus_ai_roster', JSON.stringify(filteredRoster));
+        } catch { /* ignore */ }
       }
 
-      const updated = accounts.filter(acc => acc.username !== uName);
-      saveAccounts(updated);
+      try {
+        await fetch(`${API_BASE_URL}/users/${uName}`, { method: 'DELETE' });
+        if (targetAcc?.roll_number) {
+          await fetch(`${API_BASE_URL}/students/${targetAcc.roll_number}`, { method: 'DELETE' });
+          await fetch(`${API_BASE_URL}/users/${targetAcc.roll_number}`, { method: 'DELETE' });
+        }
+      } catch (e) {
+        console.warn("Backend delete user failed", e);
+      }
     }
   };
 

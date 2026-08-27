@@ -541,17 +541,26 @@ def provision_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
 def delete_user(username: str, db: Session = Depends(get_db)):
     db_user = db.query(models.User).filter(models.User.username == username).first()
     if not db_user:
+        # Also check by roll_number or ID string
+        db_user = db.query(models.User).filter(models.User.roll_number == username).first()
+    if not db_user and username.isdigit():
+        db_user = db.query(models.User).filter(models.User.id == int(username)).first()
+
+    if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
         
     if db_user.username == "admin":
         raise HTTPException(status_code=400, detail="Cannot delete root admin account")
         
-    # Delete child records first to prevent foreign key errors
+    # Delete child records across all dependent tables to prevent foreign key constraint failures
     db.query(models.FaceEnrollment).filter(models.FaceEnrollment.student_id == db_user.id).delete()
     db.query(models.AttendanceRecord).filter(models.AttendanceRecord.student_id == db_user.id).delete()
     db.query(models.Mark).filter(models.Mark.student_id == db_user.id).delete()
+    db.query(models.MarkModificationLog).filter(models.MarkModificationLog.student_id == db_user.id).delete()
     db.query(models.FaceAuditLog).filter(models.FaceAuditLog.student_id == db_user.id).delete()
+    db.query(models.Faculty).filter(models.Faculty.user_id == db_user.id).delete()
     db.query(models.Student).filter(models.Student.user_id == db_user.id).delete()
+    db.query(models.Student).filter(models.Student.roll_number == db_user.roll_number).delete()
             
     db.delete(db_user)
     db.commit()
@@ -571,7 +580,12 @@ def delete_student_by_id(id: str, db: Session = Depends(get_db)):
     if db_user:
         return delete_user(db_user.username, db)
     
-    return {"message": f"Student {id} deleted"}
+    # Also clean up Student standalone record if present
+    if id.isdigit():
+        db.query(models.Student).filter(models.Student.id == int(id)).delete()
+    db.query(models.Student).filter(models.Student.roll_number == id).delete()
+    db.commit()
+    return {"message": f"Student {id} deleted successfully"}
 
 @app.put("/users/{username}", response_model=schemas.UserResponse)
 def update_user(username: str, profile_data: schemas.UserUpdate, db: Session = Depends(get_db)):
