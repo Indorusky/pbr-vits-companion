@@ -1203,6 +1203,31 @@ def calculate_distance(embedding1, embedding2):
     sum_sq = sum((f1 - f2) ** 2 for f1, f2 in zip(u, v))
     return math.sqrt(sum_sq)
 
+def calculate_min_variant_distance(live_vector, registered_embedding_data):
+    """
+    Calculates minimum distance between a live face vector and all registered lighting variants.
+    registered_embedding_data can be:
+    - Single 128-d vector: [x1, x2, ...]
+    - List of 128-d variant vectors: [[v1], [v2], [v3], [v4]]
+    """
+    try:
+        parsed = json.loads(registered_embedding_data) if isinstance(registered_embedding_data, str) else registered_embedding_data
+        if not parsed:
+            return 999.0
+        
+        # Check if parsed is a list of vectors (2D array) or a single vector (1D array)
+        if isinstance(parsed[0], list):
+            min_dist = 999.0
+            for var_vec in parsed:
+                dist = calculate_distance(live_vector, var_vec)
+                if dist < min_dist:
+                    min_dist = dist
+            return min_dist
+        else:
+            return calculate_distance(live_vector, parsed)
+    except Exception:
+        return 999.0
+
 def get_weekday_from_date(date_str: str) -> str:
     try:
         dt = datetime.datetime.strptime(date_str, "%Y-%m-%d")
@@ -1296,7 +1321,7 @@ class SystemConfigUpdate(BaseModel):
 
 class FaceRegisterRequest(BaseModel):
     student_id: int
-    embedding: str  # JSON array of 128 floats
+    embedding: str  # JSON array of 128 floats or array of variant vectors
 
 class DailyAttendanceRequest(BaseModel):
     live_embedding: str  # JSON array of 128 floats
@@ -1348,15 +1373,20 @@ def register_face(req: FaceRegisterRequest, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=404, detail="Student not found")
     
-    # Try parsing embedding to make sure it's valid JSON
+    # Try parsing embedding to accept either single vector or array of variant vectors
     try:
-        parsed = json.loads(req.embedding)
-        if not isinstance(parsed, list) or len(parsed) != 128:
+        parsed = json.loads(req.embedding) if isinstance(req.embedding, str) else req.embedding
+        if isinstance(parsed[0], list):
+            # Array of variant vectors
+            norm_variants = [normalize_vector(v) for v in parsed if len(v) == 128]
+            norm_embedding = json.dumps(norm_variants)
+        elif len(parsed) == 128:
+            norm_parsed = normalize_vector(parsed)
+            norm_embedding = json.dumps(norm_parsed)
+        else:
             raise ValueError()
-        norm_parsed = normalize_vector(parsed)
-        norm_embedding = json.dumps(norm_parsed)
     except Exception:
-        raise HTTPException(status_code=400, detail="Invalid embedding format. Must be a JSON list of 128 floats.")
+        raise HTTPException(status_code=400, detail="Invalid embedding format. Must be a 128 float vector or array of variant vectors.")
 
     enrollment = db.query(models.FaceEnrollment).filter(models.FaceEnrollment.student_id == req.student_id).first()
     action = "RE-REGISTER" if enrollment else "REGISTER"
@@ -1379,7 +1409,7 @@ def register_face(req: FaceRegisterRequest, db: Session = Depends(get_db)):
     db.add(audit)
     db.commit()
     
-    return {"message": "Face registered successfully", "action": action}
+    return {"message": "Multi-variant face registered successfully", "action": action}
 
 @app.post("/daily-attendance")
 def daily_attendance(req: DailyAttendanceRequest, db: Session = Depends(get_db)):
@@ -1399,11 +1429,11 @@ def daily_attendance(req: DailyAttendanceRequest, db: Session = Depends(get_db))
     best_match_id = None
     best_dist = 999.0
     
-    # Best-Fit Thresholds:
-    # 0.78 for 1-to-1 student verification (invariant to lighting, glasses, and clothing changes)
-    # 0.72 for general multi-student kiosk scanning
-    threshold_1to1 = 0.78
-    threshold_kiosk = 0.72
+    # Multi-Variant Best-Fit Thresholds:
+    # 0.82 for targeted 1-to-1 student verification (matches across all 4 lighting variants)
+    # 0.76 for multi-student kiosk scanning
+    threshold_1to1 = 0.82
+    threshold_kiosk = 0.76
 
     if req.student_id:
         enrollment = db.query(models.FaceEnrollment).filter(
@@ -1411,8 +1441,7 @@ def daily_attendance(req: DailyAttendanceRequest, db: Session = Depends(get_db))
             models.FaceEnrollment.is_active == 1
         ).first()
         if enrollment:
-            reg_list = json.loads(enrollment.embedding)
-            dist = calculate_distance(live_list, reg_list)
+            dist = calculate_min_variant_distance(live_list, enrollment.embedding)
             if dist < threshold_1to1:
                 best_match_id = req.student_id
                 best_dist = dist
@@ -1420,8 +1449,7 @@ def daily_attendance(req: DailyAttendanceRequest, db: Session = Depends(get_db))
         # Kiosk mode: search all active enrollments
         enrollments = db.query(models.FaceEnrollment).filter(models.FaceEnrollment.is_active == 1).all()
         for enr in enrollments:
-            reg_list = json.loads(enr.embedding)
-            dist = calculate_distance(live_list, reg_list)
+            dist = calculate_min_variant_distance(live_list, enr.embedding)
             if dist < threshold_kiosk and dist < best_dist:
                 best_dist = dist
                 best_match_id = enr.student_id

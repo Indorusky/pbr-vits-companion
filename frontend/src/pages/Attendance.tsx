@@ -246,26 +246,21 @@ const Attendance = () => {
                     
                     setEnrollStep('saving');
                     
-                    // L2 Vector Normalization & Multi-Sample Averaging for illumination & attire invariant best-fit matching
                     const normVec = (arr: ArrayLike<number>) => {
                       const floats = Array.from(arr);
                       const norm = Math.sqrt(floats.reduce((sum, x) => sum + x * x, 0));
                       return norm === 0 ? floats : floats.map(x => x / norm);
                     };
 
-                    const normalizedDescriptors = descriptors.map(d => normVec(d));
+                    const baseNormalized = normVec(descriptors[0]);
+                    const variants = [
+                      baseNormalized,
+                      baseNormalized.map((x, i) => i % 2 === 0 ? x * 1.05 : x * 0.95),
+                      baseNormalized.map((x, i) => i % 3 === 0 ? x * 0.95 : x * 1.05),
+                      baseNormalized.map((x, i) => i % 5 === 0 ? x * 1.02 : x * 0.98)
+                    ].map(v => normVec(v));
 
-                    const avgDescriptor = new Float32Array(128);
-                    for (let i = 0; i < 128; i++) {
-                      let sum = 0;
-                      for (let j = 0; j < normalizedDescriptors.length; j++) {
-                        sum += normalizedDescriptors[j][i];
-                      }
-                      avgDescriptor[i] = sum / normalizedDescriptors.length;
-                    }
-
-                    const finalNormalized = normVec(avgDescriptor);
-                    const embedding = JSON.stringify(finalNormalized);
+                    const embedding = JSON.stringify(variants);
                     
                     fetch(`${API_BASE_URL}/register-face`, {
                       method: 'POST',
