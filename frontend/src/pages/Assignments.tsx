@@ -123,9 +123,9 @@ const Assignments = () => {
   const userSem = user?.semester || '3-1';
   const studentId = user?.roll_number || user?.username || 'student_1';
 
-  // Filter state
-  const [selectedDept, setSelectedDept] = useState<string>(isFacultyOrAdmin ? 'All' : userDept);
-  const [selectedSem, setSelectedSem] = useState<string>(isFacultyOrAdmin ? 'All' : userSem);
+  // Filter state (Default to 'All' so students see all published assignments without lockout)
+  const [selectedDept, setSelectedDept] = useState<string>('All');
+  const [selectedSem, setSelectedSem] = useState<string>('All');
   const [selectedSubject, setSelectedSubject] = useState<string>('All');
   const [selectedStatus, setSelectedStatus] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -264,8 +264,12 @@ const Assignments = () => {
 
   // Filter logic
   const filteredAssignments = assignments.filter(ass => {
-    // Dept filter
-    if (selectedDept !== 'All' && ass.department !== selectedDept) return false;
+    // Dept filter using normalized department comparison
+    if (selectedDept !== 'All') {
+      const normAssDept = getNormalizedDepartment(ass.department);
+      const normSelectedDept = getNormalizedDepartment(selectedDept);
+      if (normAssDept !== normSelectedDept) return false;
+    }
     // Sem filter
     if (selectedSem !== 'All' && ass.semester !== selectedSem) return false;
     // Subject filter
