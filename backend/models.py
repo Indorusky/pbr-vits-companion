@@ -63,7 +63,7 @@ class FaceEnrollment(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     student_id = Column(Integer, ForeignKey("users.id"), unique=True)
-    embedding = Column(String(2000))  # Holds JSON string of the 128 float values
+    embedding = Column(String)  # Holds JSON string of float values
     is_active = Column(Integer, default=1)
     created_at = Column(String(255))
 
