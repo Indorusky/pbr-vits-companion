@@ -1,15 +1,27 @@
 import { useState, useEffect } from 'react';
-import { API_BASE_URL } from '../config';
-
-import { BarChart3, Calculator, Award, GraduationCap, CheckCircle } from 'lucide-react';
+import { 
+  BarChart3, 
+  Calculator, 
+  Award, 
+  GraduationCap, 
+  CheckCircle, 
+  Percent, 
+  BookOpen, 
+  ChevronRight, 
+  AlertTriangle,
+  TrendingUp,
+  Layers,
+  Sparkles
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { getStudentAcademicProfile, type StudentAcademicProfile, type SemesterAcademicRecord } from '../utils/academicData';
 import { SUBJECTS_DATABASE, getNormalizedDepartment } from '../utils/subjectsData';
 
 interface ComponentMark {
   name: string;
   score: number;
   maxScore: number;
-  weightage: number; // percentage of total grade
+  weightage: number;
 }
 
 interface CourseMarks {
@@ -19,217 +31,73 @@ interface CourseMarks {
   components: ComponentMark[];
 }
 
-const INITIAL_MARKS: CourseMarks[] = [
-  {
-    subject: 'Math III',
-    code: 'MATH301',
-    grade: 'A',
-    components: [
-      { name: 'Midterm 1', score: 27, maxScore: 30, weightage: 30 },
-      { name: 'Quiz 1', score: 9, maxScore: 10, weightage: 10 },
-      { name: 'Assignments', score: 18, maxScore: 20, weightage: 20 },
-      { name: 'Final Exam (Estimated)', score: 36, maxScore: 40, weightage: 40 }
-    ]
-  },
-  {
-    subject: 'Data Structures',
-    code: 'CS402',
-    grade: 'A+',
-    components: [
-      { name: 'Midterm 1', score: 29, maxScore: 30, weightage: 30 },
-      { name: 'Quiz 1', score: 10, maxScore: 10, weightage: 10 },
-      { name: 'Coding Lab Projects', score: 19, maxScore: 20, weightage: 20 },
-      { name: 'Final Exam (Estimated)', score: 37, maxScore: 40, weightage: 40 }
-    ]
-  },
-  {
-    subject: 'Applied Physics',
-    code: 'PHYS204',
-    grade: 'B+',
-    components: [
-      { name: 'Midterm 1', score: 23, maxScore: 30, weightage: 30 },
-      { name: 'Quiz 1', score: 8, maxScore: 10, weightage: 10 },
-      { name: 'Lab Experiments', score: 17, maxScore: 20, weightage: 20 },
-      { name: 'Final Exam (Estimated)', score: 32, maxScore: 40, weightage: 40 }
-    ]
-  }
-];
-
 const Marks = () => {
   const { user } = useAuth();
   
-  // Calculate dynamic subjects based on logged-in student's info
-  const studentDept = getNormalizedDepartment(user?.department || 'Computer Science');
-  const studentSem = user?.semester || '3-1';
-  const semesterSubjectsList = SUBJECTS_DATABASE[studentDept]?.[studentSem] || [];
-  
-  const generatedMarks: CourseMarks[] = semesterSubjectsList.map((name, idx) => {
-    const codes: Record<string, string> = {
-      'Linear Algebra & Calculus': 'MATH101',
-      'Engineering Physics/Chemistry': 'PHYS102',
-      'Programming in C': 'CS103',
-      'Engineering Drawing': 'ME104',
-      'English': 'ENG105',
-      'Labs': 'LAB106',
-      'Differential Equations & Vector Calculus': 'MATH102',
-      'Applied Physics': 'PHYS204',
-      'Basic Electrical Engineering': 'EE102',
-      'Data Structures': 'CS202',
-      'Workshops/Labs': 'WS106',
-      'Discrete Mathematics': 'MATH201',
-      'OOP (Java/C++)': 'CS203',
-      'DBMS': 'CS204',
-      'Digital Logic & Computer Organization': 'CS205',
-      'Skill Course (Design Thinking / Full Stack-1)': 'SKL206',
-      'Machine Learning': 'CS302',
-      'Probability & Statistics': 'MATH202',
-      'Operating Systems': 'CS206',
-      'Software Engineering': 'CS301',
-      'Optimization Techniques': 'MATH203',
-      'Artificial Intelligence': 'CS303',
-      'Computer Networks': 'CS304',
-      'Automata Theory & Compiler Design': 'CS305',
-      'NLP': 'CS306',
-      'Computer Vision': 'CS307',
-      'Professional Elective-I': 'PE308',
-      'Deep Learning': 'CS310',
-      'Data Analytics/Big Data': 'CS311',
-      'Web Technologies': 'CS312',
-      'Professional Elective-II': 'PE313',
-      'Open Elective-I': 'OE314',
-      'Generative AI': 'CS401',
-      'MLOps & Model Deployment': 'CS402',
-      'Professional Electives (III & IV)': 'PE403',
-      'Open Elective-II': 'OE404',
-      'Project Work Part-1': 'PRJ405',
-      'Major Industry Internship': 'INT406',
-      'Final Major Project / Dissertation': 'PRJ407'
-    };
+  const [profile, setProfile] = useState<StudentAcademicProfile>(() => getStudentAcademicProfile(user));
+  const [activeViewTab, setActiveViewTab] = useState<'current' | 'transcript'>('current');
+  const [selectedSemester, setSelectedSemester] = useState<string>(user?.semester || '4-1');
 
-    const hash = name.length;
-    const overallMarks = 70 + (hash % 28); // 70 to 97%
-    
-    const midterm = Math.round((30 / 100) * overallMarks);
-    const quiz = Math.round((10 / 100) * overallMarks);
-    const lab = Math.round((20 / 100) * overallMarks);
-    const finalExam = overallMarks - (midterm + quiz + lab);
-
-    const getGradeChar = (score: number) => {
-      if (score >= 95) return 'O';
-      if (score >= 88) return 'A+';
-      if (score >= 80) return 'A';
-      if (score >= 70) return 'B+';
-      if (score >= 60) return 'B';
-      if (score >= 50) return 'C';
-      return 'F';
-    };
-
-    const grade = getGradeChar(overallMarks);
-
-    return {
-      subject: name,
-      code: codes[name] || `SUBJ${100 + idx}`,
-      grade,
-      components: [
-        { name: 'Midterm 1', score: midterm, maxScore: 30, weightage: 30 },
-        { name: 'Quiz 1', score: quiz, maxScore: 10, weightage: 10 },
-        { name: 'Assignments', score: lab, maxScore: 20, weightage: 20 },
-        { name: 'Final Exam (Estimated)', score: finalExam, maxScore: 40, weightage: 40 }
-      ]
-    };
-  });
-
-  const initialCourses = generatedMarks.length > 0 ? generatedMarks : INITIAL_MARKS;
-
-  const [courses, setCourses] = useState<CourseMarks[]>(initialCourses);
-  const [selectedCourse, setSelectedCourse] = useState<CourseMarks>(initialCourses[0]);
-  const [loading, setLoading] = useState(true);
-  
-  // Grade Estimator sandbox
-  const [midtermScore, setMidtermScore] = useState<number>(initialCourses[0]?.components[0]?.score || 23);
-  const [quizScore, setQuizScore] = useState<number>(initialCourses[0]?.components[1]?.score || 8);
-  const [labScore, setLabScore] = useState<number>(initialCourses[0]?.components[2]?.score || 17);
-  const [finalTarget, setFinalTarget] = useState<number>(initialCourses[0]?.components[3]?.score || 35);
-
-  const fetchMarks = async () => {
-    if (!user?.id) return;
-    try {
-      setLoading(true);
-      const res = await fetch(`${API_BASE_URL}/marks?student_id=${user.id}&semester=${studentSem}`, {
-        headers: {
-          'x-requester-username': user.username,
-          'x-requester-role': user.role || 'student'
-        }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const subjectGroups: Record<string, any> = {};
-        data.forEach((m: any) => {
-          if (!subjectGroups[m.subject]) {
-            subjectGroups[m.subject] = [];
-          }
-          subjectGroups[m.subject].push(m);
-        });
-        
-        const mappedCourses: CourseMarks[] = generatedMarks.map(subj => {
-          const compMarks = subjectGroups[subj.subject] || [];
-          const midterm = compMarks.find((c: any) => c.assessment_type === "Midterm 1")?.marks || 0;
-          const quiz = compMarks.find((c: any) => c.assessment_type === "Quiz 1")?.marks || 0;
-          const assignments = compMarks.find((c: any) => c.assessment_type === "Assignments")?.marks || 0;
-          const finalExam = compMarks.find((c: any) => c.assessment_type === "Final Exam")?.marks || 0;
-          const total = midterm + quiz + assignments + finalExam;
-          const getGradeChar = (score: number) => {
-            if (score >= 95) return 'O';
-            if (score >= 88) return 'A+';
-            if (score >= 80) return 'A';
-            if (score >= 70) return 'B+';
-            if (score >= 60) return 'B';
-            if (score >= 50) return 'C';
-            return 'F';
-          };
-          return {
-            subject: subj.subject,
-            code: subj.code,
-            grade: getGradeChar(total),
-            components: [
-              { name: 'Midterm 1', score: midterm, maxScore: 30, weightage: 30 },
-              { name: 'Quiz 1', score: quiz, maxScore: 10, weightage: 10 },
-              { name: 'Assignments', score: assignments, maxScore: 20, weightage: 20 },
-              { name: 'Final Exam (Estimated)', score: finalExam, maxScore: 40, weightage: 40 }
-            ]
-          };
-        });
-        
-        setCourses(mappedCourses);
-        if (mappedCourses.length > 0) {
-          setSelectedCourse(mappedCourses[0]);
-          setMidtermScore(mappedCourses[0].components[0].score);
-          setQuizScore(mappedCourses[0].components[1].score);
-          setLabScore(mappedCourses[0].components[2].score);
-          setFinalTarget(mappedCourses[0].components[3].score);
-        }
-      }
-    } catch (e) {
-      console.warn("Failed to fetch live marks", e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Load and subscribe to academic profile updates
   useEffect(() => {
-    fetchMarks();
-  }, [user?.id, user?.semester, user?.department]);
+    const loaded = getStudentAcademicProfile(user);
+    setProfile(loaded);
+    setSelectedSemester(user?.semester || '4-1');
+
+    const handleProfileUpdate = (e: any) => {
+      if (e.detail) {
+        setProfile(e.detail);
+      }
+    };
+    window.addEventListener('academic-profile-updated', handleProfileUpdate);
+    return () => window.removeEventListener('academic-profile-updated', handleProfileUpdate);
+  }, [user]);
+
+  // Current semester course data
+  const studentDept = getNormalizedDepartment(user?.department || 'Computer Science and Engineering (CSE)');
+  const currentSemesterRecord = profile.semesters.find(s => s.semester === selectedSemester) || profile.semesters[profile.semesters.length - 1];
+
+  const currentCourses: CourseMarks[] = currentSemesterRecord?.subjects.map(s => ({
+    subject: s.subject,
+    code: s.code,
+    grade: s.grade,
+    components: [
+      { name: 'Midterm 1', score: s.internal, maxScore: 30, weightage: 30 },
+      { name: 'Quiz 1', score: s.quiz, maxScore: 10, weightage: 10 },
+      { name: 'Assignments / Lab', score: s.assignment, maxScore: 20, weightage: 20 },
+      { name: 'Final Exam (Estimated)', score: s.finalExam, maxScore: 40, weightage: 40 }
+    ]
+  })) || [];
+
+  const [selectedCourse, setSelectedCourse] = useState<CourseMarks | null>(null);
+
+  // Initialize selected course
+  useEffect(() => {
+    if (currentCourses.length > 0) {
+      setSelectedCourse(currentCourses[0]);
+      setMidtermScore(currentCourses[0].components[0].score);
+      setQuizScore(currentCourses[0].components[1].score);
+      setLabScore(currentCourses[0].components[2].score);
+      setFinalTarget(currentCourses[0].components[3].score);
+    }
+  }, [selectedSemester, profile]);
+
+  // Grade Estimator sandbox
+  const [midtermScore, setMidtermScore] = useState<number>(25);
+  const [quizScore, setQuizScore] = useState<number>(9);
+  const [labScore, setLabScore] = useState<number>(18);
+  const [finalTarget, setFinalTarget] = useState<number>(36);
 
   const totalCalculated = midtermScore + quizScore + labScore + finalTarget;
 
   const getEstimatedGrade = (score: number) => {
-    if (score >= 95) return 'O (Outstanding)';
-    if (score >= 88) return 'A+ (Excellent)';
-    if (score >= 80) return 'A (Very Good)';
-    if (score >= 70) return 'B+ (Good)';
-    if (score >= 60) return 'B (Above Average)';
-    if (score >= 50) return 'C (Average)';
-    return 'F (Fail)';
+    if (score >= 90) return 'O (Outstanding • 10 GP)';
+    if (score >= 82) return 'A+ (Excellent • 9 GP)';
+    if (score >= 74) return 'A (Very Good • 8 GP)';
+    if (score >= 65) return 'B+ (Good • 7 GP)';
+    if (score >= 55) return 'B (Above Average • 6 GP)';
+    if (score >= 45) return 'C (Pass • 5 GP)';
+    return 'F (Fail • 0 GP)';
   };
 
   const handleSelectCourse = (course: CourseMarks) => {
@@ -241,188 +109,355 @@ const Marks = () => {
   };
 
   return (
-    <div className="p-6 md:p-8 max-w-6xl mx-auto space-y-8 min-h-screen">
-      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="p-4 sm:p-6 md:p-8 max-w-7xl mx-auto space-y-6 min-h-screen pb-28">
+      {/* Header */}
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
         <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
-            <BarChart3 className="w-8 h-8 text-blue-600" />
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-blue-600 animate-pulse"></span>
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-600">
+              Academic Performance & Internal Gradebook
+            </span>
+          </div>
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 mt-1 flex items-center gap-2">
+            <BarChart3 className="w-6 h-6 text-blue-600" />
             Internal Marks & GPA Estimator
           </h1>
-          <p className="text-slate-500 mt-1 text-sm font-medium">
-            Monitor scores, see marks distribution, and forecast grade points.
+          <p className="text-slate-500 text-xs font-medium mt-0.5">
+            Monitor scores, semester SGPA breakdown, and university grade calculations.
           </p>
+        </div>
+
+        {/* View Switcher */}
+        <div className="flex bg-slate-100 p-1 rounded-xl gap-1 shrink-0">
+          <button
+            onClick={() => setActiveViewTab('current')}
+            className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
+              activeViewTab === 'current'
+                ? 'bg-white text-blue-600 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            Current Semester
+          </button>
+          <button
+            onClick={() => setActiveViewTab('transcript')}
+            className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
+              activeViewTab === 'transcript'
+                ? 'bg-white text-blue-600 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            All Semesters Transcript ({profile.semesters.length})
+          </button>
         </div>
       </header>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center space-x-4">
-          <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
-            <GraduationCap className="w-6 h-6" />
+      {/* KPI Summary Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Cumulative CGPA */}
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs">
+          <div className="flex items-center justify-between text-slate-400 mb-2">
+            <span className="text-[11px] font-extrabold uppercase tracking-wider">Overall CGPA</span>
+            <GraduationCap className="w-4 h-4 text-blue-600" />
           </div>
-          <div>
-            <p className="text-sm font-medium text-slate-500">Current CGPA (Avg)</p>
-            <h3 className="text-2xl font-bold text-slate-900">8.92 / 10.0</h3>
-          </div>
+          <h3 className="text-xl sm:text-2xl font-black text-slate-900">
+            {profile.cgpa.toFixed(2)} <span className="text-xs text-slate-400 font-bold">/ 10.0</span>
+          </h3>
+          <p className="text-[11px] text-blue-600 font-bold mt-0.5">Across {profile.semesters.length} Semesters</p>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center space-x-4">
-          <div className="p-3 bg-purple-50 text-purple-600 rounded-xl">
-            <Award className="w-6 h-6" />
+        {/* Equivalent Percentage */}
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs">
+          <div className="flex items-center justify-between text-slate-400 mb-2">
+            <span className="text-[11px] font-extrabold uppercase tracking-wider">Aggregate %</span>
+            <Percent className="w-4 h-4 text-emerald-600" />
           </div>
-          <div>
-            <p className="text-sm font-medium text-slate-500">Outstanding Grades</p>
-            <h3 className="text-2xl font-bold text-purple-600">2 Subjects (A/A+)</h3>
-          </div>
+          <h3 className="text-xl sm:text-2xl font-black text-slate-900">
+            {profile.overallPercentage.toFixed(1)}%
+          </h3>
+          <p className="text-[11px] text-slate-500 font-medium mt-0.5">University Conversion</p>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center space-x-4">
-          <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
-            <CheckCircle className="w-6 h-6" />
+        {/* Current Semester SGPA */}
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs">
+          <div className="flex items-center justify-between text-slate-400 mb-2">
+            <span className="text-[11px] font-extrabold uppercase tracking-wider">Sem {selectedSemester} SGPA</span>
+            <TrendingUp className="w-4 h-4 text-indigo-600" />
           </div>
-          <div>
-            <p className="text-sm font-medium text-slate-500">Academic Standing</p>
-            <h3 className="text-2xl font-bold text-emerald-600">First Class Distinction</h3>
+          <h3 className="text-xl sm:text-2xl font-black text-indigo-700">
+            {(currentSemesterRecord?.sgpa || profile.cgpa).toFixed(2)}
+          </h3>
+          <p className="text-[11px] text-slate-500 font-medium mt-0.5">{currentSemesterRecord?.credits || 21} Credits Total</p>
+        </div>
+
+        {/* Academic Standing */}
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs">
+          <div className="flex items-center justify-between text-slate-400 mb-2">
+            <span className="text-[11px] font-extrabold uppercase tracking-wider">Standing</span>
+            <Award className="w-4 h-4 text-purple-600" />
           </div>
+          <h3 className="text-xs sm:text-sm font-black text-purple-700 truncate mt-1">
+            {profile.academicStanding}
+          </h3>
+          <p className="text-[11px] text-emerald-600 font-bold mt-1">Eligible for Placements</p>
         </div>
       </div>
 
-      {/* Main Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left: Marks Breakdown */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Courses selection cards */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-4">
-            <h3 className="text-base font-bold text-slate-900">Enrolled Subjects Marks</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {courses.map((course) => (
-                <div
-                  key={course.code}
-                  onClick={() => handleSelectCourse(course)}
-                  className={`p-4 rounded-xl border transition-all cursor-pointer flex flex-col justify-between h-28 ${
-                    selectedCourse.code === course.code
-                      ? 'border-blue-500 bg-blue-50/50 shadow-sm'
-                      : 'border-slate-100 hover:border-slate-200 bg-slate-50'
+      {/* 1. All Semesters Full Academic Transcript */}
+      {activeViewTab === 'transcript' && (
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden space-y-4 p-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-4">
+            <div>
+              <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                <Layers className="w-5 h-5 text-blue-600" />
+                University Semester-Wise Academic Transcript
+              </h3>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">
+                Official grading breakdown from Semester 1-1 to current Semester {user?.semester || '4-1'}
+              </p>
+            </div>
+            <span className="text-xs font-black bg-blue-50 text-blue-700 px-3 py-1 rounded-xl border border-blue-200 self-start sm:self-auto">
+              Cumulative CGPA: {profile.cgpa.toFixed(2)} ({profile.overallPercentage.toFixed(1)}%)
+            </span>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="bg-slate-50 text-slate-400 uppercase tracking-wider font-bold border-b border-slate-200">
+                  <th className="p-3.5 font-bold">Academic Term</th>
+                  <th className="p-3.5 font-bold">Year</th>
+                  <th className="p-3.5 font-bold">Credits</th>
+                  <th className="p-3.5 font-bold">SGPA</th>
+                  <th className="p-3.5 font-bold">Percentage</th>
+                  <th className="p-3.5 font-bold">Result Status</th>
+                  <th className="p-3.5 font-bold text-center">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-slate-700">
+                {profile.semesters.map((sem) => (
+                  <tr key={sem.semester} className="hover:bg-slate-50/70 transition-colors">
+                    <td className="p-3.5 font-extrabold text-slate-900 flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-blue-600"></span>
+                      Semester {sem.semester}
+                    </td>
+                    <td className="p-3.5 font-semibold text-slate-600">{sem.year}</td>
+                    <td className="p-3.5 font-bold text-slate-800">{sem.credits} Credits</td>
+                    <td className="p-3.5 font-black text-slate-900 text-sm">{sem.sgpa.toFixed(2)}</td>
+                    <td className="p-3.5 font-bold text-blue-600">{sem.percentage.toFixed(1)}%</td>
+                    <td className="p-3.5">
+                      <span className={`px-2.5 py-0.5 rounded-md font-bold text-[10px] ${
+                        sem.status === 'Distinction'
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          : sem.status === 'First Class'
+                          ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                          : sem.status === 'Fail'
+                          ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                          : 'bg-slate-100 text-slate-700'
+                      }`}>
+                        {sem.status}
+                      </span>
+                    </td>
+                    <td className="p-3.5 text-center">
+                      <button
+                        onClick={() => {
+                          setSelectedSemester(sem.semester);
+                          setActiveViewTab('current');
+                        }}
+                        className="px-3 py-1 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-700 rounded-lg text-xs font-bold transition-all"
+                      >
+                        View Subjects
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* 2. Current Semester Course Breakdown & GPA Simulator */}
+      {activeViewTab === 'current' && (
+        <div className="space-y-6">
+          {/* Semester Selector Bar */}
+          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-blue-600" />
+              <span className="text-xs font-bold text-slate-700">Select Academic Semester:</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {profile.semesters.map(s => (
+                <button
+                  key={s.semester}
+                  onClick={() => setSelectedSemester(s.semester)}
+                  className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
+                    selectedSemester === s.semester
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
                 >
-                  <div className="flex justify-between items-start">
-                    <span className="text-[10px] font-bold text-slate-400">{course.code}</span>
-                    <span className="text-xs font-extrabold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
-                      Grade: {course.grade}
-                    </span>
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-slate-800 truncate">{course.subject}</h4>
-                    <p className="text-xs text-slate-400 mt-0.5 font-medium">Click to details & predict</p>
-                  </div>
-                </div>
+                  Sem {s.semester} (SGPA: {s.sgpa.toFixed(2)})
+                </button>
               ))}
             </div>
           </div>
 
-          {/* Component breakdown */}
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-              <h3 className="text-base font-bold text-slate-900">
-                Score Weightage: <span className="text-blue-600">{selectedCourse.subject}</span>
-              </h3>
-              <span className="text-xs text-slate-500 font-semibold">{selectedCourse.code}</span>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left: Courses Grid & Selected Course Details */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Courses selection cards */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-extrabold text-slate-900">
+                    Semester {selectedSemester} Subjects ({currentCourses.length} Courses)
+                  </h3>
+                  <span className="text-xs font-bold text-blue-600">Click subject to inspect breakdown</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  {currentCourses.map((course) => (
+                    <div
+                      key={course.code}
+                      onClick={() => handleSelectCourse(course)}
+                      className={`p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between h-28 ${
+                        selectedCourse?.code === course.code
+                          ? 'border-blue-500 bg-blue-50/50 shadow-xs ring-1 ring-blue-400'
+                          : 'border-slate-200 hover:border-slate-300 bg-slate-50/50'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start">
+                        <span className="text-[10px] font-mono font-bold text-slate-500">{course.code}</span>
+                        <span className="text-[10px] font-black text-blue-700 bg-blue-100/70 px-2 py-0.5 rounded-md">
+                          Grade: {course.grade}
+                        </span>
+                      </div>
+                      <div>
+                        <h4 className="font-extrabold text-slate-800 text-xs truncate leading-snug">{course.subject}</h4>
+                        <p className="text-[10px] text-slate-400 mt-0.5 font-medium">Internal + Exam Forecast</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Component breakdown */}
+              {selectedCourse && (
+                <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+                  <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                    <div>
+                      <span className="text-[10px] font-extrabold text-blue-600 uppercase tracking-wider block">{selectedCourse.code}</span>
+                      <h3 className="text-sm font-black text-slate-900">{selectedCourse.subject}</h3>
+                    </div>
+                    <span className="text-xs font-extrabold bg-emerald-50 text-emerald-700 px-3 py-1 rounded-xl border border-emerald-200">
+                      Overall Grade: {selectedCourse.grade}
+                    </span>
+                  </div>
+
+                  <div className="p-5 space-y-4">
+                    {selectedCourse.components.map((c, idx) => {
+                      const pct = c.maxScore > 0 ? (c.score / c.maxScore) * 100 : 0;
+                      return (
+                        <div key={idx} className="space-y-1">
+                          <div className="flex justify-between text-xs font-bold text-slate-700">
+                            <span>{c.name} ({c.weightage}% Weightage)</span>
+                            <span>
+                              {c.score} / {c.maxScore} <span className="text-slate-400">({pct.toFixed(0)}%)</span>
+                            </span>
+                          </div>
+                          <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                            <div
+                              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div className="p-6 space-y-4">
-              {selectedCourse.components.map((c, idx) => {
-                const pct = c.maxScore > 0 ? (c.score / c.maxScore) * 100 : 0;
-                return (
-                  <div key={idx} className="space-y-1">
-                    <div className="flex justify-between text-sm font-semibold text-slate-700">
-                      <span>{c.name} ({c.weightage}% weightage)</span>
-                      <span>{c.score} / {c.maxScore} <span className="text-slate-400">({pct.toFixed(0)}%)</span></span>
+            {/* Right: Sandbox GPA Forecaster */}
+            <div className="space-y-6">
+              <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-5 space-y-4">
+                <div>
+                  <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                    <Calculator className="w-5 h-5 text-blue-600" />
+                    Interactive Grade Forecaster
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5 font-medium">
+                    Adjust target scores to estimate your final subject grade and GP.
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1">Midterm Exam (Max 30)</label>
+                    <input
+                      type="number"
+                      max={30}
+                      min={0}
+                      value={midtermScore}
+                      onChange={(e) => setMidtermScore(Math.min(30, Math.max(0, parseInt(e.target.value) || 0)))}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1">Quizzes & Tests (Max 10)</label>
+                    <input
+                      type="number"
+                      max={10}
+                      min={0}
+                      value={quizScore}
+                      onChange={(e) => setQuizScore(Math.min(10, Math.max(0, parseInt(e.target.value) || 0)))}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1">Labs / Assignments (Max 20)</label>
+                    <input
+                      type="number"
+                      max={20}
+                      min={0}
+                      value={labScore}
+                      onChange={(e) => setLabScore(Math.min(20, Math.max(0, parseInt(e.target.value) || 0)))}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1">Final Exam Target (Max 40)</label>
+                    <input
+                      type="number"
+                      max={40}
+                      min={0}
+                      value={finalTarget}
+                      onChange={(e) => setFinalTarget(Math.min(40, Math.max(0, parseInt(e.target.value) || 0)))}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div className="p-4 bg-purple-50/70 rounded-xl border border-purple-200 space-y-2">
+                    <div className="flex justify-between items-center text-xs font-bold text-purple-800">
+                      <span>Simulated Total Score:</span>
+                      <span className="text-base font-black text-purple-900">{totalCalculated} / 100</span>
                     </div>
-                    <div className="w-full bg-slate-100 rounded-full h-2">
-                      <div
-                        className="bg-blue-600 h-2 rounded-full"
-                        style={{ width: `${pct}%` }}
-                      />
+                    <div className="flex justify-between items-center text-xs font-bold text-purple-800">
+                      <span>Forecasted Grade:</span>
+                      <span className="text-xs font-extrabold text-purple-950">{getEstimatedGrade(totalCalculated)}</span>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* Right: Sandbox GPA Forecaster */}
-        <div className="space-y-6">
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-5">
-            <div>
-              <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                <Calculator className="w-5 h-5 text-blue-600" />
-                Grade Forecaster
-              </h3>
-              <p className="text-xs text-slate-400 mt-1 font-medium">
-                Simulate upcoming exam targets to estimate final grades.
-              </p>
-            </div>
-
-            <div className="space-y-3.5">
-              <div>
-                <label className="text-xs font-bold text-slate-600 block mb-1">Midterm (Max 30)</label>
-                <input
-                  type="number"
-                  max={30}
-                  value={midtermScore}
-                  onChange={(e) => setMidtermScore(Math.min(30, Math.max(0, parseInt(e.target.value) || 0)))}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-slate-600 block mb-1">Quizzes (Max 10)</label>
-                <input
-                  type="number"
-                  max={10}
-                  value={quizScore}
-                  onChange={(e) => setQuizScore(Math.min(10, Math.max(0, parseInt(e.target.value) || 0)))}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-slate-600 block mb-1">Labs / Assignments (Max 20)</label>
-                <input
-                  type="number"
-                  max={20}
-                  value={labScore}
-                  onChange={(e) => setLabScore(Math.min(20, Math.max(0, parseInt(e.target.value) || 0)))}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-slate-600 block mb-1">Final Exam Forecast (Max 40)</label>
-                <input
-                  type="number"
-                  max={40}
-                  value={finalTarget}
-                  onChange={(e) => setFinalTarget(Math.min(40, Math.max(0, parseInt(e.target.value) || 0)))}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
-
-              <div className="p-4 bg-purple-50 rounded-2xl border border-purple-100 space-y-2">
-                <div className="flex justify-between items-center text-xs font-bold text-purple-700">
-                  <span>Total Simulated Score:</span>
-                  <span className="text-sm font-extrabold text-purple-900">{totalCalculated} / 100</span>
-                </div>
-                <div className="flex justify-between items-center text-xs font-bold text-purple-700">
-                  <span>Estimated Grade:</span>
-                  <span className="text-sm font-extrabold text-purple-900">{getEstimatedGrade(totalCalculated)}</span>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

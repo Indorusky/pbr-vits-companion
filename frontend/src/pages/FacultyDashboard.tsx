@@ -17,10 +17,21 @@ import {
   Sparkles,
   BookOpen,
   RefreshCw,
-  UserCheck
+  UserCheck,
+  Edit3,
+  Award,
+  Layers,
+  Save
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
+import { 
+  getStudentAcademicProfile, 
+  saveStudentAcademicProfile, 
+  updateStudentSemesterGpa, 
+  type StudentAcademicProfile, 
+  type SemesterAcademicRecord 
+} from '../utils/academicData';
 
 interface StudentAccount {
   id: number;
@@ -34,6 +45,7 @@ interface StudentAccount {
   roll_number?: string;
   attendance?: number;
   marks?: number;
+  cgpa?: number;
   profile_photo?: string;
 }
 
@@ -202,7 +214,7 @@ const DEFAULT_ATTENDANCE_LOGS: FacultyAttendanceRecord[] = [
 const FacultyDashboard = () => {
   const { user } = useAuth();
   
-  const [activeTab, setActiveTab] = useState<'attendance' | 'marks'>('attendance');
+  const [activeTab, setActiveTab] = useState<'attendance' | 'marks'>('marks');
   const [students, setStudents] = useState<StudentAccount[]>(DEFAULT_STUDENT_ACCOUNTS);
   const [attendanceRecords, setAttendanceRecords] = useState<FacultyAttendanceRecord[]>(DEFAULT_ATTENDANCE_LOGS);
   const [loading, setLoading] = useState(false);
@@ -225,6 +237,11 @@ const FacultyDashboard = () => {
   const [selectedSubjectEdit, setSelectedSubjectEdit] = useState('');
   const [selectedCompEdit, setSelectedCompEdit] = useState('Midterm 1');
   const [editScore, setEditScore] = useState(0);
+
+  // Academic GPA Manager Modal
+  const [showGpaModal, setShowGpaModal] = useState(false);
+  const [activeAcademicProfile, setActiveAcademicProfile] = useState<StudentAcademicProfile | null>(null);
+  const [editableSgpas, setEditableSgpas] = useState<Record<string, number>>({});
 
   const fetchStudents = async () => {
     setLoading(true);
@@ -300,7 +317,17 @@ const FacultyDashboard = () => {
       }
     });
 
-    setStudents(loadedStudents);
+    // Populate each student's CGPA from academic profile
+    const enhancedStudents = loadedStudents.map(st => {
+      const prof = getStudentAcademicProfile(st);
+      return {
+        ...st,
+        cgpa: prof.cgpa,
+        marks: Math.round(prof.overallPercentage)
+      };
+    });
+
+    setStudents(enhancedStudents);
     setLoading(false);
   };
 
@@ -380,7 +407,7 @@ const FacultyDashboard = () => {
         body: JSON.stringify({
           student_id: selectedStudent.id,
           subject: selectedSubjectEdit,
-          semester: selectedStudent.semester || '1-1',
+          semester: selectedStudent.semester || '4-1',
           assessment_type: selectedCompEdit,
           marks: editScore
         })
@@ -434,6 +461,39 @@ const FacultyDashboard = () => {
     setShowEditModal(true);
   };
 
+  const openGpaManagerModal = (st: StudentAccount, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedStudent(st);
+    const prof = getStudentAcademicProfile(st);
+    setActiveAcademicProfile(prof);
+    
+    const initialSgpas: Record<string, number> = {};
+    prof.semesters.forEach(s => {
+      initialSgpas[s.semester] = s.sgpa;
+    });
+    setEditableSgpas(initialSgpas);
+    setShowGpaModal(true);
+  };
+
+  const handleSaveAcademicGpas = () => {
+    if (!activeAcademicProfile) return;
+
+    let updatedProfile = activeAcademicProfile;
+    Object.entries(editableSgpas).forEach(([sem, sgpaVal]) => {
+      const res = updateStudentSemesterGpa(
+        activeAcademicProfile.rollNumber || activeAcademicProfile.username,
+        sem,
+        Number(sgpaVal)
+      );
+      if (res) updatedProfile = res;
+    });
+
+    setActiveAcademicProfile(updatedProfile);
+    alert(`Academic GPA & Semester records for ${updatedProfile.name} successfully saved!`);
+    setShowGpaModal(false);
+    fetchStudents();
+  };
+
   // Get distinct subjects from faculty assigned subjects and recorded logs
   const facultyAssignedSubjects = Array.isArray(user?.subjects) 
     ? user.subjects 
@@ -480,14 +540,14 @@ const FacultyDashboard = () => {
         <div>
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-blue-600 animate-pulse"></span>
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-600">Faculty Management Portal</span>
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-600">Faculty Academic Administration</span>
           </div>
           <h1 className="text-xl sm:text-2xl font-black text-slate-900 mt-1 flex items-center gap-2">
             <Users className="w-6 h-6 text-blue-600" />
             {user?.name || user?.username || 'Faculty Console'}
           </h1>
           <p className="text-slate-500 text-xs font-medium mt-0.5">
-            Department of {user?.department || 'Computer Science & Engineering'} • Live FRS & Academic Administration
+            Department of {user?.department || 'Computer Science & Engineering'} • Semester SGPAs, CGPAs & Attendance Administration
           </p>
         </div>
 
@@ -519,7 +579,7 @@ const FacultyDashboard = () => {
             <Percent className="w-4 h-4 text-emerald-600" />
           </div>
           <h3 className="text-xl sm:text-2xl font-black text-slate-900">{avgAttendance}%</h3>
-          <p className="text-[11px] text-emerald-600 font-bold mt-0.5">Institute benchmark: 75%</p>
+          <p className="text-[11px] text-emerald-600 font-bold mt-0.5">Benchmark: 75%</p>
         </div>
 
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs">
@@ -528,7 +588,7 @@ const FacultyDashboard = () => {
             <AlertTriangle className="w-4 h-4 text-amber-500" />
           </div>
           <h3 className="text-xl sm:text-2xl font-black text-amber-600">{atRiskStudents}</h3>
-          <p className="text-[11px] text-slate-500 font-medium mt-0.5">Requires attendance alert</p>
+          <p className="text-[11px] text-slate-500 font-medium mt-0.5">Requires intervention</p>
         </div>
 
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs">
@@ -544,6 +604,17 @@ const FacultyDashboard = () => {
       {/* Tabs Switcher */}
       <div className="bg-white p-1.5 rounded-2xl border border-slate-200/80 shadow-xs flex gap-2">
         <button
+          onClick={() => setActiveTab('marks')}
+          className={`flex-1 py-2.5 px-4 text-xs font-black rounded-xl transition-all flex items-center justify-center gap-2 ${
+            activeTab === 'marks'
+              ? 'bg-blue-600 text-white shadow-sm'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+          }`}
+        >
+          <GraduationCap className="w-4 h-4" />
+          Student Roster, SGPAs & CGPA Gradebook ({students.length})
+        </button>
+        <button
           onClick={() => setActiveTab('attendance')}
           className={`flex-1 py-2.5 px-4 text-xs font-black rounded-xl transition-all flex items-center justify-center gap-2 ${
             activeTab === 'attendance'
@@ -554,20 +625,103 @@ const FacultyDashboard = () => {
           <Calendar className="w-4 h-4" />
           Attendance Management & Verification Logs ({attendanceRecords.length})
         </button>
-        <button
-          onClick={() => setActiveTab('marks')}
-          className={`flex-1 py-2.5 px-4 text-xs font-black rounded-xl transition-all flex items-center justify-center gap-2 ${
-            activeTab === 'marks'
-              ? 'bg-blue-600 text-white shadow-sm'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-          }`}
-        >
-          <GraduationCap className="w-4 h-4" />
-          Student Roster & Internal Marks ({students.length})
-        </button>
       </div>
 
-      {/* 1. Attendance Management Tab */}
+      {/* 1. Student Roster & Academic Gradebook Tab */}
+      {activeTab === 'marks' && (
+        <div className="space-y-4">
+          {/* Roster Filters */}
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row gap-3 items-center justify-between">
+            <div className="relative flex-1 w-full">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+              <input
+                type="text"
+                placeholder="Search students by name, roll number, or email..."
+                value={studentSearch}
+                onChange={(e) => setStudentSearch(e.target.value)}
+                className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <select
+                value={rosterSem}
+                onChange={(e) => setRosterSem(e.target.value)}
+                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none"
+              >
+                <option value="ALL">All Semesters</option>
+                <option value="1-1">Sem 1-1</option>
+                <option value="1-2">Sem 1-2</option>
+                <option value="2-1">Sem 2-1</option>
+                <option value="2-2">Sem 2-2</option>
+                <option value="3-1">Sem 3-1</option>
+                <option value="3-2">Sem 3-2</option>
+                <option value="4-1">Sem 4-1</option>
+                <option value="4-2">Sem 4-2</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Student Roster Cards */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs divide-y divide-slate-100 overflow-hidden">
+            {filteredStudents.map((st) => (
+              <div 
+                key={st.username} 
+                onClick={() => openStudentDetail(st)}
+                className="p-4 sm:px-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50 transition-colors cursor-pointer"
+              >
+                <div className="flex items-center space-x-3.5">
+                  {st.profile_photo ? (
+                    <img src={st.profile_photo} alt="Profile" className="w-11 h-11 rounded-full object-cover shadow-xs shrink-0 border border-slate-200" />
+                  ) : (
+                    <div className="w-11 h-11 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm shrink-0">
+                      {st.name?.charAt(0) || st.username.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <div>
+                    <h4 className="font-extrabold text-slate-900 text-sm">{st.name || st.username}</h4>
+                    <p className="text-xs text-slate-500 font-medium">
+                      Roll No: <strong className="text-slate-800">{st.roll_number || '2273A01001'}</strong> • {st.department || 'CSE'} • Sem {st.semester || '4-1'}
+                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-[10px] font-black text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
+                        CGPA: {(st.cgpa || 8.75).toFixed(2)}
+                      </span>
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                        {st.attendance || 85}% Attendance
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2 self-end sm:self-auto">
+                  <button
+                    onClick={(e) => openGpaManagerModal(st, e)}
+                    className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs rounded-xl flex items-center gap-1.5 transition-colors border border-indigo-200"
+                  >
+                    <Layers className="w-3.5 h-3.5" /> Manage SGPAs & CGPA
+                  </button>
+                  <button
+                    onClick={(e) => openEditModal(st, e)}
+                    className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold text-xs rounded-xl flex items-center gap-1 transition-colors border border-blue-200"
+                  >
+                    <Upload className="w-3.5 h-3.5" /> Edit Score
+                  </button>
+                  <ChevronRight className="w-5 h-5 text-slate-400" />
+                </div>
+              </div>
+            ))}
+
+            {filteredStudents.length === 0 && (
+              <div className="p-12 text-center text-slate-400 font-bold">
+                <Users className="w-8 h-8 mx-auto text-slate-300 mb-2" />
+                <p>No students match the search criteria.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 2. Attendance Management Tab */}
       {activeTab === 'attendance' && (
         <div className="space-y-4">
           {/* Filter Bar */}
@@ -729,89 +883,103 @@ const FacultyDashboard = () => {
         </div>
       )}
 
-      {/* 2. Student Roster & Internal Marks Tab */}
-      {activeTab === 'marks' && (
-        <div className="space-y-4">
-          {/* Roster Filters */}
-          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row gap-3 items-center justify-between">
-            <div className="relative flex-1 w-full">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-              <input
-                type="text"
-                placeholder="Search students by name, roll number, or email..."
-                value={studentSearch}
-                onChange={(e) => setStudentSearch(e.target.value)}
-                className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
+      {/* GPA & Semester Grades Manager Modal */}
+      {showGpaModal && activeAcademicProfile && (
+        <div 
+          className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto" 
+          onClick={(e) => { if(e.target === e.currentTarget) setShowGpaModal(false); }}
+        >
+          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-5 border border-slate-100 my-8 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-start border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                  <Layers className="w-5 h-5 text-indigo-600" />
+                  Manage Semester SGPAs & CGPA: {activeAcademicProfile.name}
+                </h3>
+                <p className="text-xs text-slate-500 font-medium mt-0.5">
+                  Roll No: <strong>{activeAcademicProfile.rollNumber}</strong> • Current Sem: <strong>{activeAcademicProfile.currentSemester}</strong>
+                </p>
+              </div>
+              <button onClick={() => setShowGpaModal(false)} className="p-1 text-slate-400 hover:text-slate-600 rounded-lg">
+                <X className="w-5 h-5" />
+              </button>
             </div>
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <select
-                value={rosterSem}
-                onChange={(e) => setRosterSem(e.target.value)}
-                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none"
-              >
-                <option value="ALL">All Semesters</option>
-                <option value="1-1">Sem 1-1</option>
-                <option value="1-2">Sem 1-2</option>
-                <option value="2-1">Sem 2-1</option>
-                <option value="2-2">Sem 2-2</option>
-                <option value="3-1">Sem 3-1</option>
-                <option value="3-2">Sem 3-2</option>
-                <option value="4-1">Sem 4-1</option>
-                <option value="4-2">Sem 4-2</option>
-              </select>
-            </div>
-          </div>
 
-          {/* Student Roster Cards */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs divide-y divide-slate-100 overflow-hidden">
-            {filteredStudents.map((st) => (
-              <div 
-                key={st.username} 
-                onClick={() => openStudentDetail(st)}
-                className="p-4 sm:px-6 flex items-center justify-between hover:bg-slate-50 transition-colors cursor-pointer"
-              >
-                <div className="flex items-center space-x-3.5">
-                  {st.profile_photo ? (
-                    <img src={st.profile_photo} alt="Profile" className="w-10 h-10 rounded-full object-cover shadow-xs shrink-0 border border-slate-200" />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm shrink-0">
-                      {st.name?.charAt(0) || st.username.charAt(0).toUpperCase()}
+            {/* Overall Calculated Status */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-indigo-50/50 border border-indigo-100 p-4 rounded-xl text-xs">
+              <div>
+                <span className="text-slate-500 font-bold block">Current CGPA</span>
+                <span className="text-lg font-black text-indigo-700">{activeAcademicProfile.cgpa.toFixed(2)}</span>
+              </div>
+              <div>
+                <span className="text-slate-500 font-bold block">Aggregate %</span>
+                <span className="text-lg font-black text-emerald-700">{activeAcademicProfile.overallPercentage.toFixed(1)}%</span>
+              </div>
+              <div>
+                <span className="text-slate-500 font-bold block">Total Credits</span>
+                <span className="text-lg font-black text-slate-800">{activeAcademicProfile.totalCreditsCompleted} Credits</span>
+              </div>
+            </div>
+
+            {/* Semester-by-Semester Inputs */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-black uppercase tracking-wider text-slate-700">
+                Semester-Wise SGPA Records ({activeAcademicProfile.semesters.length} Semesters)
+              </h4>
+
+              <div className="space-y-2">
+                {activeAcademicProfile.semesters.map((sem) => (
+                  <div key={sem.semester} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200 gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
+                      <div>
+                        <span className="font-extrabold text-slate-900 text-xs">Semester {sem.semester}</span>
+                        <span className="text-[10px] text-slate-500 font-medium ml-2">({sem.credits} Credits • {sem.year})</span>
+                      </div>
                     </div>
-                  )}
-                  <div>
-                    <h4 className="font-extrabold text-slate-900 text-sm">{st.name || st.username}</h4>
-                    <p className="text-xs text-slate-500 font-medium">
-                      Roll No: <strong className="text-slate-800">{st.roll_number || '2373A01001'}</strong> • {st.department || 'CSE'} • Sem {st.semester || '4-1'}
-                    </p>
-                  </div>
-                </div>
 
-                <div className="flex items-center space-x-4">
-                  <div className="text-right hidden sm:block">
-                    <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
-                      (st.attendance || 0) >= 75 ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
-                    }`}>
-                      {st.attendance || 75}% Attendance
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-1.5">
+                        <label className="text-[10px] font-bold text-slate-500">SGPA:</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          max="10.0"
+                          value={editableSgpas[sem.semester] ?? sem.sgpa}
+                          onChange={(e) => setEditableSgpas({
+                            ...editableSgpas,
+                            [sem.semester]: parseFloat(e.target.value) || 0
+                          })}
+                          className="w-20 px-2 py-1 bg-white border border-slate-300 rounded-lg text-xs font-black text-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        />
+                      </div>
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-1 rounded-md border border-emerald-200 min-w-[50px] text-center">
+                        {((((editableSgpas[sem.semester] ?? sem.sgpa) - 0.75) * 10)).toFixed(1)}%
+                      </span>
+                    </div>
                   </div>
-                  <button
-                    onClick={(e) => openEditModal(st, e)}
-                    className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold text-xs rounded-xl flex items-center gap-1 transition-colors"
-                  >
-                    <Upload className="w-3.5 h-3.5" /> Edit Score
-                  </button>
-                  <ChevronRight className="w-5 h-5 text-slate-400" />
-                </div>
+                ))}
               </div>
-            ))}
+            </div>
 
-            {filteredStudents.length === 0 && (
-              <div className="p-12 text-center text-slate-400 font-bold">
-                <Users className="w-8 h-8 mx-auto text-slate-300 mb-2" />
-                <p>No students match the search criteria.</p>
-              </div>
-            )}
+            <div className="flex gap-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowGpaModal(false)}
+                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveAcademicGpas}
+                className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs flex items-center justify-center gap-1.5"
+              >
+                <Save className="w-4 h-4" />
+                <span>Save Academic Grades & SGPAs</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -895,7 +1063,7 @@ const FacultyDashboard = () => {
                 )}
                 <div>
                   <h3 className="text-base font-extrabold text-slate-900">{selectedStudent.name || selectedStudent.username}</h3>
-                  <p className="text-xs text-slate-500 font-semibold">{selectedStudent.roll_number || '2373A01001'}</p>
+                  <p className="text-xs text-slate-500 font-semibold">{selectedStudent.roll_number || '2273A01001'}</p>
                 </div>
               </div>
               <button onClick={() => { setShowDetailModal(false); setSelectedStudent(null); }} className="p-1 text-slate-400 hover:text-slate-600 rounded-lg">
@@ -913,21 +1081,33 @@ const FacultyDashboard = () => {
                 <span className="font-extrabold text-slate-800">{selectedStudent.semester || '4-1'}</span>
               </div>
               <div>
+                <span className="text-slate-400 font-bold block">Overall CGPA</span>
+                <span className="font-extrabold text-blue-600">{(selectedStudent.cgpa || 8.75).toFixed(2)} / 10.0</span>
+              </div>
+              <div>
                 <span className="text-slate-400 font-bold block">Attendance</span>
                 <span className="font-extrabold text-emerald-600">{selectedStudent.attendance || 75}%</span>
               </div>
-              <div>
-                <span className="text-slate-400 font-bold block">Internal Marks</span>
-                <span className="font-extrabold text-blue-600">{selectedStudent.marks || 75}%</span>
-              </div>
             </div>
 
-            <button
-              onClick={() => { setShowDetailModal(false); setSelectedStudent(null); }}
-              className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-extrabold rounded-xl"
-            >
-              Close Profile
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={(e) => {
+                  setShowDetailModal(false);
+                  openGpaManagerModal(selectedStudent, e);
+                }}
+                className="flex-1 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-xl border border-indigo-200 flex items-center justify-center gap-1.5"
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>Manage SGPAs</span>
+              </button>
+              <button
+                onClick={() => { setShowDetailModal(false); setSelectedStudent(null); }}
+                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-extrabold rounded-xl"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
