@@ -103,22 +103,25 @@ const Attendance = () => {
       setLoading(false);
     }
 
-    // Dynamic fallback generation when backend is offline/unreachable
-    const studentDept = getNormalizedDepartment(user?.department || 'Computer Science');
-    const studentSem = user?.semester || '3-1';
-    const semesterSubjectsList = SUBJECTS_DATABASE[studentDept]?.[studentSem] || [
-      'Data Structures',
-      'DBMS',
-      'Operating Systems',
-      'Computer Networks',
-      'Software Engineering'
-    ];
+    const getTimetableSubjects = (semStr: string) => {
+      if (semStr.startsWith('1')) {
+        return ["Linear Algebra & Calculus", "Engineering Physics", "Programming in C", "Engineering Drawing"];
+      }
+      if (semStr.startsWith('2')) {
+        return ["Data Structures", "DBMS", "OOP (Java)", "Digital Logic & Computer Org"];
+      }
+      if (semStr.startsWith('3')) {
+        return ["Software Engineering", "Machine Learning", "Artificial Intelligence", "Computer Networks"];
+      }
+      return ["Generative AI", "MLOps & Model Deployment", "Deep Learning", "Cloud Computing Lab"];
+    };
 
-    const studentSeed = (user?.username || user?.name || 'student').length;
+    const studentSem = user?.semester || '4-1';
+    const semesterSubjectsList = getTimetableSubjects(studentSem);
 
     const fallbackSubjects: SubjectAttendance[] = semesterSubjectsList.map((subj, idx) => {
       const total = 20;
-      const attended = (studentSeed + idx) % 2 === 0 ? 20 : (studentSeed + idx) % 3 === 0 ? 18 : 14;
+      const attended = idx < 3 ? 19 : 18;
       const absent = total - attended;
       const percentage = parseFloat(((attended / total) * 100).toFixed(1));
       return {
@@ -133,7 +136,9 @@ const Attendance = () => {
     const totalClasses = fallbackSubjects.reduce((acc, s) => acc + s.total, 0);
     const presentClasses = fallbackSubjects.reduce((acc, s) => acc + s.attended, 0);
     const absentClasses = totalClasses - presentClasses;
-    const overallPercentage = totalClasses > 0 ? parseFloat(((presentClasses / totalClasses) * 100).toFixed(1)) : 92.0;
+    const overallPercentage = totalClasses > 0 ? parseFloat(((presentClasses / totalClasses) * 100).toFixed(1)) : 93.8;
+
+    const todayStr = new Date().toISOString().split('T')[0];
 
     const fallbackStats = {
       overall_percentage: overallPercentage,
@@ -143,14 +148,20 @@ const Attendance = () => {
       subjects: fallbackSubjects,
       history: [
         {
-          date: new Date().toISOString().split('T')[0],
-          records: fallbackSubjects.map((s, idx) => ({
-            period: idx + 1,
-            subject: s.subject,
-            status: s.percentage >= 75 ? ('Present' as const) : ('Absent' as const),
-            verification_method: 'FACE_RECOGNITION',
-            confidence_score: '96.5%'
-          }))
+          date: todayStr,
+          records: fallbackSubjects.map((s, idx) => {
+            const periodKey = `att_marked_${todayStr}_period_${idx + 1}_${user?.username || 'student'}`;
+            const localRecord = localStorage.getItem(periodKey);
+            const isPresent = localRecord ? true : idx < 3; // First 3 periods Present by default
+
+            return {
+              period: idx + 1,
+              subject: s.subject,
+              status: isPresent ? ('Present' as const) : ('Absent' as const),
+              verification_method: 'FACE_RECOGNITION',
+              confidence_score: '96.5%'
+            };
+          })
         }
       ],
       face_registered: true,
@@ -439,13 +450,27 @@ const Attendance = () => {
                       }
                     } catch { /* ignore */ }
 
-                    // If no timetable entry matched active window, check standard period slots
+                    // If no timetable entry matched active window, check standard period slots matching exact Timetable
                     if (!activePeriodInfo) {
+                      const getTimetableSubjects = (semStr: string) => {
+                        if (semStr.startsWith('1')) {
+                          return ["Linear Algebra & Calculus", "Engineering Physics", "Programming in C", "Engineering Drawing"];
+                        }
+                        if (semStr.startsWith('2')) {
+                          return ["Data Structures", "DBMS", "OOP (Java)", "Digital Logic & Computer Org"];
+                        }
+                        if (semStr.startsWith('3')) {
+                          return ["Software Engineering", "Machine Learning", "Artificial Intelligence", "Computer Networks"];
+                        }
+                        return ["Generative AI", "MLOps & Model Deployment", "Deep Learning", "Cloud Computing Lab"];
+                      };
+
+                      const semSubjs = getTimetableSubjects(sem);
                       const standardSlots = [
-                        { period: 1, subject: 'Programming in C', start: '08:00', end: '09:00', wStart: '07:50', wEnd: '08:15' },
-                        { period: 2, subject: 'Data Structures', start: '09:00', end: '10:00', wStart: '08:50', wEnd: '09:15' },
-                        { period: 3, subject: 'Computer Networks', start: '10:15', end: '11:15', wStart: '10:05', wEnd: '10:30' },
-                        { period: 4, subject: 'Generative AI', start: '11:15', end: '12:15', wStart: '11:05', wEnd: '11:30' }
+                        { period: 1, subject: semSubjs[0], start: '08:00', end: '09:00', wStart: '07:50', wEnd: '08:15' },
+                        { period: 2, subject: semSubjs[1], start: '09:00', end: '10:00', wStart: '08:50', wEnd: '09:15' },
+                        { period: 3, subject: semSubjs[2], start: '10:15', end: '11:15', wStart: '10:05', wEnd: '10:30' },
+                        { period: 4, subject: semSubjs[3], start: '11:15', end: '12:15', wStart: '11:05', wEnd: '11:30' }
                       ];
 
                       for (const slot of standardSlots) {
@@ -453,7 +478,7 @@ const Attendance = () => {
                           activePeriodInfo = {
                             period: slot.period,
                             subject: slot.subject,
-                            room: 'LH-101',
+                            room: `LH-10${slot.period}`,
                             startTime: slot.start,
                             endTime: slot.end
                           };
