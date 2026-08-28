@@ -4,22 +4,24 @@ export interface SubjectGradeRecord {
   subject: string;
   code: string;
   credits: number;
-  internal: number; // Max 30
-  quiz: number;     // Max 10
-  assignment: number; // Max 20
-  finalExam: number;  // Max 40
+  internal: number;   // Max 30 (Midterms)
+  quiz: number;       // Max 10 (Quizzes)
+  assignment: number; // Max 20 (Assignments & Labs)
+  finalExam: number;  // Max 40 (Final University Exam - 0 if ongoing)
   total: number;      // Max 100
-  grade: string;      // 'O' | 'A+' | 'A' | 'B+' | 'B' | 'C' | 'F'
+  grade: string;      // 'O' | 'A+' | 'A' | 'B+' | 'B' | 'C' | 'F' | 'Pending'
   gradePoints: number; // 10, 9, 8, 7, 6, 5, 0
+  isFinalExamCompleted: boolean;
 }
 
 export interface SemesterAcademicRecord {
   semester: string;
   year: string;
+  isCurrentOngoing: boolean;
   sgpa: number;
   credits: number;
   percentage: number;
-  status: 'Distinction' | 'First Class' | 'Second Class' | 'Pass' | 'Fail';
+  status: 'Distinction' | 'First Class' | 'Second Class' | 'Pass' | 'Fail' | 'In Progress';
   subjects: SubjectGradeRecord[];
 }
 
@@ -33,6 +35,7 @@ export interface StudentAcademicProfile {
   currentYear: string;
   cgpa: number;
   overallPercentage: number;
+  completedSemestersCount: number;
   totalCreditsCompleted: number;
   academicStanding: string;
   semesters: SemesterAcademicRecord[];
@@ -89,13 +92,16 @@ export const generateDefaultAcademicProfile = (
   const currentYr = student.year || getYearFromSem(currentSem);
 
   const studentSeed = hashString(roll + username);
-  // ~1 in 20 students (5%) has a lower GPA / failure
+  // ~1 in 20 students (5%) has an academic backlog / lower GPA in past semesters
   const isAtRiskStudent = studentSeed % 20 === 0;
 
   const currentSemIndex = SEMESTERS_ORDER.indexOf(currentSem);
-  const eligibleSems = currentSemIndex >= 0 ? SEMESTERS_ORDER.slice(0, currentSemIndex + 1) : ['1-1', '1-2', '2-1', '2-2', '3-1', '3-2', '4-1'];
+  const eligibleSems = currentSemIndex >= 0 
+    ? SEMESTERS_ORDER.slice(0, currentSemIndex + 1) 
+    : ['1-1', '1-2', '2-1', '2-2', '3-1', '3-2', '4-1'];
 
   const semesterRecords: SemesterAcademicRecord[] = eligibleSems.map((sem, semIdx) => {
+    const isCurrent = sem === currentSem;
     const subjectsList = SUBJECTS_DATABASE[dept]?.[sem] || [
       'Core Engineering Subject 1',
       'Core Engineering Subject 2',
@@ -106,23 +112,41 @@ export const generateDefaultAcademicProfile = (
     const semSeed = studentSeed + semIdx * 37;
     const subjectGrades: SubjectGradeRecord[] = subjectsList.map((subjName, sIdx) => {
       const subjSeed = semSeed + sIdx * 19;
-      let totalScore: number;
-      if (isAtRiskStudent && sIdx === 0 && semIdx === eligibleSems.length - 1) {
-        totalScore = 42; // Fail in 1 subject
+      let targetTotal: number;
+      if (isAtRiskStudent && sIdx === 0 && semIdx === eligibleSems.length - 2) {
+        targetTotal = 42; // Backlog in previous completed year
       } else if (isAtRiskStudent) {
-        totalScore = 55 + (subjSeed % 22); // 55 - 77
+        targetTotal = 58 + (subjSeed % 20); // 58 - 78
       } else {
-        totalScore = 75 + (subjSeed % 24); // 75 - 99
+        targetTotal = 76 + (subjSeed % 23); // 76 - 99
       }
 
-      const midterm = Math.min(30, Math.round((totalScore * 0.3) + ((subjSeed % 5) - 2)));
-      const quiz = Math.min(10, Math.round((totalScore * 0.1) + ((subjSeed % 3) - 1)));
-      const assignment = Math.min(20, Math.round((totalScore * 0.2) + ((subjSeed % 3) - 1)));
-      const finalExam = Math.max(0, Math.min(40, totalScore - (midterm + quiz + assignment)));
+      const midterm = Math.min(30, Math.round((targetTotal * 0.3) + ((subjSeed % 5) - 2)));
+      const quiz = Math.min(10, Math.round((targetTotal * 0.1) + ((subjSeed % 3) - 1)));
+      const assignment = Math.min(20, Math.round((targetTotal * 0.2) + ((subjSeed % 3) - 1)));
+      const calculatedFinal = Math.max(0, Math.min(40, targetTotal - (midterm + quiz + assignment)));
 
-      const { grade, gradePoints } = getGradeInfo(totalScore);
       const isLab = subjName.toLowerCase().includes('lab') || subjName.toLowerCase().includes('manual') || subjName.toLowerCase().includes('project');
 
+      if (isCurrent) {
+        // Current semester: Continuous Internal Assessment Active, Final Exam is not yet conducted
+        return {
+          subject: subjName,
+          code: `${dept.substring(0, 2).toUpperCase()}${sem.replace('-', '')}0${sIdx + 1}${isLab ? 'L' : ''}`,
+          credits: isLab ? 1.5 : 3.0,
+          internal: midterm,
+          quiz,
+          assignment,
+          finalExam: 0,
+          total: midterm + quiz + assignment,
+          grade: 'Pending Exam',
+          gradePoints: 0,
+          isFinalExamCompleted: false
+        };
+      }
+
+      // Completed semester: Official university results published
+      const { grade, gradePoints } = getGradeInfo(targetTotal);
       return {
         subject: subjName,
         code: `${dept.substring(0, 2).toUpperCase()}${sem.replace('-', '')}0${sIdx + 1}${isLab ? 'L' : ''}`,
@@ -130,14 +154,37 @@ export const generateDefaultAcademicProfile = (
         internal: midterm,
         quiz,
         assignment,
-        finalExam,
-        total: totalScore,
+        finalExam: calculatedFinal,
+        total: targetTotal,
         grade,
-        gradePoints
+        gradePoints,
+        isFinalExamCompleted: true
       };
     });
 
     const totalCredits = subjectGrades.reduce((sum, s) => sum + s.credits, 0);
+
+    if (isCurrent) {
+      // Estimated ongoing SGPA based on continuous internal evaluation
+      const internalEarned = subjectGrades.reduce((sum, s) => sum + s.total, 0);
+      const maxInternal = subjectGrades.length * 60;
+      const internalRatio = maxInternal > 0 ? internalEarned / maxInternal : 0.85;
+      const estimatedSgpa = parseFloat((internalRatio * 10).toFixed(2));
+      const estimatedPct = parseFloat(((estimatedSgpa - 0.75) * 10).toFixed(1));
+
+      return {
+        semester: sem,
+        year: getYearFromSem(sem),
+        isCurrentOngoing: true,
+        sgpa: estimatedSgpa,
+        credits: totalCredits,
+        percentage: Math.max(40, estimatedPct),
+        status: 'In Progress',
+        subjects: subjectGrades
+      };
+    }
+
+    // Published completed semester
     const weightedPoints = subjectGrades.reduce((sum, s) => sum + (s.gradePoints * s.credits), 0);
     const sgpa = totalCredits > 0 ? parseFloat((weightedPoints / totalCredits).toFixed(2)) : 8.5;
     const percentage = parseFloat(((sgpa - 0.75) * 10).toFixed(1));
@@ -158,6 +205,7 @@ export const generateDefaultAcademicProfile = (
     return {
       semester: sem,
       year: getYearFromSem(sem),
+      isCurrentOngoing: false,
       sgpa,
       credits: totalCredits,
       percentage: Math.max(40, percentage),
@@ -166,13 +214,17 @@ export const generateDefaultAcademicProfile = (
     };
   });
 
-  const totalCreditsAll = semesterRecords.reduce((sum, s) => sum + s.credits, 0);
-  const totalWeightedPoints = semesterRecords.reduce((sum, s) => sum + (s.sgpa * s.credits), 0);
-  const cumulativeCgpa = totalCreditsAll > 0 ? parseFloat((totalWeightedPoints / totalCreditsAll).toFixed(2)) : 8.75;
+  // Calculate official cumulative CGPA from all completed semesters (e.g. 1-1 to 3-2 for 4-1 students)
+  const completedSemesters = semesterRecords.filter(s => !s.isCurrentOngoing);
+  const pool = completedSemesters.length > 0 ? completedSemesters : semesterRecords;
+
+  const totalCreditsCompleted = pool.reduce((sum, s) => sum + s.credits, 0);
+  const totalWeightedPoints = pool.reduce((sum, s) => sum + (s.sgpa * s.credits), 0);
+  const cumulativeCgpa = totalCreditsCompleted > 0 ? parseFloat((totalWeightedPoints / totalCreditsCompleted).toFixed(2)) : 8.75;
   const overallPercentage = parseFloat(((cumulativeCgpa - 0.75) * 10).toFixed(1));
 
   let academicStanding = 'First Class with Distinction';
-  if (semesterRecords.some(s => s.status === 'Fail')) {
+  if (completedSemesters.some(s => s.status === 'Fail')) {
     academicStanding = 'Academic Warning / Backlogs Pending';
   } else if (cumulativeCgpa >= 8.5) {
     academicStanding = 'First Class with Distinction';
@@ -194,7 +246,8 @@ export const generateDefaultAcademicProfile = (
     currentYear: currentYr,
     cgpa: cumulativeCgpa,
     overallPercentage: Math.max(40, overallPercentage),
-    totalCreditsCompleted: totalCreditsAll,
+    completedSemestersCount: completedSemesters.length,
+    totalCreditsCompleted,
     academicStanding,
     semesters: semesterRecords
   };
@@ -252,12 +305,20 @@ export const updateStudentSemesterGpa = (
   const updatedSemesters = currentProfile.semesters.map(s => {
     if (s.semester === targetSemester) {
       semFound = true;
-      let status: 'Distinction' | 'First Class' | 'Second Class' | 'Pass' | 'Fail' = 'First Class';
-      if (validSgpa < 5.0) status = 'Fail';
-      else if (validSgpa >= 8.5) status = 'Distinction';
-      else if (validSgpa >= 7.0) status = 'First Class';
-      else if (validSgpa >= 6.0) status = 'Second Class';
-      else status = 'Pass';
+      let status: 'Distinction' | 'First Class' | 'Second Class' | 'Pass' | 'Fail' | 'In Progress' = 'First Class';
+      if (s.isCurrentOngoing) {
+        status = 'In Progress';
+      } else if (validSgpa < 5.0) {
+        status = 'Fail';
+      } else if (validSgpa >= 8.5) {
+        status = 'Distinction';
+      } else if (validSgpa >= 7.0) {
+        status = 'First Class';
+      } else if (validSgpa >= 6.0) {
+        status = 'Second Class';
+      } else {
+        status = 'Pass';
+      }
 
       return {
         ...s,
@@ -273,21 +334,25 @@ export const updateStudentSemesterGpa = (
     updatedSemesters.push({
       semester: targetSemester,
       year: getYearFromSem(targetSemester),
+      isCurrentOngoing: targetSemester === currentProfile.currentSemester,
       sgpa: validSgpa,
       credits: 21.0,
       percentage: Math.max(40, validPercentage),
-      status: validSgpa >= 8.5 ? 'Distinction' : validSgpa >= 7.0 ? 'First Class' : validSgpa >= 5.0 ? 'Pass' : 'Fail',
+      status: targetSemester === currentProfile.currentSemester ? 'In Progress' : (validSgpa >= 8.5 ? 'Distinction' : validSgpa >= 7.0 ? 'First Class' : 'Pass'),
       subjects: []
     });
   }
 
-  const totalCredits = updatedSemesters.reduce((sum, s) => sum + s.credits, 0);
-  const weightedSum = updatedSemesters.reduce((sum, s) => sum + (s.sgpa * s.credits), 0);
+  const completed = updatedSemesters.filter(s => !s.isCurrentOngoing);
+  const pool = completed.length > 0 ? completed : updatedSemesters;
+
+  const totalCredits = pool.reduce((sum, s) => sum + s.credits, 0);
+  const weightedSum = pool.reduce((sum, s) => sum + (s.sgpa * s.credits), 0);
   const newCgpa = totalCredits > 0 ? parseFloat((weightedSum / totalCredits).toFixed(2)) : validSgpa;
   const newOverallPercentage = parseFloat(((newCgpa - 0.75) * 10).toFixed(1));
 
   let academicStanding = 'First Class with Distinction';
-  if (updatedSemesters.some(s => s.status === 'Fail')) {
+  if (completed.some(s => s.status === 'Fail')) {
     academicStanding = 'Academic Warning / Backlogs Pending';
   } else if (newCgpa >= 8.5) {
     academicStanding = 'First Class with Distinction';
@@ -303,6 +368,7 @@ export const updateStudentSemesterGpa = (
     ...currentProfile,
     cgpa: newCgpa,
     overallPercentage: Math.max(40, newOverallPercentage),
+    completedSemestersCount: completed.length,
     totalCreditsCompleted: totalCredits,
     academicStanding,
     semesters: updatedSemesters

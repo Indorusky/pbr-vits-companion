@@ -11,7 +11,9 @@ import {
   AlertTriangle,
   TrendingUp,
   Layers,
-  Sparkles
+  Sparkles,
+  Clock,
+  Info
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { getStudentAcademicProfile, type StudentAcademicProfile, type SemesterAcademicRecord } from '../utils/academicData';
@@ -28,6 +30,7 @@ interface CourseMarks {
   subject: string;
   code: string;
   grade: string;
+  isOngoing: boolean;
   components: ComponentMark[];
 }
 
@@ -56,16 +59,23 @@ const Marks = () => {
   // Current semester course data
   const studentDept = getNormalizedDepartment(user?.department || 'Computer Science and Engineering (CSE)');
   const currentSemesterRecord = profile.semesters.find(s => s.semester === selectedSemester) || profile.semesters[profile.semesters.length - 1];
+  const isSelectedSemOngoing = currentSemesterRecord?.isCurrentOngoing ?? (selectedSemester === (user?.semester || '4-1'));
 
   const currentCourses: CourseMarks[] = currentSemesterRecord?.subjects.map(s => ({
     subject: s.subject,
     code: s.code,
-    grade: s.grade,
+    grade: s.isFinalExamCompleted ? s.grade : 'CIE Active',
+    isOngoing: !s.isFinalExamCompleted,
     components: [
       { name: 'Midterm 1', score: s.internal, maxScore: 30, weightage: 30 },
       { name: 'Quiz 1', score: s.quiz, maxScore: 10, weightage: 10 },
-      { name: 'Assignments / Lab', score: s.assignment, maxScore: 20, weightage: 20 },
-      { name: 'Final Exam (Estimated)', score: s.finalExam, maxScore: 40, weightage: 40 }
+      { name: 'Assignments & Lab', score: s.assignment, maxScore: 20, weightage: 20 },
+      { 
+        name: s.isFinalExamCompleted ? 'Final Exam (Official)' : 'Final Exam (Target Forecast)', 
+        score: s.isFinalExamCompleted ? s.finalExam : 36, 
+        maxScore: 40, 
+        weightage: 40 
+      }
     ]
   })) || [];
 
@@ -116,7 +126,7 @@ const Marks = () => {
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-blue-600 animate-pulse"></span>
             <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-600">
-              Academic Performance & Internal Gradebook
+              Academic Performance & University Gradebook
             </span>
           </div>
           <h1 className="text-xl sm:text-2xl font-black text-slate-900 mt-1 flex items-center gap-2">
@@ -124,7 +134,7 @@ const Marks = () => {
             Internal Marks & GPA Estimator
           </h1>
           <p className="text-slate-500 text-xs font-medium mt-0.5">
-            Monitor scores, semester SGPA breakdown, and university grade calculations.
+            Published university semester transcripts, continuous internal evaluation, and GPA forecasting.
           </p>
         </div>
 
@@ -138,7 +148,7 @@ const Marks = () => {
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            Current Semester
+            {isSelectedSemOngoing ? 'Ongoing Semester (4-1)' : `Semester ${selectedSemester}`}
           </button>
           <button
             onClick={() => setActiveViewTab('transcript')}
@@ -155,16 +165,18 @@ const Marks = () => {
 
       {/* KPI Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Cumulative CGPA */}
+        {/* Cumulative Published CGPA */}
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs">
           <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-[11px] font-extrabold uppercase tracking-wider">Overall CGPA</span>
+            <span className="text-[11px] font-extrabold uppercase tracking-wider">Official CGPA</span>
             <GraduationCap className="w-4 h-4 text-blue-600" />
           </div>
           <h3 className="text-xl sm:text-2xl font-black text-slate-900">
             {profile.cgpa.toFixed(2)} <span className="text-xs text-slate-400 font-bold">/ 10.0</span>
           </h3>
-          <p className="text-[11px] text-blue-600 font-bold mt-0.5">Across {profile.semesters.length} Semesters</p>
+          <p className="text-[11px] text-blue-600 font-bold mt-0.5">
+            Completed: Sem 1-1 to 3-2 ({profile.totalCreditsCompleted} Credits)
+          </p>
         </div>
 
         {/* Equivalent Percentage */}
@@ -176,19 +188,19 @@ const Marks = () => {
           <h3 className="text-xl sm:text-2xl font-black text-slate-900">
             {profile.overallPercentage.toFixed(1)}%
           </h3>
-          <p className="text-[11px] text-slate-500 font-medium mt-0.5">University Conversion</p>
+          <p className="text-[11px] text-slate-500 font-medium mt-0.5">Formula: (CGPA - 0.75) × 10</p>
         </div>
 
-        {/* Current Semester SGPA */}
+        {/* Current Semester Status */}
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs">
           <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-[11px] font-extrabold uppercase tracking-wider">Sem {selectedSemester} SGPA</span>
-            <TrendingUp className="w-4 h-4 text-indigo-600" />
+            <span className="text-[11px] font-extrabold uppercase tracking-wider">Sem {user?.semester || '4-1'} Status</span>
+            <Clock className="w-4 h-4 text-amber-500" />
           </div>
-          <h3 className="text-xl sm:text-2xl font-black text-indigo-700">
-            {(currentSemesterRecord?.sgpa || profile.cgpa).toFixed(2)}
+          <h3 className="text-sm sm:text-base font-black text-amber-600 mt-1">
+            Ongoing Term
           </h3>
-          <p className="text-[11px] text-slate-500 font-medium mt-0.5">{currentSemesterRecord?.credits || 21} Credits Total</p>
+          <p className="text-[11px] text-slate-500 font-medium mt-0.5">Final Exams Awaited</p>
         </div>
 
         {/* Academic Standing */}
@@ -200,7 +212,7 @@ const Marks = () => {
           <h3 className="text-xs sm:text-sm font-black text-purple-700 truncate mt-1">
             {profile.academicStanding}
           </h3>
-          <p className="text-[11px] text-emerald-600 font-bold mt-1">Eligible for Placements</p>
+          <p className="text-[11px] text-emerald-600 font-bold mt-1">Eligible for Campus Placements</p>
         </div>
       </div>
 
@@ -214,11 +226,11 @@ const Marks = () => {
                 University Semester-Wise Academic Transcript
               </h3>
               <p className="text-xs text-slate-500 font-medium mt-0.5">
-                Official grading breakdown from Semester 1-1 to current Semester {user?.semester || '4-1'}
+                Official grading history for completed terms (1-1 to 3-2) and continuous evaluation for current term ({user?.semester || '4-1'})
               </p>
             </div>
             <span className="text-xs font-black bg-blue-50 text-blue-700 px-3 py-1 rounded-xl border border-blue-200 self-start sm:self-auto">
-              Cumulative CGPA: {profile.cgpa.toFixed(2)} ({profile.overallPercentage.toFixed(1)}%)
+              Official CGPA: {profile.cgpa.toFixed(2)} ({profile.overallPercentage.toFixed(1)}%)
             </span>
           </div>
 
@@ -227,37 +239,60 @@ const Marks = () => {
               <thead>
                 <tr className="bg-slate-50 text-slate-400 uppercase tracking-wider font-bold border-b border-slate-200">
                   <th className="p-3.5 font-bold">Academic Term</th>
-                  <th className="p-3.5 font-bold">Year</th>
+                  <th className="p-3.5 font-bold">Academic Year</th>
                   <th className="p-3.5 font-bold">Credits</th>
                   <th className="p-3.5 font-bold">SGPA</th>
                   <th className="p-3.5 font-bold">Percentage</th>
-                  <th className="p-3.5 font-bold">Result Status</th>
+                  <th className="p-3.5 font-bold">University Status</th>
                   <th className="p-3.5 font-bold text-center">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-700">
                 {profile.semesters.map((sem) => (
-                  <tr key={sem.semester} className="hover:bg-slate-50/70 transition-colors">
+                  <tr key={sem.semester} className={`hover:bg-slate-50/70 transition-colors ${sem.isCurrentOngoing ? 'bg-amber-50/30' : ''}`}>
                     <td className="p-3.5 font-extrabold text-slate-900 flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-blue-600"></span>
+                      <span className={`w-2 h-2 rounded-full ${sem.isCurrentOngoing ? 'bg-amber-500 animate-pulse' : 'bg-blue-600'}`}></span>
                       Semester {sem.semester}
+                      {sem.isCurrentOngoing && (
+                        <span className="text-[9px] bg-amber-100 text-amber-800 font-black px-1.5 py-0.5 rounded ml-1">
+                          CURRENT
+                        </span>
+                      )}
                     </td>
                     <td className="p-3.5 font-semibold text-slate-600">{sem.year}</td>
                     <td className="p-3.5 font-bold text-slate-800">{sem.credits} Credits</td>
-                    <td className="p-3.5 font-black text-slate-900 text-sm">{sem.sgpa.toFixed(2)}</td>
-                    <td className="p-3.5 font-bold text-blue-600">{sem.percentage.toFixed(1)}%</td>
+                    <td className="p-3.5 font-black text-slate-900 text-sm">
+                      {sem.isCurrentOngoing ? (
+                        <span className="text-amber-700 text-xs">~{sem.sgpa.toFixed(2)} (CIE)</span>
+                      ) : (
+                        sem.sgpa.toFixed(2)
+                      )}
+                    </td>
+                    <td className="p-3.5 font-bold text-blue-600">
+                      {sem.isCurrentOngoing ? (
+                        <span className="text-amber-700 text-xs">~{sem.percentage.toFixed(1)}%</span>
+                      ) : (
+                        `${sem.percentage.toFixed(1)}%`
+                      )}
+                    </td>
                     <td className="p-3.5">
-                      <span className={`px-2.5 py-0.5 rounded-md font-bold text-[10px] ${
-                        sem.status === 'Distinction'
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                          : sem.status === 'First Class'
-                          ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                          : sem.status === 'Fail'
-                          ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                          : 'bg-slate-100 text-slate-700'
-                      }`}>
-                        {sem.status}
-                      </span>
+                      {sem.isCurrentOngoing ? (
+                        <span className="px-2.5 py-0.5 rounded-md font-bold text-[10px] bg-amber-50 text-amber-700 border border-amber-200">
+                          In Progress (Exam Awaited)
+                        </span>
+                      ) : (
+                        <span className={`px-2.5 py-0.5 rounded-md font-bold text-[10px] ${
+                          sem.status === 'Distinction'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            : sem.status === 'First Class'
+                            ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                            : sem.status === 'Fail'
+                            ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                            : 'bg-slate-100 text-slate-700'
+                        }`}>
+                          {sem.status}
+                        </span>
+                      )}
                     </td>
                     <td className="p-3.5 text-center">
                       <button
@@ -267,7 +302,7 @@ const Marks = () => {
                         }}
                         className="px-3 py-1 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-700 rounded-lg text-xs font-bold transition-all"
                       >
-                        View Subjects
+                        {sem.isCurrentOngoing ? 'Inspect CIE Marks' : 'View Grade Card'}
                       </button>
                     </td>
                   </tr>
@@ -281,6 +316,21 @@ const Marks = () => {
       {/* 2. Current Semester Course Breakdown & GPA Simulator */}
       {activeViewTab === 'current' && (
         <div className="space-y-6">
+          {/* Ongoing Notification Banner */}
+          {isSelectedSemOngoing && (
+            <div className="bg-amber-50 border border-amber-200/80 p-4 rounded-2xl flex items-start gap-3 text-amber-900">
+              <Info className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="text-xs font-extrabold uppercase tracking-wider text-amber-800">
+                  Semester {selectedSemester} is Currently Ongoing
+                </h4>
+                <p className="text-xs font-medium text-amber-700 mt-0.5 leading-relaxed">
+                  Final university theory & practical examinations for Semester {selectedSemester} are not yet conducted. The marks shown below reflect your continuous internal evaluation (Midterms, Quizzes & Lab Assignments). Use the <b>Interactive Grade Forecaster</b> on the right to simulate your upcoming final exam target score!
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Semester Selector Bar */}
           <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
@@ -292,13 +342,20 @@ const Marks = () => {
                 <button
                   key={s.semester}
                   onClick={() => setSelectedSemester(s.semester)}
-                  className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
+                  className={`px-3 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
                     selectedSemester === s.semester
                       ? 'bg-blue-600 text-white shadow-xs'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
                 >
-                  Sem {s.semester} (SGPA: {s.sgpa.toFixed(2)})
+                  <span>Sem {s.semester}</span>
+                  <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${
+                    selectedSemester === s.semester 
+                      ? 'bg-blue-700 text-white' 
+                      : (s.isCurrentOngoing ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-700')
+                  }`}>
+                    {s.isCurrentOngoing ? 'Ongoing' : `SGPA ${s.sgpa.toFixed(2)}`}
+                  </span>
                 </button>
               ))}
             </div>
@@ -311,7 +368,7 @@ const Marks = () => {
               <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-extrabold text-slate-900">
-                    Semester {selectedSemester} Subjects ({currentCourses.length} Courses)
+                    Semester {selectedSemester} Courses ({currentCourses.length} Subjects)
                   </h3>
                   <span className="text-xs font-bold text-blue-600">Click subject to inspect breakdown</span>
                 </div>
@@ -329,13 +386,19 @@ const Marks = () => {
                     >
                       <div className="flex justify-between items-start">
                         <span className="text-[10px] font-mono font-bold text-slate-500">{course.code}</span>
-                        <span className="text-[10px] font-black text-blue-700 bg-blue-100/70 px-2 py-0.5 rounded-md">
-                          Grade: {course.grade}
+                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
+                          course.isOngoing
+                            ? 'text-amber-800 bg-amber-100'
+                            : 'text-blue-700 bg-blue-100/70'
+                        }`}>
+                          {course.grade}
                         </span>
                       </div>
                       <div>
                         <h4 className="font-extrabold text-slate-800 text-xs truncate leading-snug">{course.subject}</h4>
-                        <p className="text-[10px] text-slate-400 mt-0.5 font-medium">Internal + Exam Forecast</p>
+                        <p className="text-[10px] text-slate-400 mt-0.5 font-medium">
+                          {course.isOngoing ? 'Internal CIE Active' : 'Official Results Published'}
+                        </p>
                       </div>
                     </div>
                   ))}
@@ -350,8 +413,12 @@ const Marks = () => {
                       <span className="text-[10px] font-extrabold text-blue-600 uppercase tracking-wider block">{selectedCourse.code}</span>
                       <h3 className="text-sm font-black text-slate-900">{selectedCourse.subject}</h3>
                     </div>
-                    <span className="text-xs font-extrabold bg-emerald-50 text-emerald-700 px-3 py-1 rounded-xl border border-emerald-200">
-                      Overall Grade: {selectedCourse.grade}
+                    <span className={`text-xs font-extrabold px-3 py-1 rounded-xl border ${
+                      selectedCourse.isOngoing
+                        ? 'bg-amber-50 text-amber-700 border-amber-200'
+                        : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                    }`}>
+                      {selectedCourse.isOngoing ? 'Continuous Internal Evaluation' : `Grade: ${selectedCourse.grade}`}
                     </span>
                   </div>
 
