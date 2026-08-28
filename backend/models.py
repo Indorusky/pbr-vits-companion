@@ -26,6 +26,7 @@ class User(Base):
     section = Column(String(255), nullable=True)
     subjects = Column(String(1000), nullable=True) # Comma-separated list of subjects
     profile_photo = Column(String, nullable=True) # base64 profile image string
+    approval_status = Column(String(255), default="Approved") # "Approved" or "Pending" (for faculty signups)
 
 class Student(Base):
     __tablename__ = "students"
@@ -65,6 +66,7 @@ class FaceEnrollment(Base):
     student_id = Column(Integer, ForeignKey("users.id"), unique=True)
     embedding = Column(String)  # Holds JSON string of float values
     is_active = Column(Integer, default=1)
+    enrollment_count = Column(Integer, default=1) # Track biometric update attempts (max 3)
     created_at = Column(String(255))
 
 class AttendanceRecord(Base):
@@ -118,6 +120,7 @@ class Faculty(Base):
     phone = Column(String(255), nullable=True)
     profile_photo = Column(String(1000), nullable=True)
     status = Column(String(255), default="Active")
+    approval_status = Column(String(255), default="Pending")
 
 class Mark(Base):
     __tablename__ = "marks"

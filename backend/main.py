@@ -464,6 +464,9 @@ def signup(user: schemas.UserCreate, db: Session = Depends(get_db)):
 
     hashed_pw = user.password + "notreallyhashed"
     
+    # Faculty accounts default to Pending approval status
+    approval_status = "Pending" if user.role == models.RoleEnum.faculty else "Approved"
+
     new_user = models.User(
         username=user.username,
         hashed_password=hashed_pw,
@@ -476,7 +479,8 @@ def signup(user: schemas.UserCreate, db: Session = Depends(get_db)):
         semester=user.semester,
         section=user.section,
         subjects=user.subjects,
-        profile_photo=user.profile_photo
+        profile_photo=user.profile_photo,
+        approval_status=approval_status
     )
     
     db.add(new_user)
@@ -496,6 +500,23 @@ def signup(user: schemas.UserCreate, db: Session = Depends(get_db)):
         )
         db.add(student_rec)
         db.commit()
+    elif user.role == models.RoleEnum.faculty:
+        fac_rec = models.Faculty(
+            user_id=new_user.id,
+            faculty_id=new_user.roll_number or new_user.username,
+            name=user.name or user.username,
+            email=user.email or "",
+            degree="Master of Technology (M.Tech)",
+            designation="Assistant Professor",
+            date_of_joining=datetime.datetime.now().strftime("%Y-%m-%d"),
+            assigned_departments=user.department or "Computer Science and Engineering (CSE)",
+            assigned_subjects=user.subjects or "Computer Networks",
+            assigned_semesters=user.semester or "3-1",
+            status="Pending",
+            approval_status="Pending"
+        )
+        db.add(fac_rec)
+        db.commit()
         
     return new_user
 
@@ -505,6 +526,13 @@ def login(user: schemas.UserCreate, db: Session = Depends(get_db)):
     if not db_user or db_user.hashed_password != user.password + "notreallyhashed":
         raise HTTPException(status_code=400, detail="Incorrect username or password")
     
+    # Check faculty admin approval
+    if db_user.role == models.RoleEnum.faculty and db_user.approval_status == "Pending":
+        raise HTTPException(
+            status_code=403,
+            detail="Your faculty account is pending Admin approval. Please contact the administrator to activate your account."
+        )
+        
     # Return user details in token response so frontend gets all profile info
     user_resp = schemas.UserResponse.from_orm(db_user)
     return {
@@ -1336,6 +1364,7 @@ class SystemConfigUpdate(BaseModel):
 class FaceRegisterRequest(BaseModel):
     student_id: int
     embedding: str  # JSON array of 128 floats or array of variant vectors
+    profile_photo: Optional[str] = None
 
 class DailyAttendanceRequest(BaseModel):
     live_embedding: str  # JSON array of 128 floats
@@ -1405,14 +1434,29 @@ def register_face(req: FaceRegisterRequest, db: Session = Depends(get_db)):
     enrollment = db.query(models.FaceEnrollment).filter(models.FaceEnrollment.student_id == req.student_id).first()
     action = "RE-REGISTER" if enrollment else "REGISTER"
     
-    if not enrollment:
-        enrollment = models.FaceEnrollment(student_id=req.student_id)
+    if enrollment:
+        current_count = enrollment.enrollment_count or 1
+        if current_count >= 3:
+            raise HTTPException(
+                status_code=403,
+                detail="Biometric re-enrollment limit reached (3/3 attempts used). Please contact Administrator to reset your limit."
+            )
+        enrollment.enrollment_count = current_count + 1
+    else:
+        enrollment = models.FaceEnrollment(student_id=req.student_id, enrollment_count=1)
         db.add(enrollment)
         
     enrollment.embedding = norm_embedding
     enrollment.is_active = 1
     enrollment.created_at = datetime.datetime.now().isoformat()
     
+    # Update profile photo if provided in payload
+    if req.profile_photo:
+        user.profile_photo = req.profile_photo
+        student_rec = db.query(models.Student).filter(models.Student.user_id == user.id).first()
+        if student_rec:
+            student_rec.profile_photo = req.profile_photo
+            
     # Log the action
     audit = models.FaceAuditLog(
         student_id=req.student_id,
@@ -1423,7 +1467,54 @@ def register_face(req: FaceRegisterRequest, db: Session = Depends(get_db)):
     db.add(audit)
     db.commit()
     
-    return {"message": "Multi-variant face registered successfully", "action": action}
+    return {
+        "message": "Multi-variant face registered successfully",
+        "action": action,
+        "enrollment_count": enrollment.enrollment_count,
+        "max_limit": 3
+    }
+
+@app.post("/admin/reset-face-limit/{student_id}")
+def reset_face_limit(student_id: int, db: Session = Depends(get_db)):
+    enrollment = db.query(models.FaceEnrollment).filter(models.FaceEnrollment.student_id == student_id).first()
+    if enrollment:
+        enrollment.enrollment_count = 0
+        enrollment.is_active = 1
+        db.commit()
+        return {"message": "Face re-enrollment limit reset successfully to 0/3"}
+    return {"message": "No face enrollment record found to reset"}
+
+@app.post("/admin/approve-faculty/{faculty_username_or_id}")
+def approve_faculty(faculty_username_or_id: str, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(
+        (models.User.username == faculty_username_or_id) |
+        (models.User.roll_number == faculty_username_or_id)
+    ).first()
+    if not user and faculty_username_or_id.isdigit():
+        user = db.query(models.User).filter(models.User.id == int(faculty_username_or_id)).first()
+        
+    if not user:
+        raise HTTPException(status_code=404, detail="Faculty account not found")
+
+    user.approval_status = "Approved"
+    fac = db.query(models.Faculty).filter(
+        (models.Faculty.user_id == user.id) |
+        (models.Faculty.faculty_id == user.username) |
+        (models.Faculty.faculty_id == user.roll_number)
+    ).first()
+    if fac:
+        fac.approval_status = "Approved"
+        fac.status = "Active"
+    db.commit()
+    return {"message": f"Faculty account {user.username} approved successfully"}
+
+@app.get("/admin/pending-faculties")
+def get_pending_faculties(db: Session = Depends(get_db)):
+    pending_users = db.query(models.User).filter(
+        models.User.role == models.RoleEnum.faculty,
+        models.User.approval_status == "Pending"
+    ).all()
+    return pending_users
 
 @app.post("/daily-attendance")
 def daily_attendance(req: DailyAttendanceRequest, db: Session = Depends(get_db)):

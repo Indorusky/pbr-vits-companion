@@ -15,6 +15,7 @@ class UserCreate(BaseModel):
     section: Optional[str] = None
     subjects: Optional[str] = None
     profile_photo: Optional[str] = None
+    approval_status: Optional[str] = "Approved"
 
 class UserUpdate(BaseModel):
     name: Optional[str] = None
@@ -27,6 +28,7 @@ class UserUpdate(BaseModel):
     subjects: Optional[str] = None
     password: Optional[str] = None
     profile_photo: Optional[str] = None
+    approval_status: Optional[str] = None
 
 class UserResponse(BaseModel):
     id: int
@@ -41,6 +43,7 @@ class UserResponse(BaseModel):
     section: Optional[str] = None
     subjects: Optional[str] = None
     profile_photo: Optional[str] = None
+    approval_status: Optional[str] = "Approved"
     
     class Config:
         from_attributes = True

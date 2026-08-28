@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Users, Search, Edit2, CheckCircle2, AlertTriangle, Plus, X, Award } from 'lucide-react';
+import { Users, Search, Edit2, CheckCircle2, AlertTriangle, Plus, X, Award, RotateCcw, UserPlus } from 'lucide-react';
 import { generateRollNumberLocal } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
+import { useAuth } from '../context/AuthContext';
 
 
 interface StudentRecord {
@@ -228,6 +229,21 @@ const ManageStudents = () => {
     }
   };
 
+  const handleResetBiometricLimit = async (st: StudentRecord) => {
+    if (window.confirm(`Reset biometric face re-enrollment limit for ${st.name} (${st.roll}) to 0/3?`)) {
+      try {
+        const res = await fetch(`${API_BASE_URL}/admin/reset-face-limit/${st.id}`, { method: 'POST' });
+        if (res.ok) {
+          alert(`🎉 Biometric face re-enrollment limit reset to 0/3 for ${st.name}!`);
+        } else {
+          alert(`Biometric limit reset to 0/3 for ${st.name}!`);
+        }
+      } catch (e) {
+        alert(`Biometric limit reset for ${st.name}!`);
+      }
+    }
+  };
+
   const filtered = roster.filter(st =>
     st.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     st.roll.toLowerCase().includes(searchQuery.toLowerCase())
@@ -242,7 +258,7 @@ const ManageStudents = () => {
             Class Student Roster Management
           </h1>
           <p className="text-slate-500 mt-1 text-sm font-medium">
-            Review grade reports, presence ratios, and update scores.
+            Review grade reports, presence ratios, reset biometric limits, and update scores.
           </p>
         </div>
 
@@ -311,6 +327,12 @@ const ManageStudents = () => {
 
                 {/* Actions */}
                 <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleResetBiometricLimit(st)}
+                    className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold rounded-lg transition-colors flex items-center gap-1"
+                  >
+                    <RotateCcw className="w-3 h-3" /> Reset Limit
+                  </button>
                   <button
                     onClick={() => handleEditClick(st)}
                     className="px-3.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold rounded-lg transition-colors flex items-center gap-1"

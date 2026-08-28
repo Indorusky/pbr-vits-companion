@@ -26,7 +26,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   registerUser: (username: string, password: string, role: Role, name: string, email: string, department?: string, year?: string, semester?: string, rollNumber?: string, profilePhoto?: string) => Promise<{ success: boolean; message: string; user?: User }>;
   resetUserPassword: (username: string, email: string, newPass: string) => Promise<{ success: boolean; message: string }>;
-  validateUser: (username: string, pass: string) => Promise<{ success: boolean; user?: User }>;
+  validateUser: (username: string, pass: string) => Promise<{ success: boolean; user?: User; message?: string }>;
   viewMode: 'student' | 'faculty' | 'admin';
   setViewMode: (mode: 'student' | 'faculty' | 'admin') => void;
 }
@@ -288,6 +288,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             }
           };
         }
+      } else {
+        const err = await response.json();
+        return { success: false, message: err.detail || 'Login failed.' };
       }
     } catch (e) {
       console.warn("Backend authentication failed, falling back to local storage", e);

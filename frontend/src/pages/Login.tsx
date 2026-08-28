@@ -114,7 +114,7 @@ const Login = () => {
 
     const res = await validateUser(username, password);
     if (!res.success || !res.user) {
-      setError('Invalid username or password');
+      setError(res.message || 'Invalid username or password.');
       return;
     }
 
@@ -180,6 +180,13 @@ const Login = () => {
       setLivenessPrompt('Align your face inside the frame.');
       setQualityText('');
       setShowFaceRegModal(true);
+    } else if (selectedRole === 'faculty') {
+      setSuccessMsg('Faculty registration submitted! Your account is pending Admin approval before you can log in.');
+      setActiveTab('signin');
+      setSignupName('');
+      setSignupEmail('');
+      setSignupUsername('');
+      setSignupPassword('');
     } else {
       setSuccessMsg('Account created successfully! Please sign in.');
       setUsername(signupUsername);

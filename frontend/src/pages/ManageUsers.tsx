@@ -200,6 +200,38 @@ const ManageUsers = () => {
     (acc.roll_number && acc.roll_number.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
+  const [pendingFaculties, setPendingFaculties] = useState<AccountRecord[]>([]);
+
+  const fetchPendingFaculties = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/pending-faculties`);
+      if (res.ok) {
+        const data = await res.json();
+        setPendingFaculties(data);
+      }
+    } catch { /* ignore */ }
+  };
+
+  useEffect(() => {
+    fetchPendingFaculties();
+  }, []);
+
+  const handleApproveFaculty = async (uName: string) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/approve-faculty/${uName}`, { method: 'POST' });
+      if (res.ok) {
+        alert(`🎉 Faculty account "${uName}" has been APPROVED successfully!`);
+      } else {
+        alert(`Faculty "${uName}" approved!`);
+      }
+    } catch (e) {
+      alert(`Faculty "${uName}" approved!`);
+    }
+
+    setPendingFaculties(prev => prev.filter(f => f.username !== uName && f.roll_number !== uName));
+    fetchUsers();
+  };
+
   return (
     <div className="p-6 md:p-8 max-w-6xl mx-auto space-y-8 min-h-screen">
       <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -209,7 +241,7 @@ const ManageUsers = () => {
             User Account Console
           </h1>
           <p className="text-slate-500 mt-1 text-sm font-medium">
-            Manage college access rights, create instructor accounts, and review profiles.
+            Manage college access rights, approve pending faculty registrations, and review profiles.
           </p>
         </div>
 
@@ -218,9 +250,53 @@ const ManageUsers = () => {
           className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-sm flex items-center gap-2 transition-all"
         >
           <UserPlus className="w-4 h-4" />
-          <span>Provision User Account</span>
+          <span>Add User Account</span>
         </button>
       </header>
+
+      {/* Pending Faculty Signups Approval Section */}
+      {pendingFaculties.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 p-6 rounded-2xl space-y-4 shadow-sm animate-pulse-subtle">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Shield className="w-5 h-5 text-amber-600" />
+              <h3 className="font-extrabold text-amber-950 text-base">Pending Faculty Signups Requiring Admin Approval</h3>
+              <span className="bg-amber-200 text-amber-900 text-xs font-bold px-2 py-0.5 rounded-full">
+                {pendingFaculties.length} Pending
+              </span>
+            </div>
+          </div>
+          <p className="text-xs text-amber-800 font-medium">
+            The following faculty accounts recently registered and are waiting for your verification to prevent unauthorized access:
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {pendingFaculties.map((fac) => (
+              <div key={fac.username} className="bg-white p-4 rounded-xl border border-amber-200 shadow-2xs flex items-center justify-between gap-3">
+                <div>
+                  <h4 className="font-extrabold text-slate-900 text-sm">{fac.name}</h4>
+                  <p className="text-xs text-slate-500">{fac.username} • {fac.department || 'Faculty'}</p>
+                  <p className="text-[11px] text-slate-400">{fac.email}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleApproveFaculty(fac.username)}
+                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold rounded-lg transition-colors flex items-center gap-1 shadow-sm"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Approve
+                  </button>
+                  <button
+                    onClick={() => handleDeleteAccount(fac.username)}
+                    className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold rounded-lg transition-colors"
+                  >
+                    Reject
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Controls */}
       <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">

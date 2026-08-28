@@ -22,6 +22,7 @@ const Profile = () => {
   const [isModelsLoading, setIsModelsLoading] = useState(false);
   const [faceRegistered, setFaceRegistered] = useState(false);
   const [augmentedVariantsCount, setAugmentedVariantsCount] = useState(4);
+  const [attemptsCount, setAttemptsCount] = useState(0);
 
   // Sync initial values when user context loads
   useEffect(() => {
@@ -39,7 +40,7 @@ const Profile = () => {
           .catch(err => console.warn(err));
       }
 
-      // Check if student face is registered
+      // Check if student face is registered & fetch attempt count
       if (user.id) {
         fetch(`${API_BASE_URL}/attendance/student/${user.id}`, {
           headers: {
@@ -50,6 +51,7 @@ const Profile = () => {
           .then(res => res.json())
           .then(data => {
             if (data.face_registered) setFaceRegistered(true);
+            if (data.enrollment_count !== undefined) setAttemptsCount(data.enrollment_count);
           })
           .catch(() => setFaceRegistered(true));
       }
@@ -88,6 +90,7 @@ const Profile = () => {
           email: updatedUser.email,
           roll_number: updatedUser.roll_number,
           section: updatedUser.section,
+          profile_photo: updatedUser.profile_photo || user?.profile_photo,
           subjects: updatedUser.subjects ? updatedUser.subjects.split(',').map((s: string) => s.trim()) : []
         });
         setIsSaved(true);
@@ -150,6 +153,11 @@ const Profile = () => {
   };
 
   const startLiveFaceRegistration = async () => {
+    if (attemptsCount >= 3) {
+      alert("⚠️ Biometric Re-enrollment Limit Reached (3/3 attempts used).\n\nTo prevent security misuse, face re-enrollment is locked after 3 updates. Please contact Administrator to reset your limit.");
+      return;
+    }
+
     setIsModelsLoading(true);
     setFaceStatusText('Loading Face Recognition AI models...');
     try {
@@ -180,6 +188,14 @@ const Profile = () => {
               setFaceStatusText('Processing 4 multi-lighting environment variants (Standard, Bright, Dim, Grayscale)...');
 
               try {
+                // Capture photo snapshot for main profile avatar
+                const canvasSnap = document.createElement('canvas');
+                canvasSnap.width = videoEl.videoWidth || 320;
+                canvasSnap.height = videoEl.videoHeight || 240;
+                const snapCtx = canvasSnap.getContext('2d');
+                if (snapCtx) snapCtx.drawImage(videoEl, 0, 0, canvasSnap.width, canvasSnap.height);
+                const photoSnapUrl = canvasSnap.toDataURL('image/jpeg', 0.85);
+
                 const variants = await captureAugmentedFaceVariants(videoEl);
 
                 // Stop stream
@@ -196,26 +212,57 @@ const Profile = () => {
 
                 setAugmentedVariantsCount(variants.length);
 
-                // Send variants payload to backend
+                // Send variants payload & profile photo to backend
                 const payload = JSON.stringify(variants);
                 const res = await fetch(`${API_BASE_URL}/register-face`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
                     student_id: user?.id,
-                    embedding: payload
+                    embedding: payload,
+                    profile_photo: photoSnapUrl
                   })
                 });
 
                 if (res.ok) {
+                  const data = await res.json();
+                  if (data.enrollment_count !== undefined) setAttemptsCount(data.enrollment_count);
+                  else setAttemptsCount(prev => prev + 1);
+
+                  // Dynamically update user in AuthContext so profile avatar updates immediately
+                  if (user) {
+                    login({
+                      ...user,
+                      profile_photo: photoSnapUrl
+                    });
+                  }
+
                   setFaceRegistered(true);
                   setFaceStep('success');
                 } else {
-                  setFaceRegistered(true); // local fallback
+                  const errData = await res.json();
+                  if (res.status === 403) {
+                    setAttemptsCount(3);
+                    alert(`⚠️ ${errData.detail || 'Re-enrollment limit reached.'}`);
+                    setFaceStep('error');
+                    setFaceStatusText(errData.detail || 'Re-enrollment limit reached.');
+                    return;
+                  }
+                  
+                  // Local fallback update
+                  setAttemptsCount(prev => prev + 1);
+                  if (user) {
+                    login({
+                      ...user,
+                      profile_photo: photoSnapUrl
+                    });
+                  }
+                  setFaceRegistered(true);
                   setFaceStep('success');
                 }
               } catch (err) {
                 console.warn(err);
+                setAttemptsCount(prev => prev + 1);
                 setFaceRegistered(true);
                 setFaceStep('success');
               }
@@ -330,14 +377,30 @@ const Profile = () => {
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={startLiveFaceRegistration}
-          className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-2 hover:scale-105"
-        >
-          <Camera className="w-4 h-4" />
-          <span>{faceRegistered ? 'Re-Enroll Face ID' : 'Enroll Face ID'}</span>
-        </button>
+        <div className="flex items-center gap-3">
+          <span className={`text-xs font-bold px-3 py-1.5 rounded-xl border flex items-center gap-1.5 ${
+            attemptsCount >= 3 
+              ? 'bg-red-50 text-red-700 border-red-200' 
+              : 'bg-blue-50 text-blue-700 border-blue-200'
+          }`}>
+            <Camera className="w-3.5 h-3.5" />
+            <span>Attempts: {attemptsCount}/3 {attemptsCount >= 3 ? '(Locked)' : ''}</span>
+          </span>
+
+          <button
+            type="button"
+            disabled={attemptsCount >= 3}
+            onClick={startLiveFaceRegistration}
+            className={`px-4 py-2.5 font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-2 ${
+              attemptsCount >= 3
+                ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white hover:scale-105'
+            }`}
+          >
+            <Camera className="w-4 h-4" />
+            <span>{attemptsCount >= 3 ? 'Biometric Limit Reached (3/3)' : faceRegistered ? 'Re-Enroll Face ID' : 'Enroll Face ID'}</span>
+          </button>
+        </div>
       </header>
 
       {/* Biometric Multi-Lighting Card Banner */}
@@ -351,15 +414,20 @@ const Profile = () => {
             </span>
           </div>
           <p className="text-xs text-slate-300">
-            Enrolls 4 multi-environment variants (Standard, High Brightness, Dim / Night Mode, Grayscale) to ensure attendance matching under all lighting & clothing conditions.
+            Enrolls 4 multi-environment variants (Standard, High Brightness, Dim / Night Mode, Grayscale). Max 3 biometric updates allowed per student.
           </p>
         </div>
 
         <button
           onClick={startLiveFaceRegistration}
-          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shrink-0 flex items-center gap-1.5 transition-colors"
+          disabled={attemptsCount >= 3}
+          className={`px-4 py-2 text-xs font-bold rounded-xl shrink-0 flex items-center gap-1.5 transition-colors ${
+            attemptsCount >= 3
+              ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
+              : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+          }`}
         >
-          <Sparkles className="w-3.5 h-3.5" /> Capture Live Face
+          <Sparkles className="w-3.5 h-3.5" /> {attemptsCount >= 3 ? 'Limit Reached (3/3)' : 'Capture Live Face'}
         </button>
       </div>
 
