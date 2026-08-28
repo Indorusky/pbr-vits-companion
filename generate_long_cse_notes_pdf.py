@@ -6,9 +6,6 @@ from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, HRFlowable
 from reportlab.pdfgen import canvas
 
-# Comprehensive 5-Unit In-Depth Textbook Content Database for Core CSE Subjects
-# Each unit is engineered to span at least 5 pages with exhaustive explanations, code blocks, diagrams, and 10 detailed exam Q&As.
-
 def generate_subject_textbook(title, code, semester, overview, unit_data_list):
     return {
         "title": title,
@@ -19,160 +16,7 @@ def generate_subject_textbook(title, code, semester, overview, unit_data_list):
         "units_topics": unit_data_list
     }
 
-# Build deep units for subjects
 SUBJECTS_CONFIG = [
-    {
-        "title": "Programming in C",
-        "code": "23CS101",
-        "semester": "1-1",
-        "overview": "Comprehensive textbook guide to procedural programming, memory architecture, pointers, dynamic memory management, and file systems.",
-        "units_topics": [
-            ("Unit 1", "Foundations of Algorithms, Data Types & Flow of Control", [
-                ("1.1 Evolution & Architecture of C Language", "C was developed by Dennis Ritchie at Bell Labs (1972) to construct the UNIX operating system. It combines low-level memory control with high-level procedural abstraction. Compilation proceeds through 4 distinct stages: Preprocessing (#include expansion, #define macro substitution, conditional #ifdef compilation), Translation/Compilation (syntax parsing, abstract syntax tree generation, translation into target assembly mnemonics), Assembly (converting assembly into relocatable machine object .obj/.o code), and Linking (resolving external symbols, merging CRT runtime libraries, generating the final executable)."),
-                ("1.2 Primitive Data Types, Memory Layout & Operator Precedence", "Primitive types in C map directly to CPU word architectures. 'char' occupies 1 byte (ASCII encoding -128 to 127 or 0 to 255). 'short' occupies 2 bytes, 'int' occupies 4 bytes (2's complement representation), 'long long' occupies 8 bytes. Floating point adheres to IEEE 754 standards (single precision float: 32 bits [1 sign, 8 exponent, 23 mantissa]; double: 64 bits). Operators obey strict precedence and associativity (Unary > Multiplicative > Additive > Shift > Relational > Equality > Bitwise AND > Bitwise XOR > Bitwise OR > Logical AND > Logical OR > Ternary > Assignment)."),
-                ("1.3 Conditional Branches & Iteration Control Mechanics", "Branching logic in compiled C evaluates conditional expressions against zero (0 is false, any non-zero integer is true). The 'switch-case' construct compiles into jump tables when case constants are dense, yielding O(1) branch dispatch compared to O(N) sequential if-else cascades. Loop constructs include 'while' (entry-controlled pre-condition check), 'for' (syntactic initialization, condition, and step loop), and 'do-while' (exit-controlled post-condition check, guaranteeing minimum one execution iteration)."),
-                ("1.4 Algorithmic Implementations & Edge Case Analysis", "Structured algorithms avoid uncontrolled 'goto' jumps. When implementing arithmetic algorithms such as GCD (Euclid's algorithm), Prime Factorization (Sieve of Eratosthenes), and Fibonacci series, integer overflow boundaries (e.g. INT_MAX = 2,147,483,647) must be actively guarded using range validation.")
-            ]),
-            ("Unit 2", "Modular Programming, Function Call Stacks & Storage Classes", [
-                ("2.1 Function Abstraction, Prototypes & Stack Frames", "Functions provide functional decomposition. In x86-64 calling conventions (System V AMD64 ABI / Microsoft x64), function invocations push a Stack Frame onto the call stack containing: Return Address, Saved Base Pointer (%rbp), Local Variables, and Callee-saved Registers. Function prototypes declare the return type and parameter signature to enable static type checking before linkage."),
-                ("2.2 Call by Value vs Call by Reference (Address Passing)", "C is strictly a call-by-value language. To achieve call-by-reference semantics, memory addresses (pointers) are passed as values. Modifying the dereferenced pointer (*ptr) alters the caller's actual variable memory location directly. Passing large structures by pointer prevents expensive stack memory copying."),
-                ("2.3 Recursion Dynamics, Call Depth & Stack Overflow", "Recursive functions execute by repeatedly pushing stack frames until reaching a base condition. If the base condition is absent or unreachable, the call stack exhausts available stack memory (typically 1MB-8MB OS thread limit), triggering a fatal Segmentation Fault (Stack Overflow). Tail-call optimization allows compilers to reuse the current stack frame if the recursive call is the final operation."),
-                ("2.4 Scope, Lifetime & The Four Storage Classes", "1. 'auto': Local stack variables with block scope and automatic lifetime. 2. 'register': Requests CPU register storage for ultra-fast access (address-of operator '&' forbidden). 3. 'static': Preserves variable state in the BSS/Data segment across successive function invocations with permanent lifetime and file/block scope. 4. 'extern': Declares global symbols defined in foreign compilation units.")
-            ]),
-            ("Unit 3", "Arrays, Matrix Computations, Strings & Pointer Arithmetic", [
-                ("3.1 Array Memory Layout, Row-Major Ordering & Indexing", "Arrays allocate contiguous blocks of physical memory. For a 1D array arr[N], address of arr[i] = BaseAddress + i * sizeof(T). For a 2D array arr[R][C] in row-major order, address of arr[i][j] = BaseAddress + (i * C + j) * sizeof(T). Array boundary violations in C result in undefined behavior and memory corruption vulnerabilities."),
-                ("3.2 Pointer Arithmetic, Indirection & Memory Offsets", "A pointer variable holds a memory address. Pointer arithmetic scales automatically by the base data type's byte size: ptr + k moves forward by k * sizeof(*ptr) bytes. The array name 'arr' decays into a constant pointer to its first element (&arr[0]) in most expressions."),
-                ("3.3 String Handling, Null-Terminators & Buffer Safety", "Strings in C are null-terminated ('\\0') character arrays. Standard string functions in <string.h> (strlen, strcpy, strcat, strcmp) scan until encountering the null byte. Unbounded functions like strcpy() and gets() are susceptible to stack buffer overflow exploits; secure alternatives include strncpy() and snprintf()."),
-                ("3.4 Function Pointers, Callbacks & Dynamic Dispatch", "Function pointers store the entry-point address of compiled executable functions in the Code/Text segment. They enable dynamic callback mechanisms, event handling, and polymorphic table dispatch (e.g. qsort comparison comparator callbacks).")
-            ]),
-            ("Unit 4", "Structures, Unions, Memory Alignment & Dynamic Allocation", [
-                ("4.1 Structure Layout, Padding, Packing & Bitfields", "Structures group heterogeneous data elements. Compilers insert padding bytes between struct members to align data to natural word boundaries (e.g., 4-byte ints aligned to 4-byte boundaries), optimizing CPU memory bus read cycles. The '#pragma pack(1)' directive eliminates padding at the cost of potential unaligned access penalties. Bitfields allocate specific bit widths for hardware registers."),
-                ("4.2 Unions vs Structures & Memory Sharing", "Unions allocate a single shared memory space equal to the size of their largest constituent member. Writing to one union member overwrites all other members. Unions are employed for type punning, protocol packet decoding, and memory-constrained embedded systems."),
-                ("4.3 Dynamic Memory Allocation (Heap Management)", "Dynamic memory is allocated on the Heap via OS runtime allocators. 'malloc(size)' allocates uninitialized raw byte blocks. 'calloc(num, size)' allocates and zero-initializes memory. 'realloc(ptr, new_size)' resizes existing heap blocks, migrating data if necessary. 'free(ptr)' releases memory back to the heap manager."),
-                ("4.4 Memory Leaks, Dangling Pointers & Double Free Hazards", "Failure to free dynamically allocated heap memory causes gradual memory exhaustion (Memory Leak). Retaining a pointer after freeing its memory creates a Dangling Pointer; dereferencing it triggers undefined behavior. Invoking free() twice on the same pointer causes Heap Corruption (Double Free vulnerability).")
-            ]),
-            ("Unit 5", "File I/O Streams, Binary Persistence & Preprocessor Directives", [
-                ("5.1 Standard Streams & File Buffer Architectures", "C manages file I/O through FILE stream pointers (<stdio.h>). Streams interface with OS kernel page caches using internal buffer buffers (Full buffering for disk files, Line buffering for stdout terminals, Unbuffered for stderr). Files are opened via fopen() with modes 'r', 'w', 'a', 'r+', 'wb', 'rb'."),
-                ("5.2 Text vs Binary File Processing", "Text mode ('r', 'w') converts newline characters (e.g. CRLF '\\r\\n' to LF '\\n' on Windows). Binary mode ('rb', 'wb') performs raw, bit-exact byte transfers using fread() and fwrite(), essential for serializing structs, images, and binary databases."),
-                ("5.3 Random Access File Navigation", "The file position pointer indicates the next byte to read or write. 'fseek(fp, offset, whence)' moves the position relative to SEEK_SET (beginning), SEEK_CUR (current), or SEEK_END (end of file). 'ftell(fp)' returns the current byte position; 'rewind(fp)' resets to beginning."),
-                ("5.4 Preprocessor Macros & Command Line Parameterization", "The preprocessor executes textual replacements before syntax compilation. Macros (#define SQUARE(x) ((x)*(x))) provide inline substitution. Conditional compilation (#ifdef, #ifndef, #endif) prevents circular header inclusion via include guards. Command line arguments (int argc, char *argv[]) allow shell-level parameters to be passed directly into main().")
-            ])
-        ]
-    },
-    {
-        "title": "Data Structures and Algorithms",
-        "code": "23CS102",
-        "semester": "1-2",
-        "overview": "Exhaustive university textbook on asymptotic complexity, linear data structures, tree architectures, graph algorithms, searching, sorting, and hashing techniques.",
-        "units_topics": [
-            ("Unit 1", "Asymptotic Analysis, Algorithm Framework & Linked Lists", [
-                ("1.1 Mathematical Asymptotics (Big-O, Omega, Theta)", "Algorithm complexity evaluates resource growth rates relative to input size N. Big-O notation f(N) = O(g(N)) provides an asymptotic upper bound (worst case). Big-Omega f(N) = Omega(g(N)) defines the asymptotic lower bound (best case). Big-Theta f(N) = Theta(g(N)) establishes a tight bound when upper and lower bounds coincide. Space complexity accounts for auxiliary runtime memory."),
-                ("1.2 Dynamic Arrays vs Linked List Architectures", "Dynamic arrays provide O(1) random access by index but require expensive O(N) reallocation copies when capacity is exceeded. Linked lists allocate discrete nodes on the heap connected by pointers, providing O(1) insertions/deletions at known positions but requiring O(N) sequential search traversal."),
-                ("1.3 Singly, Doubly & Circular Linked List Implementations", "Singly Linked Lists (SLL) use a single forward pointer per node. Doubly Linked Lists (DLL) use forward ('next') and backward ('prev') pointers, facilitating bidirectional traversal and O(1) deletion given a node pointer. Circular Linked Lists loop the tail's next pointer back to the head node."),
-                ("1.4 Polynomial Representation & Complex Node Operations", "Polynomials are modeled as linked lists where each node stores a coefficient, exponent, and next pointer. Polynomial addition iterates through both lists simultaneously, combining matching exponents in O(N + M) time complexity.")
-            ]),
-            ("Unit 2", "Stack & Queue Abstract Data Types & Applications", [
-                ("2.1 Stack ADT, Array & Linked Allocations", "A Stack is a LIFO (Last-In-First-Out) linear structure supporting push(), pop(), and peek() operations in O(1) time. Array-based stacks risk overflow when capacity is saturated; linked list stacks eliminate size limits by dynamically allocating nodes at the head."),
-                ("2.2 Infix, Prefix, and Postfix Expressions", "Infix notation (A + B * C) requires operator precedence and parentheses. Postfix (A B C * +) and Prefix (+ A * B C) notations are parenthesis-free. Infix-to-postfix conversion uses an operator stack; postfix expression evaluation uses an operand stack with O(N) linear time complexity."),
-                ("2.3 Queue ADT & Circular Queue Mechanics", "A Queue is a FIFO (First-In-First-Out) linear structure with enqueue() at the rear and dequeue() at the front. Linear array queues experience false overflow when rear reaches array capacity while front slots are vacant; Circular Queues resolve this using modulo arithmetic: (rear + 1) % MAX_SIZE == front."),
-                ("2.4 Deques, Priority Queues & Monotonic Stacks", "Double-Ended Queues (Deques) permit insertion and deletion at both front and rear ends. Priority Queues order elements by priority rather than arrival time, optimally implemented via Binary Heaps with O(log N) insertion and extraction.")
-            ]),
-            ("Unit 3", "Tree Architectures, Binary Search Trees & AVL Trees", [
-                ("3.1 Tree Terminology & Binary Tree Traversals", "A Tree is a hierarchical non-linear structure. Binary Trees restrict each node to at most two children. Tree traversals visit nodes systematically: Preorder (Root-Left-Right), Inorder (Left-Root-Right), Postorder (Left-Right-Root), and Level-Order (Breadth-First traversal using a FIFO queue)."),
-                ("3.2 Binary Search Tree (BST) Properties & Operations", "A BST enforces the property that all keys in the left subtree are strictly less than the root key, and all keys in the right subtree are strictly greater. Inorder traversal of a BST outputs elements in monotonically ascending sorted order. Searching, insertion, and deletion run in O(H) where H is tree height."),
-                ("3.3 AVL Trees & Self-Balancing Rotations", "Degenerate BSTs degrade to O(N) linked lists. AVL trees maintain balance by requiring the Balance Factor BF = Height(LeftSubtree) - Height(RightSubtree) of every node to remain in {-1, 0, +1}. Imbalances are restored via four rotation patterns: Left-Left (Single Right Rotation), Right-Right (Single Left Rotation), Left-Right (Double Rotation: Left then Right), and Right-Left (Double Rotation: Right then Left)."),
-                ("3.4 Multi-Way Search Trees (B-Trees & B+ Trees)", "B-Trees are self-balancing m-way search trees designed for secondary disk storage, maximizing fan-out to minimize mechanical disk read operations. B+ Trees store all data records exclusively at leaf nodes linked sequentially, facilitating both point lookups and high-speed range scans.")
-            ]),
-            ("Unit 4", "Graph Algorithms, Traversals & Minimum Spanning Trees", [
-                ("4.1 Graph Representations & Topological Sorting", "Graphs G = (V, E) are modeled using Adjacency Matrices (O(V^2) space, O(1) edge lookup) or Adjacency Lists (O(V + E) space, ideal for sparse graphs). Topological sorting orders vertices in Directed Acyclic Graphs (DAGs) such that every directed edge u -> v has u appearing before v in linear ordering."),
-                ("4.2 Breadth-First Search (BFS) & Depth-First Search (DFS)", "BFS explores graphs level-by-level using a FIFO queue, finding single-source shortest paths on unweighted graphs in O(V + E). DFS explores branch paths recursively using a stack, used for cycle detection, connected components, and strongly connected components (Kosaraju's / Tarjan's algorithms)."),
-                ("4.3 Minimum Spanning Tree (Prim's vs Kruskal's)", "An MST connects all graph vertices with minimum total edge weight without cycles. Prim's algorithm grows a tree node-by-node using a Priority Queue in O(E log V). Kruskal's algorithm sorts all edges by weight and greedily selects non-cycle edges using Disjoint Set Union (Union-Find with path compression) in O(E log E)."),
-                ("4.4 Shortest Path Algorithms (Dijkstra, Bellman-Ford)", "Dijkstra's greedy algorithm finds single-source shortest paths on non-negative weighted graphs in O((V + E) log V) using a min-heap. Bellman-Ford handles negative edge weights and detects negative-weight cycles in O(V * E) by relaxing all edges V-1 times.")
-            ]),
-            ("Unit 5", "Searching, Sorting Paradigms & Hashing Systems", [
-                ("5.1 Divide-and-Conquer Sorting (QuickSort & MergeSort)", "MergeSort divides arrays into halves, recursively sorts them, and merges sorted sub-arrays in guaranteed O(N log N) worst-case time with O(N) auxiliary memory. QuickSort partitions arrays around a pivot in-place; its average time complexity is O(N log N), degrading to O(N^2) if pivot selection is unmitigated."),
-                ("5.2 Binary Heap & HeapSort Algorithm", "A Binary Heap is a complete binary tree satisfying the Heap Property (Max-Heap: parent >= children; Min-Heap: parent <= children). HeapSort constructs a Max-Heap in O(N) time and repeatedly extracts the root maximum element, sorting in-place in guaranteed O(N log N) time with O(1) extra space."),
-                ("5.3 Hash Functions & Hash Table Architecture", "Hashing maps arbitrary keys to fixed table indices in average O(1) time. Effective hash functions (Division method, Multiplication method, Mid-Square, Universal Hashing) distribute keys uniformly across buckets to minimize collisions."),
-                ("5.4 Collision Resolution Techniques & Load Factors", "Collisions occur when two distinct keys hash to the same bucket index. 1. Separate Chaining stores colliding entries in linked lists at that bucket. 2. Open Addressing probes for vacant array slots via Linear Probing (hash(k) + i), Quadratic Probing (hash(k) + c1*i + c2*i^2), or Double Hashing (hash1(k) + i * hash2(k)). Load factor alpha = N/M triggers dynamic table rehashing when exceeding thresholds (typically 0.75).")
-            ])
-        ]
-    },
-    {
-        "title": "Database Management Systems",
-        "code": "23CS201",
-        "semester": "2-1",
-        "overview": "Comprehensive textbook covering relational algebra, SQL optimization, 1NF-BCNF normalization, ACID transaction processing, concurrency control, and indexing architectures.",
-        "units_topics": [
-            ("Unit 1", "Database Architecture, Data Models & ER Modeling", [
-                ("1.1 3-Schema Database Architecture & Independence", "DBMS architecture is structured into 3 abstraction levels: Internal/Physical level (physical block storage, indexing, data clustering), Conceptual/Logical level (entity definitions, relational schemas, constraints), and External/View level (custom user views). Physical data independence allows storage restructuring without affecting logical schemas; Logical data independence shields application views from conceptual schema modifications."),
-                ("1.2 Entity-Relationship (ER) Modeling Concepts", "ER modeling designs conceptual schemas using Entity Sets, Attributes (Simple, Composite, Multi-Valued, Derived, Key), and Relationships. Relationship constraints specify Cardinality Ratios (1:1, 1:N, N:M) and Participation Constraints (Total/Mandatory vs Partial/Optional)."),
-                ("1.3 Enhanced ER (EER) Specialization & Generalization", "EER incorporates Object-Oriented concepts: Specialization (top-down entity division into specialized sub-entities), Generalization (bottom-up synthesis of common entity attributes), and Attribute Inheritance. Disjointness constraints (Disjoint 'd' vs Overlapping 'o') dictate whether an entity instance can belong to multiple subtypes simultaneously."),
-                ("1.4 Conceptual ER to Relational Schema Mapping", "Mapping algorithms convert ER diagrams into relational tables: Strong entities become independent tables; Weak entities include parent primary keys as composite foreign keys; 1:N relationships embed parent primary key as a foreign key in the child table; M:N relationships create dedicated junction tables.")
-            ]),
-            ("Unit 2", "Relational Model, Relational Algebra & Advanced SQL", [
-                ("2.1 Relational Model Constraints & Domain Integrity", "Relational databases structure data into Relations (tables) of Tuples (rows) and Attributes (columns). Integrity constraints enforce Domain constraints (valid attribute types), Entity Integrity (Primary keys cannot be NULL), and Referential Integrity (Foreign keys must match an existing primary key or be NULL)."),
-                ("2.2 Relational Algebra Operators & Query Optimization", "Relational algebra provides formal procedural query semantics. Fundamental operators include Select (sigma), Project (pi), Union (cup), Set Difference (-), Cartesian Product (times), and Rename (rho). Derived operators include Theta Join, Equi-Join, and Natural Join (bowtie). Relational algebra expressions undergo heuristic optimization by pushing selections and projections down query trees."),
-                ("2.3 Complex SQL Queries, Subqueries & Aggregations", "SQL combines DDL, DML, and DCL. Advanced queries utilize Aggregate Functions (COUNT, SUM, AVG, MIN, MAX), GROUP BY with HAVING clauses, Correlated Subqueries (evaluated per outer row), and Set Operations (UNION, INTERSECT, EXCEPT)."),
-                ("2.4 SQL Joins, Views & Window Functions", "Joins combine tables based on matching conditions: INNER JOIN, LEFT OUTER JOIN, RIGHT OUTER JOIN, and FULL OUTER JOIN. Views provide virtual tables for security and query simplification. Modern SQL Window Functions (ROW_NUMBER(), RANK(), DENSE_RANK(), OVER (PARTITION BY ... ORDER BY ...)) perform analytical aggregations across sliding tuple windows.")
-            ]),
-            ("Unit 3", "Functional Dependencies & Relational Normalization", [
-                ("3.1 Database Anomalies & Redundancy Pitfalls", "Unnormalized database schemas suffer from severe anomalies: Insertion Anomalies (inability to insert parent data without dependent records), Deletion Anomalies (unintended loss of critical facts when deleting records), and Update/Modification Anomalies (inconsistent multi-row updates leading to data corruption)."),
-                ("3.2 Functional Dependencies & Armstrong's Axioms", "A Functional Dependency X -> Y specifies that attribute set X uniquely determines attribute set Y. Armstrong's Axioms define formal deduction rules: Reflexivity (if Y subset X, then X -> Y), Augmentation (if X -> Y, then XZ -> YZ), and Transitivity (if X -> Y and Y -> Z, then X -> Z). Secondary rules include Union, Decomposition, and Pseudo-transitivity."),
-                ("3.3 First, Second, and Third Normal Forms (1NF, 2NF, 3NF)", "1NF requires all attribute domains to be atomic (no multi-valued or composite attributes). 2NF requires 1NF and no Partial Dependencies (every non-prime attribute must be fully functionally dependent on the entire candidate key). 3NF requires 2NF and no Transitive Dependencies (for every X -> Y, X must be a superkey or Y must be a prime attribute)."),
-                ("3.4 Boyce-Codd Normal Form (BCNF) & Higher Normal Forms", "BCNF is a stricter extension of 3NF: for every non-trivial functional dependency X -> Y, X must be a superkey. Fourth Normal Form (4NF) eliminates Multi-Valued Dependencies (MVDs) using Fagin's Theorem. Lossless Join Decomposition and Dependency Preservation criteria ensure normalization occurs without information loss.")
-            ]),
-            ("Unit 4", "Transaction Processing, ACID Properties & Concurrency", [
-                ("4.1 Transaction Concepts & ACID Properties", "A Transaction is an atomic sequence of read and write database operations. ACID guarantees: 1. Atomicity (all-or-nothing execution via undo logs), 2. Consistency (preserves database integrity constraints), 3. Isolation (concurrent execution yields same state as serial execution), 4. Durability (committed modifications persist permanently via write-ahead redo logging)."),
-                ("4.2 Serializability & Precedence Graphs", "Concurrent schedules must be Conflict Serializable (equivalent to a serial schedule by swapping non-conflicting adjacent operations). Conflicts occur between operations on the same data item where at least one is a Write. Precedence Graphs (Serialization Graphs) detect conflict serializability: a schedule is serializable if and only if its precedence graph contains no directed cycles."),
-                ("4.3 Lock-Based Protocols & Two-Phase Locking (2PL)", "Locks manage concurrent item access: Shared Locks (S-lock for reading) and Exclusive Locks (X-lock for writing). Two-Phase Locking (2PL) divides locking into a Growing Phase (acquiring locks, none released) and a Shrinking Phase (releasing locks, none acquired), provably guaranteeing conflict serializability. Strict 2PL holds all exclusive locks until transaction commit to prevent cascading rollbacks."),
-                ("4.4 Deadlocks Handling & Timestamp-Based Concurrency", "Deadlocks occur when transactions wait in circular lock dependencies. Detection algorithms construct Wait-For Graphs. Prevention schemes include Wait-Die (older transaction waits, younger dies) and Wound-Wait (older wounds/aborts younger, younger waits). Timestamp Ordering protocols serialize transactions using monotonic logical timestamps.")
-            ]),
-            ("Unit 5", "Storage Architectures, B+ Tree Indexing & Query Processing", [
-                ("5.1 Physical Storage, File Organization & Buffer Pools", "Databases store tables across fixed-size disk Blocks/Pages (4KB-16KB). Buffer Pool Managers cache pages in RAM using LRU/Clock eviction policies. Record storage strategies include Heap Files (unordered), Sequential Files (ordered by search key), and Hashed Files."),
-                ("5.2 Indexing Structures (Dense, Sparse, Clustered, Secondary)", "Indexes accelerate tuple lookups. Dense indexes contain an index entry for every search key value; Sparse indexes contain entries only for select block headers. Clustered (Primary) indexes order physical records matching the index key sequence; Secondary (Unclustered) indexes point to records without altering physical disk order."),
-                ("5.3 B-Trees and B+ Tree Index Architectures", "B+ Trees are balanced search trees where internal nodes store only routing keys and child pointers, maximizing fan-out to minimize tree depth (typically 3-4 levels for millions of records). All actual data pointers reside at leaf nodes, which are double-linked sequentially to support ultra-fast O(log N) point queries and high-throughput range scans."),
-                ("5.4 Query Processing Engine & Heuristic Optimization", "Query processing converts SQL strings into relational execution plans: 1. Parsing & Translation (AST validation), 2. Query Optimization (Cost-based optimizer estimates disk I/O and CPU costs for alternative join orders, index scans vs table scans), 3. Execution Engine (pulls tuples through execution trees via iterator pipelines).")
-            ])
-        ]
-    },
-    {
-        "title": "Operating Systems",
-        "code": "23CS202",
-        "semester": "2-2",
-        "overview": "Comprehensive operating system textbook covering kernel architecture, process scheduling, synchronization, deadlock mechanics, virtual memory, and file systems.",
-        "units_topics": [
-            ("Unit 1", "OS Architectures, System Calls & Process Management", [
-                ("1.1 Dual-Mode Operations & Monolithic vs Microkernels", "Modern OS architectures enforce hardware protection via Dual-Mode CPU execution (User Mode with ring 3 privileges vs Kernel Mode with ring 0 privileges). Transitions occur through Trap/Interrupt instructions. Monolithic kernels (Linux) execute all OS services in kernel address space for high speed; Microkernels (Mach, QNX) run only core scheduling and IPC in kernel mode, moving file systems and drivers to user-space daemons for fault isolation."),
-                ("1.2 Process Abstraction & Process Control Block (PCB)", "A Process is an active execution instance containing a Code (Text) segment, Data segment (globals), Heap (dynamic allocations), and Stack (call frames). The OS tracks processes via Process Control Blocks (PCB) containing PID, Process State, Program Counter, CPU Registers, Memory Limits, and Open File Descriptors."),
-                ("1.3 Process Lifecycle & Context Switching Mechanics", "Process lifecycle transitions between states: New, Ready, Running, Waiting/Blocked, and Terminated. When switching execution between processes, the OS executes a Context Switch: saving current CPU register states into the outgoing process's PCB and loading saved register states from the incoming process's PCB, incurring hardware cache invalidation overhead."),
-                ("1.4 Inter-Process Communication (IPC) Mechanisms", "Processes communicate across isolated address spaces via IPC: 1. Shared Memory (fastest, processes map a common physical memory page into their logical address spaces), 2. Message Passing (kernel-managed message queues via system calls), 3. Anonymous/Named Pipes (byte-stream channels between related or arbitrary processes).")
-            ]),
-            ("Unit 2", "CPU Scheduling Criteria & Preemptive Algorithms", [
-                ("2.1 Scheduling Queues & Dispatcher Latency", "The OS maintains Ready Queues, Device I/O Queues, and Wait Queues. The Short-Term Scheduler selects the next ready process; the Dispatcher performs context switching and jumps to the program counter. Scheduling criteria include CPU Utilization, Throughput, Turnaround Time, Waiting Time, and Response Time."),
-                ("2.2 Non-Preemptive vs Preemptive Scheduling Algorithms", "1. First-Come First-Served (FCFS): Non-preemptive, suffers from Convoy Effect. 2. Shortest Job First (SJF): Provably optimal for minimum average waiting time; requires burst time estimation via Exponential Smoothing. 3. Shortest Remaining Time First (SRTF): Preemptive variant of SJF."),
-                ("2.3 Round Robin (RR) & Priority Scheduling", "Round Robin allocates fixed CPU Time Quanta (e.g. 10ms-50ms) cyclically, guaranteeing interactive responsiveness. Short quanta increase context-switch overhead; excessively long quanta degrade RR into FCFS. Priority scheduling assigns priority integers; lower priority processes risk Starvation, resolved via Aging (gradually increasing priority over time)."),
-                ("2.4 Multi-Level Feedback Queue (MLFQ) Scheduling", "MLFQ dynamically adjusts process priority based on observed execution behavior: CPU-intensive batch jobs drop to lower-priority queues with larger time slices; I/O-intensive interactive processes rise to high-priority queues with short time slices, achieving optimal throughput without prior runtime knowledge.")
-            ]),
-            ("Unit 3", "Process Synchronization, Mutexes & Deadlock Handling", [
-                ("3.1 The Critical Section Problem & Peterson's Algorithm", "Concurrent execution accessing shared variables causes Race Conditions. The Critical Section requires 3 guarantees: 1. Mutual Exclusion (only one process inside at a time), 2. Progress (selection of next entering process cannot be postponed indefinitely), 3. Bounded Waiting (limits on entries before a waiting process is admitted). Peterson's algorithm solves this for two processes using shared flag and turn variables."),
-                ("3.2 Hardware Synchronization & Counting Semaphores", "Hardware instructions (Test-And-Set, Compare-And-Swap) execute atomically at the CPU bus level. Semaphores are synchronization primitives with an integer counter accessed via atomic wait() / P() (decrements and blocks if <= 0) and signal() / V() (increments and unblocks). Counting semaphores manage pool access; Binary semaphores act as Mutex locks."),
-                ("3.3 Classical Synchronization Problems", "1. Producer-Consumer Problem (bounded buffer synchronization using empty, full, and mutex semaphores), 2. Readers-Writers Problem (allowing concurrent readers while ensuring exclusive writer access without writer starvation), 3. Dining Philosophers Problem (preventing deadlocks when allocating multiple shared chopsticks)."),
-                ("3.4 Deadlock Characterization, Prevention & Banker's Algorithm", "Deadlocks require 4 simultaneous Coffman Conditions: Mutual Exclusion, Hold & Wait, No Preemption, Circular Wait. Prevention invalidates at least one condition. Avoidance uses Banker's Algorithm: testing resource allocation requests against available vectors to guarantee the system state remains in a provably Safe State where an execution sequence exists for all processes to terminate.")
-            ]),
-            ("Unit 4", "Memory Management, Paging & Virtual Memory Systems", [
-                ("4.1 Contiguous Allocation & Fragmentation", "Early memory schemes divided RAM into contiguous partitions. Dynamic allocation algorithms include First Fit, Best Fit (slowest, creates tiny fragments), and Worst Fit. Contiguous allocation causes External Fragmentation (free memory broken into small scattered unusable blocks), resolved by Compaction or Non-Contiguous Paging."),
-                ("4.2 Paging Architecture & Translation Lookaside Buffer (TLB)", "Paging partitions virtual memory into fixed Pages (e.g. 4KB) and physical memory into matching Frames. Virtual addresses [Page Number p | Offset d] map via Page Tables to Physical addresses [Frame Number f | Offset d]. The hardware Translation Lookaside Buffer (TLB) caches recent page-to-frame translations, achieving effective memory access times under 1.2 clock cycles."),
-                ("4.3 Virtual Memory, Demand Paging & Page Fault Traps", "Virtual memory decouples logical address space from physical RAM, enabling programs larger than physical memory to execute. Demand Paging loads pages only when referenced. Referencing an unmapped page triggers a hardware Page Fault Trap: the OS pauses the thread, fetches the missing page from swap disk into an empty frame, updates the page table valid bit, and restarts the instruction."),
-                ("4.4 Page Replacement Algorithms & Thrashing Prevention", "When physical frames are exhausted, the OS evicts a victim page: 1. FIFO (suffers from Belady's Anomaly where more frames yield more page faults), 2. Optimal Replacement (evicts page unused for longest future time; theoretical benchmark), 3. Least Recently Used (LRU; approximates optimal using timestamps/reference bits). Thrashing occurs when memory is oversubscribed and processes spend 99% of time swapping pages; resolved via the Working Set Model.")
-            ]),
-            ("Unit 5", "File Systems, Disk Scheduling & I/O Subsystems", [
-                ("5.1 File System Structure & Unix Inode Architecture", "File systems organize persistent data. An Inode (Index Node) stores file metadata (permissions, owner, timestamps, file size) and direct block pointers (e.g. 12 direct pointers), single indirect pointers, double indirect pointers, and triple indirect pointers, enabling files up to multiple terabytes in size."),
-                ("5.2 File Allocation Methods & Free Space Management", "1. Contiguous Allocation (fast sequential access, prone to external fragmentation), 2. Linked Allocation (no fragmentation, slow random seeks), 3. Indexed Allocation (inode table indexing, optimal flexibility). Free space is tracked using Bitmaps (Bit Vectors) or Linked Free Lists."),
-                ("5.3 Disk Storage Architecture & Mechanical Latencies", "Magnetic hard disks consist of rotating platters, read/write heads, and tracks divided into sectors. Disk access latency = Seek Time (moving head to target cylinder) + Rotational Latency (platter spinning to target sector) + Transfer Time."),
-                ("5.4 Disk Scheduling Algorithms & RAID Systems", "Disk scheduling reorders pending I/O requests to minimize total seek head travel: FCFS, Shortest Seek Time First (SSTF; prone to starvation), SCAN (Elevator algorithm; sweeps back and forth), C-SCAN (Circular SCAN; sweeps in one direction then jumps back, providing uniform latency), LOOK and C-LOOK. Redundant Array of Independent Disks (RAID 0 striping, RAID 1 mirroring, RAID 5 parity striping) balances performance and fault tolerance.")
-            ])
-        ]
-    },
     {
         "title": "Generative AI and Deep Learning",
         "code": "23CS401",
@@ -210,10 +54,123 @@ SUBJECTS_CONFIG = [
                 ("5.4 Parameter-Efficient Fine-Tuning (PEFT/LoRA) & RAG Systems", "Low-Rank Adaptation (LoRA) freezes pretrained model weights W_0 and injects rank decomposition matrices Delta W = B A (where r << d), reducing trainable parameters by 99% with zero added inference latency. Retrieval-Augmented Generation (RAG) integrates vector databases (Pinecone, ChromaDB) with dense embeddings, retrieving top-k relevant knowledge chunks at runtime to eliminate LLM hallucinations.")
             ])
         ]
+    },
+    {
+        "title": "Cryptography and Network Security",
+        "code": "23CS402",
+        "semester": "4-1",
+        "overview": "Exhaustive textbook on modern cryptographic primitives, symmetric and asymmetric ciphers, number theory proofs, digital signatures, hash functions, and network security protocols.",
+        "units_topics": [
+            ("Unit 1", "Security Goals, Threat Models & Classical Encryption", [
+                ("1.1 CIA Security Triad, Attacks & Security Architecture", "Computer security ensures Confidentiality (preventing unauthorized disclosure), Integrity (preventing unauthorized modification), and Availability (ensuring timely authorized access). Threats are categorized into Passive Attacks (eavesdropping, traffic analysis) and Active Attacks (masquerade, replay, message tampering, denial of service)."),
+                ("1.2 Classical Substitution & Transposition Ciphers", "Monoalphabetic ciphers (Caesar, Playfair) substitute characters but are vulnerable to frequency analysis. Polyalphabetic ciphers (Vigenere, Hill Cipher) use modular matrix transformations C = K P mod 26. Transposition ciphers (Rail Fence, Columnar Transposition) rearrange character positions to maximize diffusion."),
+                ("1.3 Modular Arithmetic & Euclidean Algorithms", "Modular arithmetic forms the algebraic basis of modern cryptography over Galois Fields. The Euclidean Algorithm computes gcd(a, b). The Extended Euclidean Algorithm calculates the modular multiplicative inverse a^-1 mod m such that (a * a^-1) = 1 mod m, existing iff gcd(a, m) = 1."),
+                ("1.4 Number Theory Principles & Euler's Totient Function", "Fermat's Little Theorem states a^{p-1} = 1 mod p for prime p and gcd(a, p) = 1. Euler's Totient Function phi(n) counts integers k < n coprime to n; for semiprime n = p * q, phi(n) = (p - 1)(q - 1). Euler's Theorem generalizes: a^{phi(n)} = 1 mod n.")
+            ]),
+            ("Unit 2", "Symmetric Block Ciphers: DES & AES Standards", [
+                ("2.1 Feistel Cipher Network & DES Architecture", "Data Encryption Standard (DES) executes 16 Feistel rounds over 64-bit plaintext blocks using 56-bit keys. Feistel networks provide reversible decryption using the identical round function by reversing key schedules. Triple DES (3DES) achieves 112/168-bit security via EDE (Encrypt-Decrypt-Encrypt) chaining."),
+                ("2.2 Advanced Encryption Standard (AES) Mathematical Operations", "AES is an iterated Substitution-Permutation Network operating on a 4x4 state matrix of bytes over finite field GF(2^8). AES-128 (10 rounds), AES-192 (12 rounds), and AES-256 (14 rounds) execute 4 distinct transformations: SubBytes (non-linear S-Box), ShiftRows (cyclical byte shifting), MixColumns (matrix polynomial multiplication), and AddRoundKey (XOR with round subkeys)."),
+                ("2.3 Block Cipher Modes of Operation", "1. Electronic Codebook (ECB; deterministic, leaks patterns), 2. Cipher Block Chaining (CBC; XORs plaintext with previous ciphertext block using an IV), 3. Cipher Feedback (CFB) & Output Feedback (OFB), 4. Counter Mode (CTR; transforms block cipher into stream cipher, enabling parallel high-speed hardware encryption)."),
+                ("2.4 Differential & Linear Cryptanalysis Resistance", "AES S-Boxes are mathematically constructed using multiplicative inverses in GF(2^8) combined with affine transformations, provably maximizing non-linearity and immunity against linear and differential cryptanalysis attacks.")
+            ]),
+            ("Unit 3", "Asymmetric Public-Key Cryptography & Key Distribution", [
+                ("3.1 Public-Key Principles & Trapdoor One-Way Functions", "Asymmetric cryptography utilizes key pairs: a Public Key for encryption/verification and a Private Key for decryption/signing, resolving symmetric key distribution bottlenecks via trapdoor one-way mathematical functions."),
+                ("3.2 RSA Cryptosystem Algorithm & Security Proof", "RSA key generation: Select large primes p and q, compute modulus n = p * q and phi(n) = (p-1)(q-1). Choose public exponent e coprime to phi(n). Compute private key d = e^-1 mod phi(n). Encryption: C = M^e mod n. Decryption: M = C^d mod n. Security relies on the computational intractability of integer factorization."),
+                ("3.3 Diffie-Hellman Key Exchange & MITM Attack Mitigation", "Diffie-Hellman enables two parties to establish a shared secret over an insecure channel via modular exponentiation: K = (g^a mod p)^b mod p = g^{ab} mod p. Unauthenticated Diffie-Hellman is vulnerable to Man-In-The-Middle (MITM) attacks, resolved by signing exchanges with digital certificates."),
+                ("3.4 Elliptic Curve Cryptography (ECC)", "ECC defines algebraic groups over points (x, y) on Weierstrass cubic curves y^2 = x^3 + a x + b mod p. ECC delivers equivalent RSA-2048 security with compact 256-bit keys, drastically cutting compute cycles and bandwidth for mobile and IoT devices.")
+            ]),
+            ("Unit 4", "Cryptographic Hash Functions & Digital Signatures", [
+                ("4.1 Hash Properties (Collision Resistance & Avalanche Effect)", "Cryptographic hash functions H(M) produce fixed-size digests satisfying: 1. Pre-image Resistance (one-way), 2. Second Pre-image Resistance (weak collision resistance), 3. Collision Resistance (hard to find any M1 != M2 with H(M1) = H(M2)). Small input bit changes trigger widespread output divergence (Avalanche Effect)."),
+                ("4.2 SHA-256 / SHA-512 Architecture & HMAC", "Secure Hash Algorithm 2 (SHA-256) processes 512-bit message blocks through 64 compression rounds using bitwise logical functions (Ch, Maj, Sigma). Hash-based Message Authentication Codes (HMAC) combine cryptographic hashes with secret shared keys for API packet authentication."),
+                ("4.3 Digital Signatures & Non-Repudiation", "A digital signature is generated by encrypting a message hash with the sender's private key: S = Sign_{K_priv}(H(M)). The recipient verifies using the sender's public key: Verify_{K_pub}(S) == H(M), guaranteeing Authenticity, Integrity, and Non-Repudiation."),
+                ("4.4 Public Key Infrastructure (PKI) & X.509 Certificates", "PKI binds public keys to verified identities through trusted Certificate Authorities (CAs). X.509 certificates contain Subject Info, Public Key, Issuer Signature, Validity Period, and Key Usage constraints, authenticated via Certificate Revocation Lists (CRL) and OCSP stapling.")
+            ]),
+            ("Unit 5", "Network Security Protocols, Firewalls & System Defenses", [
+                ("5.1 IPsec Protocol Architecture (AH, ESP & IKE)", "IP Security (IPsec) operates at the Network Layer. Authentication Header (AH) guarantees packet integrity; Encapsulating Security Payload (ESP) provides both confidentiality and authentication. Modes include Transport Mode (encrypts payload only) and Tunnel Mode (encapsulates entire IP packet inside VPN tunnels)."),
+                ("5.2 Transport Layer Security (TLS 1.3 Handshake)", "TLS secures application protocols (HTTPS, SSH). TLS 1.3 achieves single-round-trip (1-RTT) or zero-round-trip (0-RTT) handshakes using ephemeral Diffie-Hellman key exchange (ECDHE) for Perfect Forward Secrecy (PFS), encrypting all traffic after the Initial Client Hello."),
+                ("5.3 Firewalls, Stateful Inspection & Web Application Firewalls (WAF)", "Firewalls filter network traffic: 1. Packet Filtering (inspects IP headers and ports), 2. Stateful Inspection (tracks TCP 3-way handshake and connection states), 3. Application Layer Gateways / WAF (inspects HTTP payloads to block SQL Injection, XSS, and CSRF attacks)."),
+                ("5.4 Intrusion Detection (IDS/IPS) & DDoS Mitigation", "Intrusion Detection Systems utilize Signature-Based Detection (known vulnerability patterns) and Anomaly-Based Detection (statistical ML deviations). Distributed Denial of Service (DDoS) mitigation leverages Anycast routing, Rate Limiting, SYN Cookies, and Cloud Scrubbing centers.")
+            ])
+        ]
+    },
+    {
+        "title": "Big Data Analytics",
+        "code": "23CS403",
+        "semester": "4-1",
+        "overview": "Comprehensive textbook covering Hadoop distributed architecture, HDFS storage, MapReduce computing, Apache Spark in-memory processing, NoSQL databases, and streaming analytics.",
+        "units_topics": [
+            ("Unit 1", "Big Data Landscape & Hadoop Distributed File System (HDFS)", [
+                ("1.1 The 5 V's of Big Data & Distributed Paradigms", "Big Data is characterized by Volume (petabyte scale), Velocity (real-time stream rates), Variety (structured, semi-structured, unstructured data), Veracity (data quality and trust), and Value (actionable business insights). Traditional RDBMS architectures bottleneck under horizontal scaling; distributed shared-nothing architectures resolve this by partitioning data across commodity clusters."),
+                ("1.2 Hadoop Ecosystem Architecture & Components", "Apache Hadoop provides open-source distributed storage and processing. Core ecosystem components include HDFS (storage layer), YARN (resource negotiator), MapReduce (batch processing engine), Hive (SQL data warehousing), Pig (data flow scripting), Sqoop (RDBMS data ingestion), and Flume (log collection)."),
+                ("1.3 HDFS Architecture, NameNode & DataNodes", "HDFS employs a Master/Worker model. The NameNode (Master) manages the file system namespace, metadata, directory trees, and block mappings in memory (persisted via FsImage and EditLogs). DataNodes (Workers) store raw data blocks (default 128MB) on local disks, serving read/write requests and sending periodic Heartbeats and Block Reports to the NameNode."),
+                ("1.4 HDFS Fault Tolerance, Replication & High Availability", "HDFS guarantees resilience via Block Replication (default factor 3: primary node, secondary node on same rack, tertiary node on a remote rack for rack awareness). NameNode High Availability (HA) utilizes active/standby pairs synchronized via Quorum Journal Manager (QJM) and ZooKeeper to eliminate single points of failure.")
+            ]),
+            ("Unit 2", "Distributed Computing with MapReduce & YARN", [
+                ("2.1 MapReduce Programming Paradigm & Workflow", "MapReduce processes massive datasets in parallel across two phases: 1. Map Phase (reads input splits, executes map(k1, v1) -> list(k2, v2)), 2. Shuffle & Sort Phase (groups and sorts intermediate key-value pairs across the network), 3. Reduce Phase (executes reduce(k2, list(v2)) -> list(k3, v3))."),
+                ("2.2 Combiners, Partitioners & Custom Data Types", "Combiners act as mini-reducers running locally on mapper nodes to aggregate data before network transfer, slashing network I/O. Partitioners (e.g. HashPartitioner) route intermediate keys to specific reducer tasks. Custom types implement Writable and WritableComparable interfaces for serialization."),
+                ("2.3 YARN (Yet Another Resource Negotiator) Architecture", "YARN decouples resource management from processing. The ResourceManager (global scheduler) allocates cluster resources (Containers) across nodes. The NodeManager monitors CPU/memory on individual nodes. The ApplicationMaster negotiates containers per job and tracks execution lifecycle."),
+                ("2.4 MapReduce Optimization & Speculative Execution", "Straggler tasks on degraded nodes delay overall job completion; YARN initiates Speculative Execution by launching redundant duplicate task attempts on alternate nodes and committing whichever finishes first.")
+            ]),
+            ("Unit 3", "In-Memory Analytics with Apache Spark", [
+                ("3.1 Apache Spark Architecture & Resilient Distributed Datasets (RDD)", "Apache Spark achieves up to 100x faster execution than MapReduce by caching data in memory. RDDs are immutable, lazily-evaluated distributed collections partitioned across cluster worker nodes with lineage graphs for automatic fault recovery without disk replication."),
+                ("3.2 RDD Operations: Transformations vs Actions", "Transformations (map, filter, flatMap, groupByKey, reduceByKey) create new RDDs lazily. Actions (count, collect, reduce, saveAsTextFile) trigger execution pipelines by compiling lineage graphs into Directed Acyclic Graphs (DAGs) divided into execution Stages."),
+                ("3.3 Spark SQL, DataFrames & Catalyst Optimizer", "DataFrames provide structured schema abstractions over RDDs. The Catalyst Optimizer analyzes abstract syntax trees, applying rule-based and cost-based optimizations (predicate pushdown, column pruning, broadcast hash joins) to generate optimized Java bytecode via Tungsten execution."),
+                ("3.4 Spark MLlib & Distributed Machine Learning", "Spark MLlib implements scalable machine learning pipelines (Feature Transformers, VectorAssembler, LogisticRegression, RandomForest, KMeans) executing distributed gradient updates across in-memory partitions.")
+            ]),
+            ("Unit 4", "NoSQL Data Stores & Distributed Database Architectures", [
+                ("4.1 CAP Theorem & BASE Consistency Properties", "Brewer's CAP Theorem dictates that a distributed system can guarantee at most two of Consistency, Availability, and Partition Tolerance. NoSQL databases prioritize AP or CP, adopting BASE semantics (Basically Available, Soft-state, Eventual consistency) over rigid ACID constraints."),
+                ("4.2 NoSQL Database Categories & Data Models", "1. Key-Value Stores (Redis, DynamoDB; O(1) hash lookups), 2. Column-Family Stores (Apache Cassandra, HBase; sparse multi-dimensional maps indexed by row key, column family, and timestamp), 3. Document Stores (MongoDB, CouchDB; hierarchical JSON/BSON documents), 4. Graph Databases (Neo4j; property graphs with nodes and edges)."),
+                ("4.3 Apache HBase Architecture & HFiles", "HBase provides real-time random read/write access on top of HDFS. The HMaster coordinates DDL operations. RegionServers host table Regions consisting of MemStore (in-memory write buffer), Write-Ahead Logs (WAL), and persistent HFiles (LSM Trees) on HDFS."),
+                ("4.4 Apache Cassandra & Consistent Hashing Ring", "Cassandra uses a peer-to-peer decentralized architecture with no master node. Partition keys hash onto a Consistent Hashing Ring using Murmur3. Read and write operations configure tunable Consistency Levels (ONE, QUORUM, ALL) via Gossip protocols.")
+            ]),
+            ("Unit 5", "Real-Time Streaming Analytics & Big Data Pipelines", [
+                ("5.1 Stream Processing Concepts: Batch vs Real-Time", "Batch processing operates on static bounded data with high latency; Stream processing ingests continuous unbounded event streams with sub-second latency. Windowing semantics include Tumbling Windows (fixed, non-overlapping), Sliding Windows (fixed, overlapping), and Session Windows (gap-based)."),
+                ("5.2 Apache Kafka Distributed Event Streaming", "Apache Kafka functions as a high-throughput, fault-tolerant publish-subscribe event log. Topics are partitioned and replicated across Broker nodes. Producers publish events; Consumers read from Consumer Groups tracking offset positions with zero-copy network transfer."),
+                ("5.3 Spark Streaming & Structured Streaming", "Spark Structured Streaming treats real-time data as an continuously appending unbounded table, supporting event-time processing, watermarking (handling late data arrivals), and end-to-end exactly-once fault-tolerance guarantees."),
+                ("5.4 Enterprise Big Data Pipelines & Data Lake Architecture", "Modern enterprise data lakes (Delta Lake, Apache Iceberg) combine bronze (raw ingestion), silver (cleaned/enriched), and gold (business aggregated) layers with ACID transaction support on top of object storage (AWS S3, Azure Data Lake).")
+            ])
+        ]
+    },
+    {
+        "title": "MLOps and Model Deployment",
+        "code": "23CS404",
+        "semester": "4-1",
+        "overview": "Comprehensive textbook covering the machine learning lifecycle, experiment tracking, automated CI/CD pipelines for ML, containerization, model serving, and production monitoring.",
+        "units_topics": [
+            ("Unit 1", "Introduction to MLOps & The Machine Learning Lifecycle", [
+                ("1.1 Evolution from DevOps to MLOps", "MLOps (Machine Learning Operations) extends DevOps principles to machine learning systems, bridging the gap between data science experimentation and scalable production deployment. Unlike traditional software, ML systems manage code, data, and models simultaneously, contending with Technical Debt in Machine Learning (hidden feedback loops, pipeline jungles, data dependencies)."),
+                ("1.2 The End-to-End ML Lifecycle", "1. Problem Formulation & Data Ingestion, 2. Exploratory Data Analysis (EDA) & Feature Engineering, 3. Model Training & Hyperparameter Tuning, 4. Model Validation & Fairness Testing, 5. Containerized Deployment & Serving, 6. Continuous Production Monitoring & Retraining."),
+                ("1.3 MLOps Maturity Levels (Google Framework)", "Level 0: Manual Process (script-driven, manual model handoff, no tracking). Level 1: ML Pipeline Automation (automated training pipelines, feature stores, metadata management). Level 2: CI/CD Pipeline Automation (automated testing, building, and zero-downtime deployment of training pipelines)."),
+                ("1.4 Data Version Control (DVC) & Reproducibility", "Git cannot efficiently version multi-gigabyte training datasets. Data Version Control (DVC) tracks dataset and model hashes in Git while storing large binary files in remote storage (S3, GCS), guaranteeing 100% reproducible experiments across pipeline runs.")
+            ]),
+            ("Unit 2", "Experiment Tracking, Feature Stores & Model Registries", [
+                ("2.1 Experiment Tracking with MLflow & Weights & Biases", "During experimentation, tracking systems log parameters (learning rate, batch size), metrics (F1-score, loss curves), code commit SHAs, and model artifacts. MLflow Tracking stores runs in centralized backends for comparison and visualization."),
+                ("2.2 Feature Store Architecture (Feast / Hopsworks)", "Feature stores provide a single source of truth for features across training and inference. Offline Feature Stores (batch storage via BigQuery, Snowflake) serve historical features for training. Online Feature Stores (low-latency key-value databases like Redis) serve real-time feature vectors at inference time, eliminating Training-Serving Skew."),
+                ("2.3 Model Registry & Lifecycle Management", "Model Registries (MLflow Model Registry) act as governed repositories tracking model versions, metadata, schema signatures, and stage transitions (Draft -> Staging -> Production -> Archived) with RBAC approval gates."),
+                ("2.4 Hyperparameter Optimization (Optuna / Ray Tune)", "Automated Hyperparameter Optimization utilizes Bayesian Optimization (Tree-structured Parzen Estimators TPE) and early stopping algorithms (Hyperband, ASHA) to explore high-dimensional parameter spaces efficiently.")
+            ]),
+            ("Unit 3", "Continuous Integration & Automated Pipelines (CI/CD/CT)", [
+                ("3.1 CI/CD for Machine Learning Systems", "Continuous Integration (CI) in MLOps tests code (unit tests, linting), validates data schemas (Great Expectations), and tests model quality against baseline benchmarks. Continuous Delivery (CD) automatically packages validated models into production Docker containers."),
+                ("3.2 Continuous Training (CT) Triggers", "Continuous Training automatically retrains models in production when: 1. Scheduled intervals trigger, 2. Data drift or model degradation thresholds are breached, 3. New labeled data arrives, 4. Business logic or feature engineering code is updated."),
+                ("3.3 Orchestration Frameworks: Kubeflow Pipelines & Airflow", "Apache Airflow coordinates complex directed acyclic graphs (DAGs) of tasks with scheduled execution. Kubeflow Pipelines builds scalable containerized ML workflows natively on Kubernetes, where each pipeline step executes as an isolated pod with typed artifact passing."),
+                ("3.4 Automated Testing: Data Validation & Model Quality Gates", "Data validation frameworks (Great Expectations, Pandera) assert column distributions, null ratios, and data types before training. Model quality gates verify precision/recall improvements and fairness checks before authorizing production registry promotion.")
+            ]),
+            ("Unit 4", "Model Packaging, Containerization & Serving Architectures", [
+                ("4.1 Docker Containerization for ML Artifacts", "Docker packages the model weights, inference runtime (Python, CUDA), and dependencies into portable, immutable container images. Multi-stage Docker builds minimize final image sizes for faster deployment cycles."),
+                ("4.2 Model Serving Paradigms: Real-Time vs Batch vs Embedded", "1. Real-Time REST/gRPC Serving (sub-100ms synchronous API inference), 2. Batch Serving (asynchronous high-throughput offline scoring), 3. Streaming Inference (processing Kafka event topics in real-time), 4. Edge / Embedded Serving (ONNX Runtime, TensorRT, CoreML on mobile/IoT)."),
+                ("4.3 High-Performance Inference Servers (Triton / TorchServe / FastAPI)", "FastAPI provides lightweight asynchronous REST endpoints. NVIDIA Triton Inference Server manages dynamic batching, multi-model concurrent execution, and hardware acceleration across CPUs and GPUs."),
+                ("4.4 Deployment Strategies: Canary, Blue-Green & Shadow Deployments", "1. Blue-Green Deployment (switches 100% traffic between identical green and blue environments instantly), 2. Canary Deployment (routes 5-10% traffic to the new model, expanding gradually if metrics stay healthy), 3. Shadow Deployment (mirrors production traffic to the new model without returning its predictions to users).")
+            ]),
+            ("Unit 5", "Production Monitoring, Drift Detection & Governance", [
+                ("5.1 Model Degradation & Types of Drift", "1. Data Drift / Covariate Shift (distribution of input features P(X) changes over time), 2. Concept Drift (relationship between inputs and targets P(Y|X) changes, e.g. consumer fraud patterns during holidays), 3. Prior Probability Shift P(Y)."),
+                ("5.2 Statistical Drift Detection Methods", "Drift detection algorithms compare baseline reference distributions against sliding inference windows: Kolmogorov-Smirnov (KS) Test for continuous features, Population Stability Index (PSI), Wasserstein Distance, and Kullback-Leibler (KL) Divergence."),
+                ("5.3 Observability Frameworks: Prometheus, Grafana & Evidently AI", "Prometheus scrapes operational metrics (CPU/memory usage, latency percentiles p95/p99, error rates). Evidently AI generates automated statistical reports on data drift, target drift, and model performance decay."),
+                ("5.4 Model Governance, Explainability (SHAP/LIME) & Responsible AI", "Model governance enforces compliance, audit trails, and security. SHAP (Shapley Additive exPlanations based on cooperative game theory) and LIME provide local and global feature attribution to interpret model predictions for stakeholders.")
+            ])
+        ]
     }
 ]
 
-# Custom Canvas for Multi-Page Document Layout
 class ComprehensiveNumberedCanvas(canvas.Canvas):
     def __init__(self, *args, **kwargs):
         super(ComprehensiveNumberedCanvas, self).__init__(*args, **kwargs)
@@ -267,11 +224,10 @@ def build_long_textbook_pdf(subject_info, output_dir):
 
     styles = getSampleStyleSheet()
     
-    # Palette
-    c_primary = colors.HexColor("#1E3A8A")   # Deep Navy
-    c_secondary = colors.HexColor("#0284C7") # Blue
-    c_dark = colors.HexColor("#0F172A")      # Dark Slate
-    c_muted = colors.HexColor("#475569")     # Slate 600
+    c_primary = colors.HexColor("#1E3A8A")
+    c_secondary = colors.HexColor("#0284C7")
+    c_dark = colors.HexColor("#0F172A")
+    c_muted = colors.HexColor("#475569")
 
     title_style = ParagraphStyle(
         'DocTitle',
@@ -348,13 +304,11 @@ def build_long_textbook_pdf(subject_info, output_dir):
 
     story = []
 
-    # Cover Header
     story.append(Paragraph("PBR VISVODAYA INSTITUTE OF TECHNOLOGY & SCIENCE", ParagraphStyle('Inst', fontName='Helvetica-Bold', fontSize=10, textColor=c_secondary, alignment=1, spaceAfter=4)))
     story.append(Paragraph(f"{subject_info['title'].upper()}", title_style))
     story.append(Paragraph(f"Course Code: <b>{subject_info['code']}</b> • Semester: <b>{subject_info['semester']}</b> • Comprehensive 5-Unit Academic Compendium", subtitle_style))
     story.append(HRFlowable(width="100%", thickness=2, color=c_primary, spaceBefore=2, spaceAfter=12))
 
-    # Overview Box
     ov_table = Table([[Paragraph(f"<b>Course Objective & Overview:</b> {html.escape(subject_info['overview'])}", body_style)]], colWidths=[504])
     ov_table.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,-1), colors.HexColor("#F0FDF4")),
@@ -364,10 +318,9 @@ def build_long_textbook_pdf(subject_info, output_dir):
     story.append(ov_table)
     story.append(Spacer(1, 15))
 
-    # Render each unit with detailed subsections (at least 5 pages per unit)
     for unit_tuple in subject_info["units_topics"]:
         unit_num, unit_name, sections = unit_tuple
-        story.append(PageBreak()) # New page per unit to guarantee clean division
+        story.append(PageBreak())
         story.append(Paragraph(f"{html.escape(unit_num)}: {html.escape(unit_name)}", unit_title_style))
         story.append(HRFlowable(width="100%", thickness=1, color=c_secondary, spaceBefore=4, spaceAfter=12))
 
@@ -376,7 +329,6 @@ def build_long_textbook_pdf(subject_info, output_dir):
             story.append(Paragraph(html.escape(sec_text), body_style))
             story.append(Spacer(1, 8))
 
-        # 10 Comprehensive Exam Questions & Solutions for this Unit
         story.append(Spacer(1, 8))
         story.append(Paragraph(f"University Examination Review Questions — {html.escape(unit_num)}", h2_style))
 

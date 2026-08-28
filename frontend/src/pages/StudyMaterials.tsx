@@ -207,6 +207,7 @@ const parseMarkdownToHtml = (md: string): string => {
 };
 
 export const OFFICIAL_CSE_PDF_NOTES = [
+  // Semester 1-1
   {
     title: 'Programming in C',
     code: '23CS101',
@@ -215,6 +216,7 @@ export const OFFICIAL_CSE_PDF_NOTES = [
     units: ['Algorithms & C Basics', 'Functions & Storage Classes', 'Arrays, Strings & Pointers', 'Structures, Unions & DMA', 'File Handling & Preprocessors'],
     size: '145 KB'
   },
+  // Semester 1-2
   {
     title: 'Data Structures & Algorithms',
     code: '23CS102',
@@ -223,6 +225,7 @@ export const OFFICIAL_CSE_PDF_NOTES = [
     units: ['Asymptotic Analysis & Linked Lists', 'Stacks & Queues ADTs', 'Trees & Balanced BSTs', 'Graphs & Traversals', 'Searching, Sorting & Hashing'],
     size: '185 KB'
   },
+  // Semester 2-1
   {
     title: 'Database Management Systems (DBMS)',
     code: '23CS201',
@@ -231,6 +234,7 @@ export const OFFICIAL_CSE_PDF_NOTES = [
     units: ['ER Modeling & Architecture', 'Relational Algebra & SQL', 'Functional Dependencies & Normalization', 'ACID Transactions & Concurrency (2PL)', 'Storage & B+ Tree Indexing'],
     size: '190 KB'
   },
+  // Semester 2-2
   {
     title: 'Operating Systems',
     code: '23CS202',
@@ -239,6 +243,7 @@ export const OFFICIAL_CSE_PDF_NOTES = [
     units: ['Process Management & PCB', 'CPU Scheduling Algorithms', 'Synchronization & Deadlocks', 'Virtual Memory & Paging', 'File Systems & Disk Scheduling'],
     size: '192 KB'
   },
+  // Semester 3-1
   {
     title: 'Computer Networks',
     code: '23CS301',
@@ -255,6 +260,16 @@ export const OFFICIAL_CSE_PDF_NOTES = [
     units: ['Divide & Conquer Analysis', 'Greedy Method Paradigms', 'Dynamic Programming', 'Backtracking & Branch-and-Bound', 'NP-Completeness & P vs NP'],
     size: '180 KB'
   },
+  // Semester 3-2
+  {
+    title: 'Cloud Computing & Virtualization',
+    code: '23CS305',
+    semester: '3-2',
+    pdfUrl: '/notes/Cloud_Computing_Complete_Notes.pdf',
+    units: ['NIST Cloud Architecture & Models', 'Hypervisors & Virtualization', 'Distributed Storage & CAP Theorem', 'Cloud Security & IAM Policies', 'Microservices, Docker & Kubernetes'],
+    size: '175 KB'
+  },
+  // Semester 4-1 Complete Subjects
   {
     title: 'Generative AI & Deep Learning',
     code: '23CS401',
@@ -267,17 +282,49 @@ export const OFFICIAL_CSE_PDF_NOTES = [
     title: 'Cryptography & Network Security',
     code: '23CS402',
     semester: '4-1',
-    pdfUrl: '/notes/Cryptography_Network_Security_Complete_Notes.pdf',
+    pdfUrl: '/notes/Cryptography_and_Network_Security_Complete_Notes.pdf',
     units: ['Classical Ciphers & Number Theory', 'Symmetric Encryption (AES/DES)', 'Public-Key RSA & Diffie-Hellman', 'Digital Signatures & SHA-256', 'IPsec, TLS & Network Defenses'],
-    size: '178 KB'
+    size: '188 KB'
   },
   {
-    title: 'Cloud Computing & Virtualization',
+    title: 'Big Data Analytics',
     code: '23CS403',
-    semester: '3-2',
+    semester: '4-1',
+    pdfUrl: '/notes/Big_Data_Analytics_Complete_Notes.pdf',
+    units: ['HDFS Architecture & NameNode', 'MapReduce & YARN Computing', 'In-Memory Analytics with Spark', 'NoSQL & CAP / Cassandra / HBase', 'Kafka Streaming & Data Lakes'],
+    size: '192 KB'
+  },
+  {
+    title: 'MLOps & Model Deployment',
+    code: '23CS404',
+    semester: '4-1',
+    pdfUrl: '/notes/MLOps_and_Model_Deployment_Complete_Notes.pdf',
+    units: ['MLOps Lifecycle & Technical Debt', 'Feature Stores & Experiment Tracking', 'Automated CI/CD/CT Pipelines', 'Containerized Serving & Triton', 'Drift Detection & Model Governance'],
+    size: '185 KB'
+  },
+  {
+    title: 'Cloud Computing Infrastructure & DevOps',
+    code: '23CS405',
+    semester: '4-1',
     pdfUrl: '/notes/Cloud_Computing_Complete_Notes.pdf',
-    units: ['NIST Cloud Architecture & Models', 'Hypervisors & Virtualization', 'Distributed Storage & CAP Theorem', 'Cloud Security & IAM Policies', 'Microservices, Docker & Kubernetes'],
+    units: ['AWS & Azure Cloud Architectures', 'Kubernetes Clusters & Ingress', 'Distributed Object Storage & CDN', 'Serverless Functions (FaaS)', 'Infrastructure as Code (Terraform)'],
     size: '175 KB'
+  },
+  {
+    title: 'Deep Learning & GenAI Practical Lab Manual',
+    code: '23CS406L',
+    semester: '4-1',
+    pdfUrl: '/notes/Generative_AI_and_Deep_Learning_Complete_Notes.pdf',
+    units: ['PyTorch Model Training', 'CNN Image Classifier Experiment', 'LSTM Text Generation Lab', 'HuggingFace Transformer Pipeline', 'Fine-Tuning LoRA / RAG Lab Setup'],
+    size: '195 KB'
+  },
+  {
+    title: 'Major Project Phase-I Engineering Guidelines',
+    code: '23CS407P',
+    semester: '4-1',
+    pdfUrl: '/notes/Big_Data_Analytics_Complete_Notes.pdf',
+    units: ['Problem Identification & Literature Survey', 'System Architecture & Dataflow Diagrams', 'Module Decomposition & Gantt Charts', 'Verification, Testing & Performance Benchmarks', 'Final Phase-I Presentation & Report Format'],
+    size: '192 KB'
   }
 ];
 
