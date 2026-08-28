@@ -31,7 +31,6 @@ import {
   ThumbsDown,
   ShieldCheck,
   Sparkles,
-  Info,
   RotateCcw
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -240,7 +239,7 @@ const Placements = () => {
   const [jobCompany, setJobCompany] = useState('');
   const [jobPkg, setJobPkg] = useState('');
   const [jobEligibility, setJobEligibility] = useState('');
-  const [jobMinCgpa, setJobMinCgpa] = useState(7.5);
+  const [jobMinCgpa, setJobMinCgpa] = useState<number | string>(7.5);
   const [jobDeadline, setJobDeadline] = useState('');
   const [jobType, setJobType] = useState<'Full-time' | 'Internship'>('Full-time');
   const [jobLocation, setJobLocation] = useState('Hyderabad Campus / Remote');
@@ -356,8 +355,9 @@ const Placements = () => {
 
   // Open apply modal with pre-filled student details
   const handleOpenApplyModal = (job: JobOpening) => {
-    if (userCgpa < (job.minCgpa || 7.0)) {
-      alert(`⚠️ Eligibility Requirement Not Met:\n\nThis position requires a minimum CGPA of ${job.minCgpa.toFixed(2)}.\nYour current recorded CGPA is ${userCgpa.toFixed(2)}.`);
+    const requiredCgpa = typeof job.minCgpa === 'number' ? job.minCgpa : parseFloat(String(job.minCgpa)) || 7.0;
+    if (userCgpa < requiredCgpa) {
+      alert(`⚠️ Eligibility Requirement Not Met:\n\nThis position requires a minimum CGPA of ${requiredCgpa.toFixed(2)}.\nYour current recorded CGPA is ${userCgpa.toFixed(2)}.`);
       return;
     }
 
@@ -511,7 +511,9 @@ const Placements = () => {
       return;
     }
 
+    const parsedCgpa = parseFloat(String(jobMinCgpa)) || 7.0;
     const skillList = jobSkills.split(',').map(s => s.trim()).filter(Boolean);
+    const updatedEligibility = jobEligibility.trim() || `CGPA >= ${parsedCgpa.toFixed(1)}, CSE/IT Branches`;
 
     if (editingJobId) {
       const updated = jobs.map(j => j.id === editingJobId ? {
@@ -519,8 +521,8 @@ const Placements = () => {
         role: jobRole.trim(),
         company: jobCompany.trim(),
         package: jobPkg.trim(),
-        eligibility: jobEligibility.trim() || `CGPA >= ${jobMinCgpa}`,
-        minCgpa: jobMinCgpa,
+        eligibility: updatedEligibility,
+        minCgpa: parsedCgpa,
         deadline: jobDeadline.trim() || 'TBD',
         type: jobType,
         location: jobLocation.trim(),
@@ -529,15 +531,38 @@ const Placements = () => {
         rounds: jobRounds.trim()
       } : j);
       saveJobsState(updated);
-      alert(`Job listing for ${jobCompany} updated successfully!`);
+
+      try {
+        await fetch(`${API_BASE_URL}/placements/jobs/${encodeURIComponent(editingJobId)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: editingJobId,
+            role: jobRole.trim(),
+            company: jobCompany.trim(),
+            package: jobPkg.trim(),
+            eligibility: updatedEligibility,
+            min_cgpa: parsedCgpa,
+            deadline: jobDeadline.trim() || 'TBD',
+            job_type: jobType,
+            location: jobLocation.trim(),
+            description: jobDesc.trim(),
+            skills: skillList
+          })
+        });
+      } catch (err) {
+        console.warn("Backend update job notice:", err);
+      }
+
+      alert(`Job drive for ${jobCompany} updated successfully with Min CGPA: ${parsedCgpa.toFixed(2)}!`);
     } else {
       const newJob: JobOpening = {
         id: `job_${Date.now()}`,
         role: jobRole.trim(),
         company: jobCompany.trim(),
         package: jobPkg.trim(),
-        eligibility: jobEligibility.trim() || `CGPA >= ${jobMinCgpa}, CSE/IT Branches`,
-        minCgpa: jobMinCgpa,
+        eligibility: updatedEligibility,
+        minCgpa: parsedCgpa,
         deadline: jobDeadline.trim() || 'Oct 15, 2026',
         type: jobType,
         location: jobLocation.trim() || 'Hyderabad Campus',
@@ -586,12 +611,13 @@ const Placements = () => {
 
   const openEditJobModal = (job: JobOpening, e: React.MouseEvent) => {
     e.stopPropagation();
+    const cgpaVal = typeof job.minCgpa === 'number' ? job.minCgpa : parseFloat(String(job.minCgpa)) || 7.5;
     setEditingJobId(job.id);
     setJobRole(job.role || '');
     setJobCompany(job.company || '');
     setJobPkg(job.package || '');
     setJobEligibility(job.eligibility || '');
-    setJobMinCgpa(job.minCgpa || 7.5);
+    setJobMinCgpa(cgpaVal);
     setJobDeadline(job.deadline || '');
     setJobType(job.type || 'Full-time');
     setJobLocation(job.location || '');
@@ -831,6 +857,7 @@ const Placements = () => {
                   setJobCompany('');
                   setJobPkg('');
                   setJobEligibility('');
+                  setJobMinCgpa(7.5);
                   setJobDeadline('');
                   setJobDesc('');
                   setJobSkills('Python, Data Structures, Machine Learning');
@@ -930,7 +957,8 @@ const Placements = () => {
                  (a.studentRoll || '').toLowerCase() === '2273a01001')
               );
               const hasApplied = !!userApp;
-              const isEligible = userCgpa >= (job.minCgpa || 7.0);
+              const requiredCgpa = typeof job.minCgpa === 'number' ? job.minCgpa : parseFloat(String(job.minCgpa)) || 7.0;
+              const isEligible = userCgpa >= requiredCgpa;
 
               return (
                 <div
@@ -973,7 +1001,7 @@ const Placements = () => {
                       </div>
                       <div className="flex items-center gap-2">
                         <GraduationCap className="w-4 h-4 text-purple-600" />
-                        <span>Eligibility: <strong className="text-slate-900">{job.eligibility}</strong></span>
+                        <span>Min CGPA Required: <strong className="text-slate-900 font-black">{requiredCgpa.toFixed(2)} / 10.0</strong> ({job.eligibility || 'CSE/IT Branches'})</span>
                       </div>
                     </div>
 
@@ -1003,7 +1031,7 @@ const Placements = () => {
                       ) : (
                         <span className="text-xs font-bold text-rose-600 flex items-center gap-1">
                           <AlertCircle className="w-3.5 h-3.5" />
-                          <span>Min CGPA: {job.minCgpa} (Yours: {userCgpa.toFixed(2)})</span>
+                          <span>Min CGPA: {requiredCgpa.toFixed(2)} (Yours: {userCgpa.toFixed(2)})</span>
                         </span>
                       )}
                     </div>
@@ -1020,8 +1048,8 @@ const Placements = () => {
                         <>
                           <button
                             onClick={(e) => openEditJobModal(job, e)}
-                            className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all cursor-pointer"
-                            title="Edit Job"
+                            className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl transition-all cursor-pointer"
+                            title="Edit Job Drive & CGPA"
                           >
                             <Edit3 className="w-4 h-4" />
                           </button>
@@ -1338,7 +1366,7 @@ const Placements = () => {
               </div>
               <div>
                 <span className="text-slate-400 font-bold block">Minimum CGPA Required</span>
-                <span className="font-black text-blue-700 text-sm">{inspectingJob.minCgpa.toFixed(2)} / 10.0</span>
+                <span className="font-black text-blue-700 text-sm">{(typeof inspectingJob.minCgpa === 'number' ? inspectingJob.minCgpa : 7.0).toFixed(2)} / 10.0</span>
               </div>
               <div>
                 <span className="text-slate-400 font-bold block">Eligibility</span>
@@ -1654,8 +1682,11 @@ const Placements = () => {
                   min="0"
                   max="10.0"
                   value={jobMinCgpa}
-                  onChange={(e) => setJobMinCgpa(parseFloat(e.target.value) || 7.0)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-black text-blue-700 focus:outline-none"
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setJobMinCgpa(val === '' ? '' : parseFloat(val));
+                  }}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-black text-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
               </div>
               <div>

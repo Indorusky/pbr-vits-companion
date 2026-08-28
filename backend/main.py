@@ -2789,29 +2789,45 @@ def get_job_postings(db: Session = Depends(get_db)):
     return res
 
 @app.post("/placements/jobs")
-def create_job_posting(payload: JobCreatePayload, db: Session = Depends(get_db)):
-    job_id = payload.id or f"job_{int(datetime.datetime.utcnow().timestamp())}"
+@app.put("/placements/jobs/{job_id}")
+def create_or_update_job_posting(payload: JobCreatePayload, job_id: Optional[str] = None, db: Session = Depends(get_db)):
+    target_id = job_id or payload.id or f"job_{int(datetime.datetime.utcnow().timestamp())}"
     skills_str = ", ".join(payload.skills) if payload.skills else ""
     posted_date = datetime.datetime.utcnow().strftime("%b %d, %Y")
     
-    new_job = models.JobPosting(
-        id=job_id,
-        role=payload.role,
-        company=payload.company,
-        package=payload.package,
-        eligibility=payload.eligibility,
-        min_cgpa=str(payload.min_cgpa),
-        deadline=payload.deadline,
-        job_type=payload.job_type,
-        location=payload.location,
-        description=payload.description,
-        skills=skills_str,
-        posted_date=posted_date
-    )
-    db.add(new_job)
-    db.commit()
-    db.refresh(new_job)
-    return {"message": "Job drive published successfully", "job_id": job_id}
+    existing = db.query(models.JobPosting).filter(models.JobPosting.id == target_id).first()
+    if existing:
+        existing.role = payload.role
+        existing.company = payload.company
+        existing.package = payload.package
+        existing.eligibility = payload.eligibility
+        existing.min_cgpa = str(payload.min_cgpa)
+        existing.deadline = payload.deadline
+        existing.job_type = payload.job_type
+        existing.location = payload.location
+        existing.description = payload.description
+        existing.skills = skills_str
+        db.commit()
+        return {"message": "Job drive updated successfully", "job_id": target_id}
+    else:
+        new_job = models.JobPosting(
+            id=target_id,
+            role=payload.role,
+            company=payload.company,
+            package=payload.package,
+            eligibility=payload.eligibility,
+            min_cgpa=str(payload.min_cgpa),
+            deadline=payload.deadline,
+            job_type=payload.job_type,
+            location=payload.location,
+            description=payload.description,
+            skills=skills_str,
+            posted_date=posted_date
+        )
+        db.add(new_job)
+        db.commit()
+        db.refresh(new_job)
+        return {"message": "Job drive published successfully", "job_id": target_id}
 
 @app.delete("/placements/jobs/{job_id}")
 def delete_job_posting(job_id: str, db: Session = Depends(get_db)):
