@@ -1,33 +1,15 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { API_BASE_URL } from '../config';
-import { pushCloudRecord, pullCloudRecord } from '../utils/cloudSync';
+import { saveUserToCloudDb, getUserFromCloudDb, getAllUsersFromCloudDb } from '../utils/cloudSync';
 
 export const pushAccountsToCloudSync = async (accountsList: any[]) => {
   try {
-    const deletedRaw = localStorage.getItem('campus_ai_deleted_accounts');
-    const deletedSet = new Set<string>(deletedRaw ? JSON.parse(deletedRaw) : []);
-
-    // 1. Read existing cloud accounts first to prevent overwriting
-    const existingCloud = await pullCloudRecord('global_registered_accounts');
-    const cloudList = Array.isArray(existingCloud) ? existingCloud : [];
-
-    // 2. Merge accounts into a map by username
-    const accMap = new Map<string, any>();
-    cloudList.forEach(a => {
-      if (a.username) accMap.set(a.username.toLowerCase(), a);
-    });
-    accountsList.forEach(a => {
-      if (a.username) accMap.set(a.username.toLowerCase(), a);
-    });
-
-    const mergedList = Array.from(accMap.values()).filter(a => {
-      const u = (a.username || '').toLowerCase();
-      const r = (a.roll_number || '').toLowerCase();
-      const n = (a.name || '').toLowerCase();
-      return u !== 'admin' && u !== 'student' && u !== 'ravi' && !deletedSet.has(u) && !deletedSet.has(r) && !deletedSet.has(n);
-    });
-
-    await pushCloudRecord('global_registered_accounts', mergedList);
+    for (const acc of accountsList) {
+      const u = (acc.username || '').toLowerCase();
+      if (u && u !== 'admin' && u !== 'student' && u !== 'ravi') {
+        await saveUserToCloudDb(acc);
+      }
+    }
   } catch (e) {
     console.warn("Cloud sync write failed", e);
   }
@@ -35,8 +17,7 @@ export const pushAccountsToCloudSync = async (accountsList: any[]) => {
 
 export const pullAccountsFromCloudSync = async (): Promise<any[]> => {
   try {
-    const res = await pullCloudRecord('global_registered_accounts');
-    if (Array.isArray(res)) return res;
+    return await getAllUsersFromCloudDb();
   } catch (e) {
     console.warn("Cloud sync read failed", e);
   }
@@ -332,9 +313,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [user]);
 
-  // Pull cloud accounts on load to sync custom registered accounts across devices
+  // Pull cloud accounts from Master Cloud DB on load to sync custom registered accounts across all devices
   useEffect(() => {
-    // 1. Publish any local custom accounts (like sahil) to cloud if created on this device
+    // 1. Save any local custom accounts to Master Cloud DB if created on this device
     try {
       const saved = localStorage.getItem('campus_ai_accounts');
       if (saved) {
@@ -345,22 +326,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             return u && u !== 'admin' && u !== 'student' && u !== 'ravi';
           });
           customOnly.forEach((acc: any) => {
-            pushCloudRecord(`user_${acc.username.toLowerCase()}`, acc);
+            saveUserToCloudDb(acc);
           });
-          if (customOnly.length > 0) {
-            pushAccountsToCloudSync(parsed);
-          }
         }
       }
     } catch { /* ignore */ }
 
-    // 2. Pull cloud accounts to sync custom registered accounts from other devices
-    pullAccountsFromCloudSync().then(cloudAccs => {
-      if (Array.isArray(cloudAccs) && cloudAccs.length > 0) {
+    // 2. Pull all accounts from Master Cloud DB to sync with other devices
+    getAllUsersFromCloudDb().then(cloudUsers => {
+      if (Array.isArray(cloudUsers) && cloudUsers.length > 0) {
         const deletedRaw = localStorage.getItem('campus_ai_deleted_accounts');
         const deletedSet = new Set<string>(deletedRaw ? JSON.parse(deletedRaw) : []);
 
-        const validCloudAccs = cloudAccs.filter(a => {
+        const validCloudUsers = cloudUsers.filter(a => {
           const u = (a.username || '').toLowerCase();
           const r = (a.roll_number || '').toLowerCase();
           const n = (a.name || '').toLowerCase();
@@ -370,7 +348,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setAccounts(prev => {
           const existingUsernames = new Set(prev.map(a => (a.username || '').toLowerCase()));
           const merged = [...prev];
-          validCloudAccs.forEach(ca => {
+          validCloudUsers.forEach(ca => {
             if (ca.username && !existingUsernames.has(ca.username.toLowerCase())) {
               merged.push(ca);
               existingUsernames.add(ca.username.toLowerCase());
@@ -466,10 +444,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setAccounts(updated);
     localStorage.setItem('campus_ai_accounts', JSON.stringify(updated));
 
-    // Save dedicated per-user cloud key and update global cloud list
-    const cleanUname = username.trim().toLowerCase();
-    pushCloudRecord(`user_${cleanUname}`, newAcc);
-    pushAccountsToCloudSync(updated);
+    // Save user record to Master Cloud DB via API
+    await saveUserToCloudDb(newAcc);
 
     return { success: true, message: 'Registration successful!', user: newAcc };
   };
@@ -586,14 +562,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       };
     }
 
-    // 1. Direct per-user cloud key lookup for instant cross-device verification
+    // Master Cloud DB Lookup for instant cross-device authentication
     const cleanUname = username.trim().toLowerCase();
     try {
-      const directUserRec = await pullCloudRecord(`user_${cleanUname}`);
-      if (directUserRec && directUserRec.password === pass) {
+      const cloudUser = await getUserFromCloudDb(cleanUname);
+      if (cloudUser && cloudUser.password === pass) {
         setAccounts(prev => {
           if (!prev.some(a => (a.username || '').toLowerCase() === cleanUname)) {
-            const next = [...prev, directUserRec];
+            const next = [...prev, cloudUser];
             try { localStorage.setItem('campus_ai_accounts', JSON.stringify(next)); } catch {}
             return next;
           }
@@ -603,53 +579,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return {
           success: true,
           user: {
-            id: directUserRec.id || Math.floor(1000 + Math.random() * 9000),
-            username: directUserRec.username,
-            role: directUserRec.role || 'student',
-            name: directUserRec.name,
-            department: directUserRec.department || 'Computer Science and Engineering (CSE)',
-            year: directUserRec.year || '1st Year',
-            semester: directUserRec.semester || '1-1',
-            email: directUserRec.email,
-            roll_number: directUserRec.roll_number || '2273A01001',
-            section: directUserRec.section || 'Section A',
-            profile_photo: directUserRec.profile_photo
+            id: cloudUser.id || Math.floor(1000 + Math.random() * 9000),
+            username: cloudUser.username,
+            role: cloudUser.role || 'student',
+            name: cloudUser.name,
+            department: cloudUser.department || 'Computer Science and Engineering (CSE)',
+            year: cloudUser.year || '1st Year',
+            semester: cloudUser.semester || '1-1',
+            email: cloudUser.email,
+            roll_number: cloudUser.roll_number || '2273A01001',
+            section: cloudUser.section || 'Section A',
+            profile_photo: cloudUser.profile_photo
           }
         };
       }
     } catch { /* ignore */ }
-
-    // 2. Try pulling from global cloud roster bucket
-    const cloudAccs = await pullAccountsFromCloudSync();
-    if (Array.isArray(cloudAccs) && cloudAccs.length > 0) {
-      const matched = cloudAccs.find(a => (a.username || '').toLowerCase() === username.toLowerCase() && a.password === pass);
-      if (matched) {
-        setAccounts(prev => {
-          if (!prev.some(a => (a.username || '').toLowerCase() === matched.username.toLowerCase())) {
-            const next = [...prev, matched];
-            try { localStorage.setItem('campus_ai_accounts', JSON.stringify(next)); } catch {}
-            return next;
-          }
-          return prev;
-        });
-        return {
-          success: true,
-          user: {
-            id: matched.id || Math.floor(1000 + Math.random() * 9000),
-            username: matched.username,
-            role: matched.role || 'student',
-            name: matched.name,
-            department: matched.department || 'Computer Science and Engineering (CSE)',
-            year: matched.year || '1st Year',
-            semester: matched.semester || '1-1',
-            email: matched.email,
-            roll_number: matched.roll_number || '2273A01001',
-            section: matched.section || 'Section A',
-            profile_photo: matched.profile_photo
-          }
-        };
-      }
-    }
 
     return { success: false, message: 'Invalid username or password.' };
   };
