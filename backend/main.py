@@ -1270,6 +1270,49 @@ def delete_timetable_entry(id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"message": "Timetable entry deleted successfully"}
 
+@app.delete("/users/{identifier}")
+def delete_user(identifier: str, db: Session = Depends(get_db)):
+    query = db.query(models.User)
+    if identifier.isdigit():
+        user = query.filter((models.User.id == int(identifier)) | (models.User.username == identifier)).first()
+    else:
+        user = query.filter(
+            (models.User.username == identifier) | 
+            (models.User.roll_number == identifier) | 
+            (models.User.name == identifier)
+        ).first()
+
+    if not user:
+        # Check if student or faculty table has record
+        student = db.query(models.Student).filter(
+            (models.Student.username == identifier) | (models.Student.roll_number == identifier)
+        ).first()
+        if student:
+            db.delete(student)
+            db.commit()
+            return {"message": f"Student '{identifier}' deleted successfully."}
+        return {"message": f"User '{identifier}' deleted or clean."}
+
+    if user.role == models.RoleEnum.admin and user.username == "admin":
+        raise HTTPException(status_code=400, detail="Cannot delete the root admin account.")
+
+    # Also delete student/faculty record & face enrollments
+    if user.role == models.RoleEnum.student:
+        db.query(models.Student).filter(
+            (models.Student.username == user.username) | (models.Student.roll_number == user.roll_number)
+        ).delete()
+        db.query(models.FaceEnrollment).filter(models.FaceEnrollment.student_id == user.id).delete()
+    elif user.role == models.RoleEnum.faculty:
+        db.query(models.Faculty).filter(models.Faculty.username == user.username).delete()
+
+    db.delete(user)
+    db.commit()
+    return {"message": f"User '{identifier}' deleted successfully."}
+
+@app.delete("/students/{identifier}")
+def delete_student(identifier: str, db: Session = Depends(get_db)):
+    return delete_user(identifier, db)
+
 
 # ==============================================================================
 # FACE RECOGNITION STUDENT ATTENDANCE SYSTEM

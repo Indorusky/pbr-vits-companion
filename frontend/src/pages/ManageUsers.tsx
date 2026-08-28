@@ -52,6 +52,15 @@ const ManageUsers = () => {
       console.warn("Backend fetch users failed, local storage fallback", e);
     }
     const saved = localStorage.getItem('campus_ai_accounts');
+    const deletedRaw = localStorage.getItem('campus_ai_deleted_accounts');
+    const deletedSet = new Set<string>();
+    if (deletedRaw) {
+      try {
+        const dArr = JSON.parse(deletedRaw);
+        if (Array.isArray(dArr)) dArr.forEach((x: string) => deletedSet.add(x.toLowerCase()));
+      } catch { /* ignore */ }
+    }
+
     let loaded: AccountRecord[] = [];
     if (saved) {
       try {
@@ -73,13 +82,22 @@ const ManageUsers = () => {
     }));
 
     defaultMapped.forEach(def => {
-      if (!existingNames.has(def.username.toLowerCase())) {
+      if (!existingNames.has(def.username.toLowerCase()) && 
+          !deletedSet.has(def.username.toLowerCase()) &&
+          !deletedSet.has((def.name || '').toLowerCase()) &&
+          !deletedSet.has((def.roll_number || '').toLowerCase())) {
         loaded.push(def);
       }
     });
 
-    setAccounts(loaded);
-    localStorage.setItem('campus_ai_accounts', JSON.stringify(loaded));
+    const finalClean = loaded.filter(a => 
+      !deletedSet.has((a.username || '').toLowerCase()) &&
+      !deletedSet.has((a.name || '').toLowerCase()) &&
+      !deletedSet.has((a.roll_number || '').toLowerCase())
+    );
+
+    setAccounts(finalClean);
+    localStorage.setItem('campus_ai_accounts', JSON.stringify(finalClean));
   };
 
   // Load accounts
@@ -196,10 +214,22 @@ const ManageUsers = () => {
       return;
     }
     if (window.confirm(`Are you sure you want to remove account: "${uName}"?`)) {
-      const targetAcc = accounts.find(acc => acc.username === uName || acc.roll_number === uName);
-      const updatedAccounts = accounts.filter(acc => acc.username !== uName && acc.roll_number !== uName);
+      const targetAcc = accounts.find(acc => acc.username === uName || acc.roll_number === uName || acc.name === uName);
+      const updatedAccounts = accounts.filter(acc => acc.username !== uName && acc.roll_number !== uName && acc.name !== uName);
       setAccounts(updatedAccounts);
       localStorage.setItem('campus_ai_accounts', JSON.stringify(updatedAccounts));
+
+      // Record in permanent deleted set
+      const deletedRaw = localStorage.getItem('campus_ai_deleted_accounts');
+      const dSet = new Set<string>();
+      if (deletedRaw) {
+        try { JSON.parse(deletedRaw).forEach((x: string) => dSet.add(x.toLowerCase())); } catch { /* ignore */ }
+      }
+      dSet.add(uName.toLowerCase());
+      if (targetAcc?.username) dSet.add(targetAcc.username.toLowerCase());
+      if (targetAcc?.roll_number) dSet.add(targetAcc.roll_number.toLowerCase());
+      if (targetAcc?.name) dSet.add(targetAcc.name.toLowerCase());
+      localStorage.setItem('campus_ai_deleted_accounts', JSON.stringify(Array.from(dSet)));
 
       // Also clean from student roster cache
       const savedRoster = localStorage.getItem('campus_ai_roster');
@@ -215,7 +245,6 @@ const ManageUsers = () => {
         await fetch(`${API_BASE_URL}/users/${uName}`, { method: 'DELETE' });
         if (targetAcc?.roll_number) {
           await fetch(`${API_BASE_URL}/students/${targetAcc.roll_number}`, { method: 'DELETE' });
-          await fetch(`${API_BASE_URL}/users/${targetAcc.roll_number}`, { method: 'DELETE' });
         }
       } catch (e) {
         console.warn("Backend delete user failed", e);
