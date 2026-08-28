@@ -479,7 +479,7 @@ const Attendance = () => {
           Classroom Simulation / Override Panel
         </h3>
         <p className="text-xs text-slate-500 font-medium">
-          Simulate different school hours or dates to check if the <b>Morning Attendance Window ({windowConfig.start} AM - {windowConfig.end} AM)</b> and timetable records work correctly.
+          Simulate different school hours or dates. Face biometric attendance opens <b>10 minutes before class starts</b> and remains open until <b>15 minutes after class starts</b> (25 min total per session).
         </p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
@@ -514,7 +514,7 @@ const Attendance = () => {
           </div>
           <div className="flex items-end">
             <div className="bg-indigo-50 border border-indigo-150 p-2.5 rounded-xl text-[11px] text-indigo-850 font-bold w-full">
-              Status: Window is <b>{useTimeOverride ? (simTime >= windowConfig.start && simTime <= windowConfig.end ? 'OPEN' : 'CLOSED') : 'ACTIVE'}</b> for simulated date.
+              Status: Period Window Rule <b>[-10 min, +15 min]</b> active for verification.
             </div>
           </div>
         </div>

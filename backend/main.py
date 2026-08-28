@@ -1670,15 +1670,16 @@ def daily_attendance(req: DailyAttendanceRequest, db: Session = Depends(get_db))
         models.TimetableEntry.day == day_name
     ).all()
 
-    # Find the active period matching current time within its 15-minute window
+    # Find the active period matching current time within its window: 10 mins before start until 15 mins after start
     active_entry = None
     for entry in timetable:
         try:
             start_clean = entry.start_time[:5]
             start_dt = datetime.datetime.strptime(start_clean, "%H:%M")
-            end_dt = start_dt + datetime.timedelta(minutes=15)
-            start_time_str = start_dt.strftime("%H:%M")
-            end_time_str = end_dt.strftime("%H:%M")
+            window_start_dt = start_dt - datetime.timedelta(minutes=10)
+            window_end_dt = start_dt + datetime.timedelta(minutes=15)
+            start_time_str = window_start_dt.strftime("%H:%M")
+            end_time_str = window_end_dt.strftime("%H:%M")
 
             if start_time_str <= current_time_str <= end_time_str:
                 active_entry = entry
@@ -1691,7 +1692,7 @@ def daily_attendance(req: DailyAttendanceRequest, db: Session = Depends(get_db))
     if not active_entry:
         raise HTTPException(
             status_code=400,
-            detail=f"No active attendance window found. Attendance is only open during the first 15 minutes of a scheduled class. Current time: {current_time_str}"
+            detail=f"No active attendance window found. Attendance opens 10 minutes before class and closes 15 minutes after class starts. Current time: {current_time_str}"
         )
 
     # Duplicate check for the active period
