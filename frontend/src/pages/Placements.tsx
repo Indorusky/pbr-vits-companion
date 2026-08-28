@@ -27,11 +27,11 @@ import {
   AlertCircle,
   RefreshCw,
   UserX,
-  Bell,
   ThumbsUp,
   ThumbsDown,
   ShieldCheck,
-  Sparkles
+  Sparkles,
+  Info
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
@@ -240,7 +240,7 @@ const Placements = () => {
   const [jobType, setJobType] = useState<'Full-time' | 'Internship'>('Full-time');
   const [jobLocation, setJobLocation] = useState('Hyderabad Campus / Remote');
   const [jobDesc, setJobDesc] = useState('');
-  const [jobSkills, setJobSkills] = useState('Python, Data Structures, Web Technologies');
+  const [jobSkills, setJobSkills] = useState('Python, Data Structures, Machine Learning');
   const [jobRounds, setJobRounds] = useState('Round 1: Online Technical Assessment • Round 2: Technical Interview');
 
   // Student Application Modal
@@ -802,7 +802,7 @@ const Placements = () => {
         <div className="flex items-center gap-2">
           <button
             onClick={syncData}
-            className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all"
+            className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
             title="Refresh Openings"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
@@ -823,7 +823,7 @@ const Placements = () => {
                 setJobRounds('Round 1: Technical Screening • Round 2: Technical Interview');
                 setShowAddJobModal(true);
               }}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 transition-all shrink-0"
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 transition-all shrink-0 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>Post New Job Opening</span>
@@ -996,7 +996,7 @@ const Placements = () => {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => setInspectingJob(job)}
-                        className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all"
+                        className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
                       >
                         View Details
                       </button>
@@ -1005,14 +1005,14 @@ const Placements = () => {
                         <>
                           <button
                             onClick={(e) => openEditJobModal(job, e)}
-                            className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all"
+                            className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all cursor-pointer"
                             title="Edit Job"
                           >
                             <Edit3 className="w-4 h-4" />
                           </button>
                           <button
                             onClick={(e) => handleDeleteJob(job.id, e)}
-                            className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition-all"
+                            className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition-all cursor-pointer"
                             title="Delete Job"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -1027,7 +1027,7 @@ const Placements = () => {
                             </span>
                             <button
                               onClick={() => handleStudentResponse(userApp.id, 'withdraw')}
-                              className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition-all"
+                              className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition-all cursor-pointer"
                               title="Withdraw Application"
                             >
                               Withdraw
@@ -1087,7 +1087,7 @@ const Placements = () => {
 
                     <button
                       onClick={() => handleStudentResponse(app.id, 'withdraw')}
-                      className="px-3 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-xl transition-all flex items-center gap-1"
+                      className="px-3 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-xl transition-all flex items-center gap-1 cursor-pointer"
                     >
                       <UserX className="w-3.5 h-3.5" />
                       <span>Withdraw Request</span>
@@ -1134,14 +1134,14 @@ const Placements = () => {
                     <div className="flex items-center gap-2 pt-1 pl-6">
                       <button
                         onClick={() => handleStudentResponse(app.id, 'accept_interview')}
-                        className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-xs flex items-center gap-1.5 transition-all"
+                        className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
                       >
                         <ThumbsUp className="w-3.5 h-3.5" />
                         <span>Accept & Confirm Attendance</span>
                       </button>
                       <button
                         onClick={() => handleStudentResponse(app.id, 'decline_interview')}
-                        className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold border border-slate-300 transition-all flex items-center gap-1"
+                        className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold border border-slate-300 transition-all flex items-center gap-1 cursor-pointer"
                       >
                         <ThumbsDown className="w-3.5 h-3.5" />
                         <span>Decline Interview</span>
@@ -1167,7 +1167,7 @@ const Placements = () => {
                 <p>You haven't submitted any job applications yet.</p>
                 <button
                   onClick={() => setActiveTab('openings')}
-                  className="mt-2 px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-xl"
+                  className="mt-2 px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-xl cursor-pointer"
                 >
                   Browse Campus Drives
                 </button>
@@ -1266,7 +1266,7 @@ const Placements = () => {
                         <div className="flex items-center justify-center gap-1.5">
                           <button
                             onClick={() => openScheduleInterviewModal(app)}
-                            className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold border border-emerald-200 transition-all flex items-center gap-1"
+                            className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold border border-emerald-200 transition-all flex items-center gap-1 cursor-pointer"
                           >
                             <CalendarCheck className="w-3.5 h-3.5" />
                             <span>Review & Schedule</span>
@@ -1357,7 +1357,7 @@ const Placements = () => {
             <div className="pt-2 border-t border-slate-100 flex gap-2">
               <button
                 onClick={() => setInspectingJob(null)}
-                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl"
+                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl cursor-pointer"
               >
                 Close
               </button>
@@ -1368,7 +1368,7 @@ const Placements = () => {
                     setInspectingJob(null);
                     handleOpenApplyModal(target);
                   }}
-                  className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs"
+                  className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer"
                 >
                   Apply for Position
                 </button>
@@ -1480,7 +1480,7 @@ const Placements = () => {
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-xs transition-all"
+                  className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-xs transition-all cursor-pointer"
                 >
                   Choose File
                 </button>
@@ -1534,13 +1534,13 @@ const Placements = () => {
               <button
                 type="button"
                 onClick={() => setShowApplyModal(false)}
-                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl"
+                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs flex items-center justify-center gap-1.5"
+                className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Send className="w-4 h-4" />
                 <span>Submit Application Request</span>
@@ -1695,13 +1695,13 @@ const Placements = () => {
               <button
                 type="button"
                 onClick={() => setShowAddJobModal(false)}
-                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl"
+                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs"
+                className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer"
               >
                 {editingJobId ? 'Save Changes' : 'Publish Drive'}
               </button>
@@ -1786,14 +1786,14 @@ const Placements = () => {
               <button
                 type="button"
                 onClick={() => setShowScheduleModal(false)}
-                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl"
+                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleSaveSchedule}
-                className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs"
+                className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer"
               >
                 Save & Notify Student
               </button>
