@@ -26,7 +26,12 @@ import {
   Download,
   AlertCircle,
   RefreshCw,
-  UserX
+  UserX,
+  Bell,
+  ThumbsUp,
+  ThumbsDown,
+  ShieldCheck,
+  Sparkles
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
@@ -44,6 +49,7 @@ export interface JobOpening {
   location: string;
   description: string;
   skills: string[];
+  rounds?: string;
   postedDate: string;
 }
 
@@ -64,7 +70,14 @@ export interface JobApplication {
   resumeUrl?: string;
   coverNote?: string;
   appliedAt: string;
-  status: 'Applied' | 'Under Review' | 'Shortlisted for Interview' | 'Interview Scheduled' | 'Not Shortlisted' | 'Selected';
+  status: 
+    | 'Applied'
+    | 'Under Review'
+    | 'Shortlisted for Interview'
+    | 'Interview Confirmed by Student'
+    | 'Interview Declined by Student'
+    | 'Application Declined'
+    | 'Selected';
   interviewDate?: string;
   interviewNotes?: string;
 }
@@ -74,49 +87,52 @@ const DEFAULT_JOBS: JobOpening[] = [
     id: 'j1',
     role: 'Associate Software Development Engineer (ASDE)',
     company: 'Google DeepMind Technologies',
-    package: '$145,000 / Year (₹32.5 LPA)',
+    package: '₹32.5 LPA ($145,000 / Year)',
     eligibility: 'CGPA >= 8.5, Computer Science / AI / IT Branch',
     minCgpa: 8.5,
     deadline: 'Sep 15, 2026',
     type: 'Full-time',
     location: 'Hyderabad / Bangalore (Hybrid)',
-    description: 'Build core AI infrastructure, scalable backend APIs, and distributed deep learning training pipelines.',
+    description: 'Build core AI infrastructure, high-throughput transformer inference APIs, and distributed deep learning training pipelines.',
     skills: ['Python', 'Distributed Systems', 'C++', 'PyTorch', 'Data Structures & Algorithms'],
+    rounds: 'Round 1: Online Coding Test • Round 2: Technical & AI Design • Round 3: Leadership Fit',
     postedDate: 'Aug 20, 2026'
   },
   {
     id: 'j2',
     role: 'Applied AI Product Engineering Intern',
     company: 'OpenAI Corporation',
-    package: '$8,500 / Month Stipend',
+    package: '₹75,000 / Month Stipend',
     eligibility: 'CGPA >= 8.0, Experience with LLMs and prompt chains',
     minCgpa: 8.0,
     deadline: 'Sep 05, 2026',
     type: 'Internship',
-    location: 'Remote / Bangalore',
-    description: 'Design generative workflows, evaluate transformer benchmarks, and build multimodal applications.',
+    location: 'Remote / Bangalore Hub',
+    description: 'Design generative workflows, evaluate transformer model benchmarks, and build multimodal web applications.',
     skills: ['Generative AI', 'Transformers', 'FastAPI', 'React', 'LangChain'],
+    rounds: 'Round 1: Prompt & RAG Architecture Review • Round 2: Live Coding & System Demo',
     postedDate: 'Aug 22, 2026'
   },
   {
     id: 'j3',
     role: 'Cybersecurity Threat & Network Analyst',
     company: 'Stripe Payments Inc.',
-    package: '$110,000 / Year (₹24 LPA)',
+    package: '₹24.0 LPA ($110,000 / Year)',
     eligibility: 'CGPA >= 7.5, Python proficiency, Linux systems foundational knowledge',
     minCgpa: 7.5,
     deadline: 'Sep 22, 2026',
     type: 'Full-time',
     location: 'Hyderabad Campus',
-    description: 'Monitor threat vectors, analyze encrypted financial transaction flows, and maintain network zero-trust.',
+    description: 'Monitor threat vectors, analyze encrypted financial transaction flows, and maintain zero-trust cloud network security.',
     skills: ['Network Security', 'Cryptography', 'Python', 'Linux', 'SIEM'],
+    rounds: 'Round 1: Network Protocols & Security Screening • Round 2: Practical Threat Simulation',
     postedDate: 'Aug 24, 2026'
   },
   {
     id: 'j4',
     role: 'Cloud Infrastructure & DevOps Engineer',
     company: 'Amazon Web Services (AWS)',
-    package: '$125,000 / Year (₹28 LPA)',
+    package: '₹28.0 LPA ($125,000 / Year)',
     eligibility: 'CGPA >= 7.8, Cloud computing & container orchestration',
     minCgpa: 7.8,
     deadline: 'Sep 28, 2026',
@@ -124,6 +140,7 @@ const DEFAULT_JOBS: JobOpening[] = [
     location: 'Hyderabad / Chennai',
     description: 'Architect resilient serverless clusters, Kubernetes microservices, and CI/CD automated deployment pipelines.',
     skills: ['AWS', 'Kubernetes', 'Docker', 'Terraform', 'CI/CD'],
+    rounds: 'Round 1: AWS Architecture Assessment • Round 2: Linux & Scripting • Round 3: Behavioral Fit',
     postedDate: 'Aug 25, 2026'
   }
 ];
@@ -164,7 +181,7 @@ const DEFAULT_APPLICATIONS: JobApplication[] = [
     resumeFileName: 'Priya_Mohan_AI_CV.pdf',
     coverNote: 'Experienced in building Retrieval-Augmented Generation (RAG) pipelines and fine-tuning open-source LLMs.',
     appliedAt: 'Aug 27, 2026',
-    status: 'Interview Scheduled',
+    status: 'Interview Confirmed by Student',
     interviewDate: 'Sep 08, 2026 • 02:30 PM IST (Virtual)',
     interviewNotes: 'Round 1 Coding & AI System Design Interview.'
   }
@@ -178,6 +195,7 @@ const Placements = () => {
   const [activeTab, setActiveTab] = useState<'openings' | 'my-applications' | 'admin-applicants'>('openings');
   const [loading, setLoading] = useState(false);
 
+  // Main Data States
   const [jobs, setJobs] = useState<JobOpening[]>(() => {
     try {
       const saved = localStorage.getItem('campus_ai_jobs');
@@ -185,7 +203,7 @@ const Placements = () => {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
-    } catch { /* ignore */ }
+    } catch {}
     return DEFAULT_JOBS;
   });
 
@@ -196,7 +214,7 @@ const Placements = () => {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
-    } catch { /* ignore */ }
+    } catch {}
     return DEFAULT_APPLICATIONS;
   });
 
@@ -206,6 +224,9 @@ const Placements = () => {
   const [applicantSearch, setApplicantSearch] = useState('');
   const [applicantFilterStatus, setApplicantFilterStatus] = useState('ALL');
   const [applicantFilterJob, setApplicantFilterJob] = useState('ALL');
+
+  // Job Details Inspection Modal
+  const [inspectingJob, setInspectingJob] = useState<JobOpening | null>(null);
 
   // Create/Edit job modal state (Admin)
   const [showAddJobModal, setShowAddJobModal] = useState(false);
@@ -219,7 +240,8 @@ const Placements = () => {
   const [jobType, setJobType] = useState<'Full-time' | 'Internship'>('Full-time');
   const [jobLocation, setJobLocation] = useState('Hyderabad Campus / Remote');
   const [jobDesc, setJobDesc] = useState('');
-  const [jobSkills, setJobSkills] = useState('Python, Data Structures, Machine Learning');
+  const [jobSkills, setJobSkills] = useState('Python, Data Structures, Web Technologies');
+  const [jobRounds, setJobRounds] = useState('Round 1: Online Technical Assessment • Round 2: Technical Interview');
 
   // Student Application Modal
   const [showApplyModal, setShowApplyModal] = useState(false);
@@ -244,17 +266,16 @@ const Placements = () => {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Fetch jobs and applications from backend with fallback
+  // Sync with cloud backend
   const syncData = async () => {
     setLoading(true);
 
-    // 1. Fetch jobs
+    // 1. Fetch Jobs from backend
     try {
       const resJobs = await fetch(`${API_BASE_URL}/placements/jobs`);
       if (resJobs.ok) {
         const dataJobs = await resJobs.json();
         if (Array.isArray(dataJobs) && dataJobs.length > 0) {
-          // Merge with defaults if not present
           const existingIds = new Set(dataJobs.map(j => j.id));
           DEFAULT_JOBS.forEach(dj => {
             if (!existingIds.has(dj.id)) dataJobs.push(dj);
@@ -264,10 +285,10 @@ const Placements = () => {
         }
       }
     } catch (e) {
-      console.warn("Backend jobs fetch failed, using local storage", e);
+      console.warn("Backend jobs fetch warning:", e);
     }
 
-    // 2. Fetch applications
+    // 2. Fetch Applications from backend
     try {
       const resApps = await fetch(`${API_BASE_URL}/placements/applications`);
       if (resApps.ok) {
@@ -278,7 +299,7 @@ const Placements = () => {
         }
       }
     } catch (e) {
-      console.warn("Backend applications fetch failed, using local storage", e);
+      console.warn("Backend applications fetch warning:", e);
     }
 
     setLoading(false);
@@ -287,7 +308,7 @@ const Placements = () => {
   useEffect(() => {
     syncData();
 
-    // Listen for updates across tabs and components
+    // Cross-tab and live component event listeners
     const handleJobUpdate = () => {
       try {
         const saved = localStorage.getItem('campus_ai_jobs');
@@ -331,17 +352,24 @@ const Placements = () => {
     } catch {}
   };
 
+  // Student academic profile
+  const studentAcademic = getStudentAcademicProfile(user);
+  const userCgpa = studentAcademic?.cgpa ?? 8.74;
+
   // Open apply modal with pre-filled student details
   const handleOpenApplyModal = (job: JobOpening) => {
-    setSelectedJobToApply(job);
-    const academicProfile = getStudentAcademicProfile(user);
+    if (userCgpa < (job.minCgpa || 7.0)) {
+      alert(`⚠️ Eligibility Requirement Not Met:\n\nThis position requires a minimum CGPA of ${job.minCgpa.toFixed(2)}.\nYour current recorded CGPA is ${userCgpa.toFixed(2)}.`);
+      return;
+    }
 
+    setSelectedJobToApply(job);
     setApplName(user?.name || user?.username || 'Student User');
     setApplEmail(user?.email || `${user?.username || 'student'}@pbrvits.edu.in`);
     setApplPhone('+91 98765 43210');
     setApplRoll(user?.roll_number || '2273A01001');
     setApplDept(user?.department || 'Computer Science and Engineering (CSE)');
-    setApplCgpa(academicProfile?.cgpa ?? 8.74);
+    setApplCgpa(userCgpa);
     setApplResumeName(`${(user?.name || user?.username || 'Student').replace(/\s+/g, '_')}_Resume_2026.pdf`);
     setApplResumeUrl('');
     setApplCoverNote('');
@@ -354,7 +382,6 @@ const Placements = () => {
     if (!file) return;
 
     setApplResumeName(file.name);
-
     const reader = new FileReader();
     reader.onload = () => {
       setApplResumeData(reader.result as string);
@@ -362,7 +389,7 @@ const Placements = () => {
     reader.readAsDataURL(file);
   };
 
-  // Submit Student Application
+  // Submit Student Application Request
   const handleSubmitApplication = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedJobToApply || !applName.trim() || !applEmail.trim() || !applPhone.trim()) {
@@ -371,7 +398,7 @@ const Placements = () => {
     }
 
     if (!applResumeName && !applResumeUrl.trim()) {
-      alert("Please upload your resume file (.pdf/.docx) or provide a cloud portfolio link.");
+      alert("Please upload your resume document (.pdf/.docx) or provide a cloud portfolio link.");
       return;
     }
 
@@ -383,7 +410,7 @@ const Placements = () => {
     );
 
     if (alreadyApplied) {
-      alert(`You have already submitted an application for ${selectedJobToApply.role} at ${selectedJobToApply.company}.`);
+      alert(`You have already submitted an application request for ${selectedJobToApply.role} at ${selectedJobToApply.company}.`);
       setShowApplyModal(false);
       return;
     }
@@ -440,30 +467,45 @@ const Placements = () => {
 
     setShowApplyModal(false);
     setSelectedJobToApply(null);
-    alert(`🎉 Application for ${newApp.jobRole} at ${newApp.company} submitted successfully! The placement committee has received your resume.`);
+    alert(`🎉 Application request for "${newApp.jobRole}" submitted to ${newApp.company}! The placement administrator will review your application and notify you of the interview schedule.`);
     setActiveTab('my-applications');
   };
 
-  // Withdraw / Remove Student Application
-  const handleWithdrawApplication = async (appId: string, roleName: string, compName: string) => {
-    if (!window.confirm(`Are you sure you want to withdraw your application for "${roleName}" at ${compName}? You can re-apply anytime before the deadline.`)) {
+  // Student Response to Interview / Application Action (Accept / Decline / Withdraw)
+  const handleStudentResponse = async (appId: string, action: 'accept_interview' | 'decline_interview' | 'withdraw') => {
+    let confirmMsg = "";
+    if (action === 'accept_interview') confirmMsg = "Confirm your attendance for this interview round?";
+    else if (action === 'decline_interview') confirmMsg = "Are you sure you want to decline this interview invitation?";
+    else if (action === 'withdraw') confirmMsg = "Are you sure you want to withdraw your application? You can re-apply before the deadline.";
+
+    if (!window.confirm(confirmMsg)) return;
+
+    if (action === 'withdraw') {
+      const updated = applications.filter(a => a.id !== appId);
+      saveApplicationsState(updated);
+
+      try {
+        await fetch(`${API_BASE_URL}/placements/applications/${encodeURIComponent(appId)}`, { method: 'DELETE' });
+      } catch (e) { console.warn(e); }
+
+      alert("Your application has been withdrawn.");
       return;
     }
 
-    // Remove locally
-    const updated = applications.filter(a => a.id !== appId);
+    const nextStatus: JobApplication['status'] = action === 'accept_interview' ? 'Interview Confirmed by Student' : 'Interview Declined by Student';
+
+    const updated = applications.map(a => a.id === appId ? { ...a, status: nextStatus } : a);
     saveApplicationsState(updated);
 
-    // Remove from backend API
     try {
-      await fetch(`${API_BASE_URL}/placements/applications/${encodeURIComponent(appId)}`, {
-        method: 'DELETE'
+      await fetch(`${API_BASE_URL}/placements/applications/${encodeURIComponent(appId)}/student-response`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action })
       });
-    } catch (e) {
-      console.warn("Backend delete application notice:", e);
-    }
+    } catch (e) { console.warn(e); }
 
-    alert(`Application for "${roleName}" withdrawn successfully.`);
+    alert(action === 'accept_interview' ? "🎉 You have confirmed your interview attendance! The placement cell and recruiter have been notified." : "You have declined this interview round.");
   };
 
   // Admin Create / Update Job Opening
@@ -488,7 +530,8 @@ const Placements = () => {
         type: jobType,
         location: jobLocation.trim(),
         description: jobDesc.trim(),
-        skills: skillList
+        skills: skillList,
+        rounds: jobRounds.trim()
       } : j);
       saveJobsState(updated);
       alert(`Job listing for ${jobCompany} updated successfully!`);
@@ -503,15 +546,15 @@ const Placements = () => {
         deadline: jobDeadline.trim() || 'Oct 15, 2026',
         type: jobType,
         location: jobLocation.trim() || 'Hyderabad Campus',
-        description: jobDesc.trim() || 'Exciting software engineering role at a leading technology partner.',
+        description: jobDesc.trim() || 'Exciting engineering role at a leading technology partner.',
         skills: skillList.length > 0 ? skillList : ['Java', 'Python', 'Web Technologies'],
+        rounds: jobRounds.trim() || 'Round 1: Technical Screening • Round 2: Technical Interview',
         postedDate: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
       };
 
       const updated = [newJob, ...jobs];
       saveJobsState(updated);
 
-      // Save to backend API
       try {
         await fetch(`${API_BASE_URL}/placements/jobs`, {
           method: 'POST',
@@ -534,7 +577,7 @@ const Placements = () => {
         console.warn("Backend job posting notice:", err);
       }
 
-      alert(`🎉 New campus recruitment drive for "${newJob.company}" published! Students can now see and apply for this job.`);
+      alert(`🎉 New campus recruitment drive for "${newJob.company}" published! Students meeting the ${newJob.minCgpa} CGPA requirement can now apply.`);
     }
 
     setShowAddJobModal(false);
@@ -559,12 +602,13 @@ const Placements = () => {
     setJobLocation(job.location || '');
     setJobDesc(job.description || '');
     setJobSkills((job.skills || []).join(', '));
+    setJobRounds(job.rounds || '');
     setShowAddJobModal(true);
   };
 
   const handleDeleteJob = async (jobId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm("Are you sure you want to delete this recruitment opening?")) {
+    if (confirm("Are you sure you want to delete this recruitment drive?")) {
       const updatedJobs = jobs.filter(j => j.id !== jobId);
       const updatedApps = applications.filter(a => a.jobId !== jobId);
       saveJobsState(updatedJobs);
@@ -618,8 +662,8 @@ const Placements = () => {
   const openScheduleInterviewModal = (app: JobApplication) => {
     setSelectedAppToSchedule(app);
     setNewStatusInput(app.status === 'Applied' ? 'Shortlisted for Interview' : app.status);
-    setInterviewDateInput(app.interviewDate || 'Sep 12, 2026 • 11:00 AM IST (Virtual / Campus)');
-    setInterviewNotesInput(app.interviewNotes || 'Round 1 Technical Interview: Core Fundamentals, Coding & System Logic.');
+    setInterviewDateInput(app.interviewDate || 'Sep 12, 2026 • 10:30 AM IST (Google Meet)');
+    setInterviewNotesInput(app.interviewNotes || 'Round 1 Technical Screening: Coding, Data Structures & Core System Logic.');
     setShowScheduleModal(true);
   };
 
@@ -631,7 +675,7 @@ const Placements = () => {
       interviewDateInput,
       interviewNotesInput
     );
-    alert(`Applicant ${selectedAppToSchedule.studentName} updated to status: "${newStatusInput}"!`);
+    alert(`Candidate ${selectedAppToSchedule.studentName} updated to "${newStatusInput}"! The student will receive this notification right away.`);
     setShowScheduleModal(false);
     setSelectedAppToSchedule(null);
   };
@@ -687,9 +731,53 @@ const Placements = () => {
     return matchesSearch && matchesStatus && matchesJob;
   });
 
-  // User academic profile for eligibility check
-  const studentAcademic = getStudentAcademicProfile(user);
-  const userCgpa = studentAcademic?.cgpa ?? 8.74;
+  // Status Badge Formatter
+  const renderStatusBadge = (status: JobApplication['status']) => {
+    switch (status) {
+      case 'Shortlisted for Interview':
+        return (
+          <span className="px-2.5 py-1 rounded-xl text-xs font-black bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1">
+            <Clock className="w-3.5 h-3.5 text-amber-600" />
+            <span>Shortlisted • Action Required</span>
+          </span>
+        );
+      case 'Interview Confirmed by Student':
+        return (
+          <span className="px-2.5 py-1 rounded-xl text-xs font-black bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Interview Confirmed</span>
+          </span>
+        );
+      case 'Interview Declined by Student':
+        return (
+          <span className="px-2.5 py-1 rounded-xl text-xs font-black bg-slate-100 text-slate-700 border border-slate-200 flex items-center gap-1">
+            <XCircle className="w-3.5 h-3.5 text-slate-500" />
+            <span>Interview Declined</span>
+          </span>
+        );
+      case 'Application Declined':
+        return (
+          <span className="px-2.5 py-1 rounded-xl text-xs font-black bg-rose-50 text-rose-700 border border-rose-200 flex items-center gap-1">
+            <XCircle className="w-3.5 h-3.5 text-rose-500" />
+            <span>Request Declined</span>
+          </span>
+        );
+      case 'Selected':
+        return (
+          <span className="px-2.5 py-1 rounded-xl text-xs font-black bg-purple-50 text-purple-700 border border-purple-200 flex items-center gap-1">
+            <Award className="w-3.5 h-3.5 text-purple-600" />
+            <span>Selected / Offer Extended</span>
+          </span>
+        );
+      default:
+        return (
+          <span className="px-2.5 py-1 rounded-xl text-xs font-black bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1">
+            <Clock className="w-3.5 h-3.5 text-blue-600" />
+            <span>Under Admin Review</span>
+          </span>
+        );
+    }
+  };
 
   return (
     <div className="p-4 sm:p-6 md:p-8 max-w-7xl mx-auto space-y-6 min-h-screen pb-28">
@@ -707,7 +795,7 @@ const Placements = () => {
             Career & Placement Portal
           </h1>
           <p className="text-slate-500 text-xs font-medium mt-0.5">
-            Verified corporate recruitment drives, resume attachments, application tracking, and interview management.
+            Admin recruitment publishing, CGPA-verified applications, interview scheduling, and live status synchronization.
           </p>
         </div>
 
@@ -730,6 +818,9 @@ const Placements = () => {
                 setJobPkg('');
                 setJobEligibility('');
                 setJobDeadline('');
+                setJobDesc('');
+                setJobSkills('Python, Data Structures, Machine Learning');
+                setJobRounds('Round 1: Technical Screening • Round 2: Technical Interview');
                 setShowAddJobModal(true);
               }}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 transition-all shrink-0"
@@ -890,13 +981,26 @@ const Placements = () => {
                           <span>Status: {userApp?.status || 'Applied'}</span>
                         </span>
                       ) : isEligible ? (
-                        <span className="text-xs font-bold text-blue-600">Eligible to Apply (CGPA {userCgpa.toFixed(2)})</span>
+                        <span className="text-xs font-bold text-blue-600 flex items-center gap-1">
+                          <ShieldCheck className="w-3.5 h-3.5" />
+                          <span>CGPA {userCgpa.toFixed(2)} Eligible</span>
+                        </span>
                       ) : (
-                        <span className="text-xs font-bold text-amber-600">Min CGPA required: {job.minCgpa}</span>
+                        <span className="text-xs font-bold text-rose-600 flex items-center gap-1">
+                          <AlertCircle className="w-3.5 h-3.5" />
+                          <span>Min CGPA: {job.minCgpa} (Yours: {userCgpa.toFixed(2)})</span>
+                        </span>
                       )}
                     </div>
 
                     <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setInspectingJob(job)}
+                        className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all"
+                      >
+                        View Details
+                      </button>
+
                       {isAdminOrFaculty ? (
                         <>
                           <button
@@ -922,7 +1026,7 @@ const Placements = () => {
                               Applied
                             </span>
                             <button
-                              onClick={() => handleWithdrawApplication(userApp.id, job.role, job.company)}
+                              onClick={() => handleStudentResponse(userApp.id, 'withdraw')}
                               className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition-all"
                               title="Withdraw Application"
                             >
@@ -932,10 +1036,15 @@ const Placements = () => {
                         ) : (
                           <button
                             onClick={() => handleOpenApplyModal(job)}
-                            className="px-4 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shadow-xs bg-blue-600 hover:bg-blue-700 text-white"
+                            disabled={!isEligible}
+                            className={`px-4 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shadow-xs ${
+                              isEligible
+                                ? 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer'
+                                : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
+                            }`}
                           >
                             <Send className="w-3.5 h-3.5" />
-                            <span>Apply with Resume</span>
+                            <span>{isEligible ? 'Apply with Resume' : 'Ineligible'}</span>
                           </button>
                         )
                       )}
@@ -960,10 +1069,12 @@ const Placements = () => {
         <div className="space-y-4">
           <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs divide-y divide-slate-100 overflow-hidden">
             {myApplications.map((app) => (
-              <div key={app.id} className="p-5 space-y-3 hover:bg-slate-50/50 transition-colors">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div key={app.id} className="p-5 space-y-4 hover:bg-slate-50/50 transition-colors">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Application #{app.id} • Applied {app.appliedAt}</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      Application #{app.id} • Submitted {app.appliedAt}
+                    </span>
                     <h3 className="text-base font-black text-slate-900 leading-snug">{app.jobRole}</h3>
                     <p className="text-xs font-bold text-slate-600 flex items-center gap-1 mt-0.5">
                       <Building className="w-3.5 h-3.5 text-slate-400" />
@@ -971,25 +1082,15 @@ const Placements = () => {
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-2 self-start sm:self-auto">
-                    <span className={`px-3 py-1 rounded-xl text-xs font-extrabold border ${
-                      app.status === 'Shortlisted for Interview' || app.status === 'Interview Scheduled'
-                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                        : app.status === 'Selected'
-                        ? 'bg-purple-50 text-purple-700 border-purple-200'
-                        : app.status === 'Not Shortlisted'
-                        ? 'bg-rose-50 text-rose-700 border-rose-200'
-                        : 'bg-blue-50 text-blue-700 border-blue-200'
-                    }`}>
-                      {app.status}
-                    </span>
+                  <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+                    {renderStatusBadge(app.status)}
 
                     <button
-                      onClick={() => handleWithdrawApplication(app.id, app.jobRole, app.company)}
+                      onClick={() => handleStudentResponse(app.id, 'withdraw')}
                       className="px-3 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-xl transition-all flex items-center gap-1"
                     >
                       <UserX className="w-3.5 h-3.5" />
-                      <span>Withdraw</span>
+                      <span>Withdraw Request</span>
                     </button>
                   </div>
                 </div>
@@ -999,7 +1100,7 @@ const Placements = () => {
                   <div className="flex items-center gap-2">
                     <FileText className="w-4 h-4 text-blue-600 shrink-0" />
                     <div>
-                      <span className="text-slate-400 font-bold block text-[10px]">Attached Resume File:</span>
+                      <span className="text-slate-400 font-bold block text-[10px]">Submitted Resume:</span>
                       <span className="font-bold text-slate-800">{app.resumeFileName}</span>
                     </div>
                   </div>
@@ -1008,8 +1109,8 @@ const Placements = () => {
                     <div className="flex items-center gap-2">
                       <ExternalLink className="w-4 h-4 text-indigo-600 shrink-0" />
                       <div>
-                        <span className="text-slate-400 font-bold block text-[10px]">Portfolio / Link:</span>
-                        <a href={app.resumeUrl} target="_blank" rel="noopener noreferrer" className="font-bold text-blue-600 hover:underline truncate block max-w-[200px]">
+                        <span className="text-slate-400 font-bold block text-[10px]">Portfolio Link:</span>
+                        <a href={app.resumeUrl} target="_blank" rel="noopener noreferrer" className="font-bold text-blue-600 hover:underline truncate block max-w-[220px]">
                           {app.resumeUrl}
                         </a>
                       </div>
@@ -1017,18 +1118,44 @@ const Placements = () => {
                   )}
                 </div>
 
-                {/* Interview Information Banner if Scheduled */}
-                {(app.status === 'Shortlisted for Interview' || app.status === 'Interview Scheduled') && app.interviewDate && (
-                  <div className="bg-emerald-50 border border-emerald-200 p-3.5 rounded-xl space-y-1 text-xs text-emerald-900">
-                    <div className="flex items-center gap-1.5 font-black text-emerald-800">
-                      <CalendarCheck className="w-4 h-4 text-emerald-600" />
-                      <span>Interview Scheduled: {app.interviewDate}</span>
+                {/* Interview Action Banner for Students */}
+                {app.status === 'Shortlisted for Interview' && app.interviewDate && (
+                  <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl space-y-3 text-xs text-amber-900">
+                    <div className="flex items-center gap-2 font-black text-amber-800 text-sm">
+                      <CalendarCheck className="w-4 h-4 text-amber-600" />
+                      <span>Interview Round Scheduled by Admin: {app.interviewDate}</span>
                     </div>
                     {app.interviewNotes && (
-                      <p className="text-emerald-700 font-medium pl-5.5">
-                        Instructions: {app.interviewNotes}
+                      <p className="text-amber-800 font-medium pl-6">
+                        Round Instructions: {app.interviewNotes}
                       </p>
                     )}
+
+                    <div className="flex items-center gap-2 pt-1 pl-6">
+                      <button
+                        onClick={() => handleStudentResponse(app.id, 'accept_interview')}
+                        className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-xs flex items-center gap-1.5 transition-all"
+                      >
+                        <ThumbsUp className="w-3.5 h-3.5" />
+                        <span>Accept & Confirm Attendance</span>
+                      </button>
+                      <button
+                        onClick={() => handleStudentResponse(app.id, 'decline_interview')}
+                        className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold border border-slate-300 transition-all flex items-center gap-1"
+                      >
+                        <ThumbsDown className="w-3.5 h-3.5" />
+                        <span>Decline Interview</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {app.status === 'Interview Confirmed by Student' && (
+                  <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl text-xs text-emerald-900 flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <div>
+                      <span className="font-bold">Interview Attendance Confirmed:</span> {app.interviewDate || 'Date confirmed'} • Please be ready 10 minutes prior.
+                    </div>
                   </div>
                 )}
               </div>
@@ -1084,12 +1211,12 @@ const Placements = () => {
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none"
               >
                 <option value="ALL">All Statuses</option>
-                <option value="Applied">Applied</option>
-                <option value="Under Review">Under Review</option>
+                <option value="Applied">Applied (Pending Review)</option>
                 <option value="Shortlisted for Interview">Shortlisted for Interview</option>
-                <option value="Interview Scheduled">Interview Scheduled</option>
-                <option value="Not Shortlisted">Not Shortlisted</option>
-                <option value="Selected">Selected</option>
+                <option value="Interview Confirmed by Student">Interview Confirmed by Student</option>
+                <option value="Interview Declined by Student">Interview Declined by Student</option>
+                <option value="Selected">Selected / Offer Extended</option>
+                <option value="Application Declined">Application Declined</option>
               </select>
             </div>
           </div>
@@ -1104,8 +1231,8 @@ const Placements = () => {
                     <th className="p-3.5 font-bold">Roll Number</th>
                     <th className="p-3.5 font-bold">Applied Company & Role</th>
                     <th className="p-3.5 font-bold">CGPA</th>
-                    <th className="p-3.5 font-bold">Resume Attachment</th>
-                    <th className="p-3.5 font-bold">Status</th>
+                    <th className="p-3.5 font-bold">Resume Document</th>
+                    <th className="p-3.5 font-bold">Live Status</th>
                     <th className="p-3.5 font-bold text-center">Recruiter Action</th>
                   </tr>
                 </thead>
@@ -1133,17 +1260,7 @@ const Placements = () => {
                         </div>
                       </td>
                       <td className="p-3.5">
-                        <span className={`px-2.5 py-0.5 rounded-md font-bold text-[10px] ${
-                          app.status === 'Shortlisted for Interview' || app.status === 'Interview Scheduled'
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                            : app.status === 'Selected'
-                            ? 'bg-purple-50 text-purple-700 border border-purple-200'
-                            : app.status === 'Not Shortlisted'
-                            ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                            : 'bg-slate-100 text-slate-700'
-                        }`}>
-                          {app.status}
-                        </span>
+                        {renderStatusBadge(app.status)}
                       </td>
                       <td className="p-3.5 text-center">
                         <div className="flex items-center justify-center gap-1.5">
@@ -1173,6 +1290,94 @@ const Placements = () => {
         </div>
       )}
 
+      {/* Inspect Job Details Modal */}
+      {inspectingJob && (
+        <div 
+          className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
+          onClick={(e) => { if (e.target === e.currentTarget) setInspectingJob(null); }}
+        >
+          <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-4 border border-slate-100 my-8">
+            <div className="flex justify-between items-start border-b border-slate-100 pb-3">
+              <div>
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-600 block">{inspectingJob.type}</span>
+                <h3 className="text-lg font-black text-slate-900">{inspectingJob.role}</h3>
+                <p className="text-xs text-slate-500 font-bold">{inspectingJob.company} • {inspectingJob.location}</p>
+              </div>
+              <button onClick={() => setInspectingJob(null)} className="p-1 text-slate-400 hover:text-slate-600 rounded-lg">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 bg-slate-50 p-4 rounded-xl text-xs">
+              <div>
+                <span className="text-slate-400 font-bold block">Package / Stipend</span>
+                <span className="font-black text-emerald-700 text-sm">{inspectingJob.package}</span>
+              </div>
+              <div>
+                <span className="text-slate-400 font-bold block">Minimum CGPA Required</span>
+                <span className="font-black text-blue-700 text-sm">{inspectingJob.minCgpa.toFixed(2)} / 10.0</span>
+              </div>
+              <div>
+                <span className="text-slate-400 font-bold block">Eligibility</span>
+                <span className="font-extrabold text-slate-800">{inspectingJob.eligibility}</span>
+              </div>
+              <div>
+                <span className="text-slate-400 font-bold block">Application Deadline</span>
+                <span className="font-extrabold text-slate-800">{inspectingJob.deadline}</span>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider mb-1">Role Description</h4>
+              <p className="text-xs text-slate-600 leading-relaxed bg-slate-50/50 p-3 rounded-xl border border-slate-100">
+                {inspectingJob.description}
+              </p>
+            </div>
+
+            {inspectingJob.rounds && (
+              <div>
+                <h4 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider mb-1">Recruitment & Interview Process</h4>
+                <p className="text-xs text-slate-600 bg-amber-50/50 p-3 rounded-xl border border-amber-100">
+                  {inspectingJob.rounds}
+                </p>
+              </div>
+            )}
+
+            <div>
+              <h4 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider mb-1">Required Skills</h4>
+              <div className="flex flex-wrap gap-1.5">
+                {(inspectingJob.skills || []).map((sk, idx) => (
+                  <span key={idx} className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-100 text-slate-700">
+                    {sk}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-slate-100 flex gap-2">
+              <button
+                onClick={() => setInspectingJob(null)}
+                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl"
+              >
+                Close
+              </button>
+              {isStudent && (
+                <button
+                  onClick={() => {
+                    const target = inspectingJob;
+                    setInspectingJob(null);
+                    handleOpenApplyModal(target);
+                  }}
+                  className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs"
+                >
+                  Apply for Position
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Student Apply Modal with Resume Upload */}
       {showApplyModal && selectedJobToApply && (
         <div 
@@ -1185,7 +1390,7 @@ const Placements = () => {
           >
             <div className="flex justify-between items-start border-b border-slate-100 pb-3">
               <div>
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-600 block">Placement Application</span>
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-600 block">Placement Application Request</span>
                 <h3 className="text-base font-black text-slate-900">{selectedJobToApply.role}</h3>
                 <p className="text-xs text-slate-500 font-bold">{selectedJobToApply.company} • Package: {selectedJobToApply.package}</p>
               </div>
@@ -1338,7 +1543,7 @@ const Placements = () => {
                 className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs flex items-center justify-center gap-1.5"
               >
                 <Send className="w-4 h-4" />
-                <span>Submit Job Application</span>
+                <span>Submit Application Request</span>
               </button>
             </div>
           </form>
@@ -1465,7 +1670,18 @@ const Placements = () => {
             </div>
 
             <div>
-              <label className="text-xs font-bold text-slate-700 block mb-1">Job Description</label>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Interview Rounds Outline</label>
+              <input
+                type="text"
+                placeholder="e.g. Round 1: Coding Assessment • Round 2: Tech Design • Round 3: HR"
+                value={jobRounds}
+                onChange={(e) => setJobRounds(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Job Description & Responsibilities</label>
               <textarea
                 rows={2}
                 placeholder="Describe role responsibilities and qualifications..."
@@ -1526,41 +1742,40 @@ const Placements = () => {
             </div>
 
             <div>
-              <label className="text-xs font-bold text-slate-700 block mb-1">Update Candidate Status</label>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Candidate Application Status</label>
               <select
                 value={newStatusInput}
                 onChange={(e) => setNewStatusInput(e.target.value as any)}
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none"
               >
                 <option value="Applied">Applied (Pending Review)</option>
-                <option value="Under Review">Under Review</option>
-                <option value="Shortlisted for Interview">Shortlisted for Interview</option>
-                <option value="Interview Scheduled">Interview Scheduled</option>
-                <option value="Selected">Selected / Offer Extended</option>
-                <option value="Not Shortlisted">Not Shortlisted / Rejected</option>
+                <option value="Shortlisted for Interview">Shortlist & Schedule Interview</option>
+                <option value="Interview Confirmed by Student">Interview Confirmed by Student</option>
+                <option value="Selected">Selected / Extend Offer</option>
+                <option value="Application Declined">Decline Request</option>
               </select>
             </div>
 
-            {(newStatusInput === 'Shortlisted for Interview' || newStatusInput === 'Interview Scheduled') && (
+            {(newStatusInput === 'Shortlisted for Interview' || newStatusInput === 'Interview Confirmed by Student') && (
               <>
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">Interview Date, Time & Venue / Link</label>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">Interview Date, Time & Meeting Link / Venue</label>
                   <input
                     type="text"
                     value={interviewDateInput}
                     onChange={(e) => setInterviewDateInput(e.target.value)}
-                    placeholder="e.g. Sep 10, 2026 • 10:00 AM IST (Google Meet)"
+                    placeholder="e.g. Sep 10, 2026 • 10:00 AM IST (Google Meet: meet.google.com/abc-def)"
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">Interview Round Instructions / Notes</label>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">Round Instructions for Student</label>
                   <textarea
                     rows={2}
                     value={interviewNotesInput}
                     onChange={(e) => setInterviewNotesInput(e.target.value)}
-                    placeholder="e.g. Technical Round 1: Coding, Data Structures & System Design."
+                    placeholder="e.g. Technical Round 1: Coding, Data Structures & AI System Design."
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
@@ -1580,7 +1795,7 @@ const Placements = () => {
                 onClick={handleSaveSchedule}
                 className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs"
               >
-                Save Candidate Status
+                Save & Notify Student
               </button>
             </div>
           </div>

@@ -2911,7 +2911,33 @@ def update_application_status(
         app_rec.interview_notes = interview_notes
         
     db.commit()
-    return {"message": "Application status updated successfully"}
+    return {"message": "Application status updated successfully", "status": status}
+
+class StudentResponsePayload(BaseModel):
+    action: str # "accept_interview", "decline_interview", "withdraw"
+    notes: Optional[str] = None
+
+@app.post("/placements/applications/{app_id}/student-response")
+def student_application_response(app_id: str, payload: StudentResponsePayload, db: Session = Depends(get_db)):
+    app_rec = db.query(models.JobApplicationRecord).filter(models.JobApplicationRecord.id == app_id).first()
+    if not app_rec:
+        raise HTTPException(status_code=404, detail="Application not found")
+        
+    if payload.action == "accept_interview":
+        app_rec.status = "Interview Confirmed by Student"
+        if payload.notes:
+            app_rec.interview_notes = f"{app_rec.interview_notes or ''} | Student Confirmation: {payload.notes}".strip(" |")
+    elif payload.action == "decline_interview":
+        app_rec.status = "Interview Declined by Student"
+        if payload.notes:
+            app_rec.interview_notes = f"{app_rec.interview_notes or ''} | Student Declined: {payload.notes}".strip(" |")
+    elif payload.action == "withdraw":
+        db.delete(app_rec)
+        db.commit()
+        return {"message": "Application withdrawn successfully"}
+        
+    db.commit()
+    return {"message": f"Response '{payload.action}' recorded successfully", "status": app_rec.status}
 
 @app.delete("/placements/applications/{app_id}")
 def withdraw_job_application(app_id: str, db: Session = Depends(get_db)):
@@ -2920,6 +2946,7 @@ def withdraw_job_application(app_id: str, db: Session = Depends(get_db)):
         db.delete(app_rec)
         db.commit()
     return {"message": "Application withdrawn successfully"}
+
 
 
 
