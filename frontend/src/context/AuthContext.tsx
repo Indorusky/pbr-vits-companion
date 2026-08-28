@@ -1,7 +1,6 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { API_BASE_URL } from '../config';
-
-const CLOUD_SYNC_URL = 'https://kvdb.io/pbr_vits_companion_v2_db/global_accounts';
+import { pushCloudRecord, pullCloudRecord } from '../utils/cloudSync';
 
 export const pushAccountsToCloudSync = async (accountsList: any[]) => {
   try {
@@ -15,11 +14,7 @@ export const pushAccountsToCloudSync = async (accountsList: any[]) => {
       return u !== 'admin' && u !== 'student' && u !== 'ravi' && !deletedSet.has(u) && !deletedSet.has(r) && !deletedSet.has(n);
     });
 
-    await fetch(CLOUD_SYNC_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(customOnly)
-    });
+    await pushCloudRecord('global_registered_accounts', customOnly);
   } catch (e) {
     console.warn("Cloud sync write failed", e);
   }
@@ -27,11 +22,8 @@ export const pushAccountsToCloudSync = async (accountsList: any[]) => {
 
 export const pullAccountsFromCloudSync = async (): Promise<any[]> => {
   try {
-    const res = await fetch(CLOUD_SYNC_URL);
-    if (res.ok) {
-      const data = await res.json();
-      if (Array.isArray(data)) return data;
-    }
+    const res = await pullCloudRecord('global_registered_accounts');
+    if (Array.isArray(res)) return res;
   } catch (e) {
     console.warn("Cloud sync read failed", e);
   }
