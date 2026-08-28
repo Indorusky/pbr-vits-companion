@@ -3,7 +3,7 @@ import { Percent, Clock, Calculator, ListTodo, AlertTriangle, CheckCircle, Camer
 import { useAuth } from '../context/AuthContext';
 import { loadFaceApiModels, getFaceEmbedding } from '../utils/faceRecognition';
 import { API_BASE_URL } from '../config';
-import { SUBJECTS_DATABASE, getNormalizedDepartment } from '../utils/subjectsData';
+import { getNormalizedDepartment, getTimetableScheduleForDay } from '../utils/subjectsData';
 
 interface SubjectAttendance {
   subject: string;
@@ -19,6 +19,12 @@ interface HistoryRecord {
   status: 'Present' | 'Absent';
   verification_method: string;
   confidence_score: string | null;
+  start_time?: string;
+  end_time?: string;
+  frs_window_start?: string;
+  frs_window_end?: string;
+  room?: string;
+  faculty?: string;
 }
 
 interface DailyHistory {
@@ -103,29 +109,21 @@ const Attendance = () => {
       setLoading(false);
     }
 
-    const getTimetableSubjects = (semStr: string) => {
-      if (semStr.startsWith('1')) {
-        return ["Linear Algebra & Calculus", "Engineering Physics", "Programming in C", "Engineering Drawing"];
-      }
-      if (semStr.startsWith('2')) {
-        return ["Data Structures", "DBMS", "OOP (Java)", "Digital Logic & Computer Org"];
-      }
-      if (semStr.startsWith('3')) {
-        return ["Software Engineering", "Machine Learning", "Artificial Intelligence", "Computer Networks"];
-      }
-      return ["Generative AI", "MLOps & Model Deployment", "Deep Learning", "Cloud Computing Lab"];
-    };
-
     const studentSem = user?.semester || '4-1';
-    const semesterSubjectsList = getTimetableSubjects(studentSem);
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const todayDate = new Date();
+    const todayDayName = dayNames[todayDate.getDay()] || 'Monday';
+    const todayStr = todayDate.toISOString().split('T')[0];
 
-    const fallbackSubjects: SubjectAttendance[] = semesterSubjectsList.map((subj, idx) => {
+    const todaySchedule = getTimetableScheduleForDay(studentSem, todayDayName);
+
+    const fallbackSubjects: SubjectAttendance[] = todaySchedule.map((item, idx) => {
       const total = 20;
       const attended = idx < 3 ? 19 : 18;
       const absent = total - attended;
       const percentage = parseFloat(((attended / total) * 100).toFixed(1));
       return {
-        subject: subj,
+        subject: item.subject,
         total,
         attended,
         absent,
@@ -138,8 +136,6 @@ const Attendance = () => {
     const absentClasses = totalClasses - presentClasses;
     const overallPercentage = totalClasses > 0 ? parseFloat(((presentClasses / totalClasses) * 100).toFixed(1)) : 93.8;
 
-    const todayStr = new Date().toISOString().split('T')[0];
-
     const fallbackStats = {
       overall_percentage: overallPercentage,
       total_classes: totalClasses,
@@ -149,17 +145,23 @@ const Attendance = () => {
       history: [
         {
           date: todayStr,
-          records: fallbackSubjects.map((s, idx) => {
-            const periodKey = `att_marked_${todayStr}_period_${idx + 1}_${user?.username || 'student'}`;
+          records: todaySchedule.map((item) => {
+            const periodKey = `att_marked_${todayStr}_period_${item.period}_${user?.username || 'student'}`;
             const localRecord = localStorage.getItem(periodKey);
-            const isPresent = localRecord ? true : idx < 3; // First 3 periods Present by default
+            const isPresent = localRecord ? true : item.period < 4;
 
             return {
-              period: idx + 1,
-              subject: s.subject,
+              period: item.period,
+              subject: item.subject,
               status: isPresent ? ('Present' as const) : ('Absent' as const),
               verification_method: 'FACE_RECOGNITION',
-              confidence_score: '96.5%'
+              confidence_score: '96.5%',
+              start_time: item.startTime,
+              end_time: item.endTime,
+              frs_window_start: item.frsWindowStart,
+              frs_window_end: item.frsWindowEnd,
+              room: item.room,
+              faculty: item.faculty
             };
           })
         }
@@ -792,24 +794,51 @@ const Attendance = () => {
                           </span>
                         </div>
                         <div className="p-3 divide-y divide-slate-100">
-                          {day.records.map((rec, idx) => (
-                            <div key={idx} className="py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-                              <div>
-                                <span className="text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-lg mr-2">
-                                  Period {rec.period}
+                          {day.records.map((rec, idx) => {
+                            const sTime = rec.start_time || (idx === 0 ? '08:00' : idx === 1 ? '09:00' : idx === 2 ? '10:15' : '11:15');
+                            const eTime = rec.end_time || (idx === 0 ? '09:00' : idx === 1 ? '10:00' : idx === 2 ? '11:15' : '12:15');
+                            const wStart = rec.frs_window_start || (idx === 0 ? '07:50' : idx === 1 ? '08:50' : idx === 2 ? '10:05' : '11:05');
+                            const wEnd = rec.frs_window_end || (idx === 0 ? '08:15' : idx === 1 ? '09:15' : idx === 2 ? '10:30' : '11:30');
+
+                            return (
+                              <div key={idx} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs border-b border-slate-100 last:border-0">
+                                <div className="space-y-1.5">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className="text-[10px] font-extrabold bg-blue-100 text-blue-800 px-2.5 py-0.5 rounded-md">
+                                      Period {rec.period}
+                                    </span>
+                                    <span className="font-extrabold text-slate-900 text-sm">{rec.subject}</span>
+                                    {rec.verification_method === 'FACE_RECOGNITION' && rec.status === 'Present' && (
+                                      <span className="text-[9px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-md flex items-center gap-1">
+                                        <CheckCircle className="w-3 h-3 text-emerald-600" />
+                                        Face Verified (Conf: {rec.confidence_score || '96.5%'})
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {/* Timings & FRS Window Info */}
+                                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-semibold text-slate-500 pt-0.5">
+                                    <span className="flex items-center gap-1 text-slate-800 font-bold">
+                                      <Clock className="w-3.5 h-3.5 text-blue-600" />
+                                      Class: {sTime} - {eTime}
+                                    </span>
+                                    <span className="text-amber-800 font-bold bg-amber-50 px-2.5 py-0.5 rounded-md border border-amber-200 text-[10px]">
+                                      FRS Window: {wStart} to {wEnd}
+                                    </span>
+                                    {rec.room && (
+                                      <span className="text-slate-500 font-medium">
+                                        Room: {rec.room} {rec.faculty ? `• ${rec.faculty}` : ''}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <span className={`px-3 py-1 rounded-xl text-xs font-extrabold self-start sm:self-center shrink-0 ${rec.status === 'Present' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-rose-100 text-rose-800 border border-rose-200'}`}>
+                                  {rec.status}
                                 </span>
-                                <span className="font-bold text-slate-800">{rec.subject}</span>
-                                {rec.verification_method === 'FACE_RECOGNITION' && (
-                                  <span className="text-[9px] font-bold bg-blue-50 text-blue-700 border border-blue-100 px-2 py-0.5 rounded-lg ml-2">
-                                    Face Verified (Conf: {rec.confidence_score || 'N/A'})
-                                  </span>
-                                )}
                               </div>
-                              <span className={`px-2.5 py-0.5 rounded-lg text-[10px] font-bold self-start sm:self-center ${rec.status === 'Present' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-rose-50 text-rose-700 border border-rose-100'}`}>
-                                {rec.status}
-                              </span>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     ))

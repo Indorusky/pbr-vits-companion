@@ -71,3 +71,56 @@ export const getNormalizedDepartment = (dept: string = ''): string => {
   if (d.includes('civil')) return 'Civil Engineering';
   return 'Computer Science and Engineering (CSE)'; // default fallback
 };
+
+export interface UnifiedPeriodSchedule {
+  period: number;
+  subject: string;
+  faculty: string;
+  room: string;
+  startTime: string;
+  endTime: string;
+  frsWindowStart: string;
+  frsWindowEnd: string;
+}
+
+export const getTimetableScheduleForDay = (sem: string = '4-1', dayName: string = 'Monday'): UnifiedPeriodSchedule[] => {
+  let subjects = ["Generative AI", "MLOps & Model Deployment", "Deep Learning", "Cloud Computing Lab"];
+  if (sem.startsWith("1")) {
+    subjects = ["Linear Algebra & Calculus", "Engineering Physics", "Programming in C", "Engineering Drawing"];
+  } else if (sem.startsWith("2")) {
+    subjects = ["Data Structures", "DBMS", "OOP (Java)", "Digital Logic & Computer Org"];
+  } else if (sem.startsWith("3")) {
+    subjects = ["Software Engineering", "Machine Learning", "Artificial Intelligence", "Computer Networks"];
+  }
+
+  const faculties = ["Dr. Clara Croft", "Prof. Alan Vance", "Dr. Sarah Jenkins", "Dr. Rajiv Sharma"];
+  const times = [
+    { start: "08:00", end: "09:00", wStart: "07:50", wEnd: "08:15" },
+    { start: "09:00", end: "10:00", wStart: "08:50", wEnd: "09:15" },
+    { start: "10:15", end: "11:15", wStart: "10:05", wEnd: "10:30" },
+    { start: "11:15", end: "12:15", wStart: "11:05", wEnd: "11:30" }
+  ];
+
+  const daysList = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+  let dIdx = daysList.findIndex(d => d.toLowerCase() === dayName.toLowerCase());
+  if (dIdx === -1) dIdx = 0; // default to Monday
+
+  const semNum = parseInt(sem.charAt(0)) || 4;
+
+  return times.map((t, pIdx) => {
+    const subjName = subjects[(dIdx + pIdx) % subjects.length];
+    const facName = faculties[(pIdx + dIdx) % faculties.length];
+    const roomNo = `LH-${semNum * 100 + (pIdx + 1)}`;
+
+    return {
+      period: pIdx + 1,
+      subject: subjName,
+      faculty: facName,
+      room: roomNo,
+      startTime: t.start,
+      endTime: t.end,
+      frsWindowStart: t.wStart,
+      frsWindowEnd: t.wEnd
+    };
+  });
+};
