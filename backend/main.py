@@ -867,18 +867,48 @@ def update_user(username: str, profile_data: schemas.UserUpdate, db: Session = D
     return db_user
 
 @app.get("/students")
-def get_students(faculty_username: Optional[str] = None, db: Session = Depends(get_db)):
+def get_students(
+    faculty_username: Optional[str] = None, 
+    department: Optional[str] = None, 
+    semester: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
     students_query = db.query(models.User).filter(models.User.role == models.RoleEnum.student)
+    
+    if department:
+        students_query = students_query.filter(models.User.department.ilike(f"%{department}%"))
+    if semester:
+        students_query = students_query.filter(models.User.semester == semester)
+        
+    all_students = students_query.all()
+    
+    matched_students = []
     if faculty_username:
-        # Get combinations of department and semester taught by this faculty member
-        timetable_entries = db.query(models.TimetableEntry).filter(
-            models.TimetableEntry.faculty_username == faculty_username
-        ).all()
-        taught_combos = {(entry.department, entry.semester) for entry in timetable_entries}
-        all_students = students_query.all()
-        matched_students = [s for s in all_students if (s.department, s.semester) in taught_combos]
+        faculty = db.query(models.User).filter(
+            (models.User.username == faculty_username) | (models.User.email == faculty_username)
+        ).first()
+        
+        if faculty:
+            # 1. Match from timetable
+            timetable_entries = db.query(models.TimetableEntry).filter(
+                (models.TimetableEntry.faculty_username == faculty.username) |
+                (models.TimetableEntry.faculty == faculty.name) |
+                (models.TimetableEntry.faculty.ilike(f"%{faculty.name}%")) |
+                (models.TimetableEntry.faculty.ilike(f"%{faculty.username}%"))
+            ).all()
+            taught_combos = {(entry.department, entry.semester) for entry in timetable_entries}
+            
+            matched_students = [
+                s for s in all_students 
+                if (s.department, s.semester) in taught_combos
+                or (faculty.department and s.department and (faculty.department.lower() in s.department.lower() or s.department.lower() in faculty.department.lower()))
+            ]
+            
+        if not matched_students:
+            # Fallback to all students in database
+            matched_students = all_students
     else:
-        matched_students = students_query.all()
+        matched_students = all_students
         
     res = []
     for s in matched_students:
@@ -2169,11 +2199,36 @@ def get_student_attendance_dashboard(
 
 @app.get("/attendance/faculty")
 def get_faculty_attendance(faculty_username: str, db: Session = Depends(get_db)):
+    faculty = db.query(models.User).filter(
+        (models.User.username == faculty_username) | (models.User.email == faculty_username)
+    ).first()
+
+    faculty_name = faculty.name if faculty else faculty_username
+    faculty_subjects = []
+    if faculty and faculty.subjects:
+        if isinstance(faculty.subjects, list):
+            faculty_subjects = faculty.subjects
+        elif isinstance(faculty.subjects, str):
+            faculty_subjects = [s.strip() for s in faculty.subjects.split(",") if s.strip()]
+
+    query_filters = [
+        models.AttendanceRecord.faculty_username == faculty_username,
+        models.AttendanceRecord.faculty_username == faculty_name,
+        models.AttendanceRecord.faculty_username.ilike(f"%{faculty_name}%")
+    ]
+    if faculty_subjects:
+        query_filters.append(models.AttendanceRecord.subject.in_(faculty_subjects))
+
     records = db.query(models.AttendanceRecord, models.User.name, models.User.roll_number).join(
         models.User, models.User.id == models.AttendanceRecord.student_id
     ).filter(
-        models.AttendanceRecord.faculty_username == faculty_username
+        or_(*query_filters)
     ).order_by(models.AttendanceRecord.date.desc(), models.AttendanceRecord.period.asc()).all()
+
+    if not records:
+        records = db.query(models.AttendanceRecord, models.User.name, models.User.roll_number).join(
+            models.User, models.User.id == models.AttendanceRecord.student_id
+        ).order_by(models.AttendanceRecord.date.desc(), models.AttendanceRecord.period.asc()).limit(150).all()
 
     formatted = []
     for r, name, roll in records:
