@@ -27,36 +27,6 @@ const DEFAULT_ROSTER: StudentRecord[] = [
     totalClasses: 50,
     marks: { 'Generative AI': 94, 'MLOps': 88, 'Deep Learning': 92 },
     status: 'Good'
-  },
-  {
-    id: '2',
-    name: 'Alex Johnson',
-    roll: '2373A01001',
-    attendance: 87.5,
-    attendedClasses: 35,
-    totalClasses: 40,
-    marks: { 'Math': 90, 'Physics': 85, 'CS': 95 },
-    status: 'Good'
-  },
-  {
-    id: '3',
-    name: 'Beatrix Kiddo',
-    roll: '2373A01002',
-    attendance: 79.5,
-    attendedClasses: 31,
-    totalClasses: 39,
-    marks: { 'Math': 72, 'Physics': 68, 'CS': 80 },
-    status: 'Warning'
-  },
-  {
-    id: '4',
-    name: 'Charles Xavier',
-    roll: '2373A01003',
-    attendance: 94.0,
-    attendedClasses: 47,
-    totalClasses: 50,
-    marks: { 'Math': 95, 'Physics': 96, 'CS': 98 },
-    status: 'Good'
   }
 ];
 
