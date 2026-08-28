@@ -4,12 +4,13 @@ const BASE_URL = 'https://keyvalue.immanuel.co/api/KeyVal';
 export const pushCloudRecord = async (key: string, data: any): Promise<boolean> => {
   try {
     const jsonStr = JSON.stringify(data);
-    const b64 = btoa(encodeURIComponent(jsonStr))
+    // Standard UTF-8 safe Base64 encoding in browser JS (btoa + unescape + encodeURIComponent)
+    const safeB64 = btoa(unescape(encodeURIComponent(jsonStr)))
       .replace(/=/g, '')
       .replace(/\+/g, '-')
       .replace(/\//g, '_');
 
-    const res = await fetch(`${BASE_URL}/UpdateValue/${APP_TOKEN}/${key}/${b64}`, {
+    const res = await fetch(`${BASE_URL}/UpdateValue/${APP_TOKEN}/${key}/${safeB64}`, {
       method: 'POST'
     });
     return res.ok;
@@ -23,13 +24,13 @@ export const pullCloudRecord = async (key: string): Promise<any | null> => {
   try {
     const res = await fetch(`${BASE_URL}/GetValue/${APP_TOKEN}/${key}`);
     if (res.ok) {
-      let b64 = await res.json();
-      if (typeof b64 === 'string' && b64.length > 0) {
-        b64 = b64.replace(/-/g, '+').replace(/_/g, '/');
-        while (b64.length % 4 !== 0) {
-          b64 += '=';
+      let rawB64 = await res.json();
+      if (typeof rawB64 === 'string' && rawB64.trim().length > 0) {
+        rawB64 = rawB64.trim().replace(/-/g, '+').replace(/_/g, '/');
+        while (rawB64.length % 4 !== 0) {
+          rawB64 += '=';
         }
-        const jsonStr = decodeURIComponent(atob(b64));
+        const jsonStr = decodeURIComponent(escape(atob(rawB64)));
         return JSON.parse(jsonStr);
       }
     }

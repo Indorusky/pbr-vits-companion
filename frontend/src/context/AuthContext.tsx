@@ -334,6 +334,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Pull cloud accounts on load to sync custom registered accounts across devices
   useEffect(() => {
+    // 1. Publish any local custom accounts (like sahil) to cloud if created on this device
+    try {
+      const saved = localStorage.getItem('campus_ai_accounts');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const customOnly = parsed.filter((a: any) => {
+            const u = (a.username || '').toLowerCase();
+            return u && u !== 'admin' && u !== 'student' && u !== 'ravi';
+          });
+          customOnly.forEach((acc: any) => {
+            pushCloudRecord(`user_${acc.username.toLowerCase()}`, acc);
+          });
+          if (customOnly.length > 0) {
+            pushAccountsToCloudSync(parsed);
+          }
+        }
+      }
+    } catch { /* ignore */ }
+
+    // 2. Pull cloud accounts to sync custom registered accounts from other devices
     pullAccountsFromCloudSync().then(cloudAccs => {
       if (Array.isArray(cloudAccs) && cloudAccs.length > 0) {
         const deletedRaw = localStorage.getItem('campus_ai_deleted_accounts');
