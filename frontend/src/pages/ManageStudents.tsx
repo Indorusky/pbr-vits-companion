@@ -104,14 +104,22 @@ const ManageStudents = () => {
       console.warn("Backend fetch roster failed, local storage fallback", e);
     }
     const saved = localStorage.getItem('campus_ai_roster');
+    let loaded: StudentRecord[] = [];
     if (saved !== null) {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        setRoster(parsed);
-        return;
-      }
+      try {
+        loaded = JSON.parse(saved);
+      } catch { /* ignore */ }
     }
-    setRoster(DEFAULT_ROSTER);
+    
+    const existingIdsOrRolls = new Set((loaded || []).map(s => (s.roll || s.name || '').toLowerCase()));
+    DEFAULT_ROSTER.forEach(defSt => {
+      if (!existingIdsOrRolls.has(defSt.roll.toLowerCase()) && !existingIdsOrRolls.has(defSt.name.toLowerCase())) {
+        loaded.push(defSt);
+      }
+    });
+
+    setRoster(loaded);
+    localStorage.setItem('campus_ai_roster', JSON.stringify(loaded));
   };
 
   useEffect(() => {

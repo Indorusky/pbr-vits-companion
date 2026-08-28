@@ -52,21 +52,34 @@ const ManageUsers = () => {
       console.warn("Backend fetch users failed, local storage fallback", e);
     }
     const saved = localStorage.getItem('campus_ai_accounts');
+    let loaded: AccountRecord[] = [];
     if (saved) {
-      setAccounts(JSON.parse(saved));
-    } else {
-      setAccounts(DEFAULT_ACCOUNTS.map(a => ({
-        username: a.username,
-        role: (a.role || 'student') as 'student' | 'faculty' | 'admin',
-        name: a.name || a.username,
-        department: a.department || 'General',
-        year: a.year,
-        email: a.email || '',
-        roll_number: a.roll_number,
-        subjects: Array.isArray(a.subjects) ? a.subjects.join(', ') : a.subjects,
-        approval_status: a.approval_status
-      })));
+      try {
+        loaded = JSON.parse(saved);
+      } catch { /* ignore */ }
     }
+    
+    const existingNames = new Set((loaded || []).map(a => (a.username || '').toLowerCase()));
+    const defaultMapped: AccountRecord[] = DEFAULT_ACCOUNTS.map(a => ({
+      username: a.username,
+      role: (a.role || 'student') as 'student' | 'faculty' | 'admin',
+      name: a.name || a.username,
+      department: a.department || 'General',
+      year: a.year,
+      email: a.email || '',
+      roll_number: a.roll_number,
+      subjects: Array.isArray(a.subjects) ? a.subjects.join(', ') : a.subjects,
+      approval_status: a.approval_status
+    }));
+
+    defaultMapped.forEach(def => {
+      if (!existingNames.has(def.username.toLowerCase())) {
+        loaded.push(def);
+      }
+    });
+
+    setAccounts(loaded);
+    localStorage.setItem('campus_ai_accounts', JSON.stringify(loaded));
   };
 
   // Load accounts
