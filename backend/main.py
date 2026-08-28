@@ -1910,6 +1910,26 @@ def daily_attendance(req: DailyAttendanceRequest, db: Session = Depends(get_db))
             end_time="10:30 AM"
         )
 
+    # 3. Enforce Strict Window Rule: [-10 min before start, +15 min after start]
+    curr_mins = parse_time_str_to_minutes(current_time_str) or (now.hour * 60 + now.minute)
+    s_mins = parse_time_str_to_minutes(active_entry.start_time)
+    if s_mins is not None:
+        w_start_mins = s_mins - 10
+        w_end_mins = s_mins + 15
+        
+        if curr_mins < w_start_mins:
+            w_start_str = format_minutes_to_hhmm(w_start_mins)
+            raise HTTPException(
+                status_code=400,
+                detail=f"Attendance window for Period {active_entry.period} ({active_entry.subject}) is not open yet. Attendance opens 10 minutes before class at {w_start_str}."
+            )
+        elif curr_mins > w_end_mins:
+            w_end_str = format_minutes_to_hhmm(w_end_mins)
+            raise HTTPException(
+                status_code=400,
+                detail=f"Attendance window for Period {active_entry.period} ({active_entry.subject}) closed at {w_end_str} (15 minutes after class start). Late attendance is not permitted."
+            )
+
     # 3. Mark Attendance Record
     existing = db.query(models.AttendanceRecord).filter(
         models.AttendanceRecord.student_id == student.id,
@@ -2178,6 +2198,18 @@ class FacultyProfileUpdateSchema(BaseModel):
     assigned_departments: Optional[str] = None
     assigned_subjects: Optional[str] = None
     assigned_semesters: Optional[str] = None
+
+def format_minutes_to_hhmm(total_min: int) -> str:
+    m = total_min % (24 * 60)
+    if m < 0:
+        m += 24 * 60
+    h = m // 60
+    mm = m % 60
+    ampm = "AM" if h < 12 else "PM"
+    display_h = h if h <= 12 else h - 12
+    if display_h == 0:
+        display_h = 12
+    return f"{display_h}:{mm:02d} {ampm}"
 
 def get_normalized_department(dept: str) -> str:
     d = (dept or "").lower()

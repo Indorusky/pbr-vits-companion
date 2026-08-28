@@ -313,6 +313,31 @@ const Attendance = () => {
     return JSON.stringify(embedding);
   };
 
+  const getPeriodWindowState = (startTime?: string, recordDate?: string) => {
+    const sMin = parseTimeToMinutes(startTime);
+    const wStartMin = sMin - 10;
+    const wEndMin = sMin + 15;
+
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    const targetDate = useTimeOverride ? simDate : todayStr;
+    const isTargetDay = (recordDate === targetDate);
+
+    if (!isTargetDay) {
+      return (recordDate && recordDate < targetDate) ? 'expired' : 'upcoming';
+    }
+
+    const currentTotalMin = useTimeOverride ? parseTimeToMinutes(simTime) : (now.getHours() * 60 + now.getMinutes());
+
+    if (currentTotalMin < wStartMin) {
+      return 'upcoming';
+    } else if (currentTotalMin >= wStartMin && currentTotalMin <= wEndMin) {
+      return 'open';
+    } else {
+      return 'expired';
+    }
+  };
+
   // Perform self enrollment
   const startEnrollment = async () => {
     setIsModelsLoading(true);
@@ -799,13 +824,15 @@ const Attendance = () => {
                         </div>
                         <div className="p-3 divide-y divide-slate-100">
                           {day.records.map((rec, idx) => {
-                            const sTime = rec.start_time || (idx === 0 ? '08:00' : idx === 1 ? '09:00' : idx === 2 ? '10:15' : '11:15');
-                            const eTime = rec.end_time || (idx === 0 ? '09:00' : idx === 1 ? '10:00' : idx === 2 ? '11:15' : '12:15');
-                            const wStart = rec.frs_window_start || (idx === 0 ? '07:50' : idx === 1 ? '08:50' : idx === 2 ? '10:05' : '11:05');
-                            const wEnd = rec.frs_window_end || (idx === 0 ? '08:15' : idx === 1 ? '09:15' : idx === 2 ? '10:30' : '11:30');
+                            const sMin = parseTimeToMinutes(rec.start_time);
+                            const sTime = rec.start_time || (idx === 0 ? '08:00 AM' : idx === 1 ? '09:00 AM' : idx === 2 ? '10:15 AM' : '11:15 AM');
+                            const eTime = rec.end_time || (idx === 0 ? '09:00 AM' : idx === 1 ? '10:00 AM' : idx === 2 ? '11:15 AM' : '12:15 PM');
+                            const wStart = formatMinutesToHHMM(sMin - 10);
+                            const wEnd = formatMinutesToHHMM(sMin + 15);
+                            const wState = getPeriodWindowState(rec.start_time, day.date);
 
                             return (
-                              <div key={idx} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs border-b border-slate-100 last:border-0">
+                              <div key={idx} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs border-b border-slate-100 last:border-0">
                                 <div className="space-y-1.5">
                                   <div className="flex flex-wrap items-center gap-2">
                                     <span className="text-[10px] font-extrabold bg-blue-100 text-blue-800 px-2.5 py-0.5 rounded-md">
@@ -826,7 +853,7 @@ const Attendance = () => {
                                       <Clock className="w-3.5 h-3.5 text-blue-600" />
                                       Class: {sTime} - {eTime}
                                     </span>
-                                    <span className="text-amber-800 font-bold bg-amber-50 px-2.5 py-0.5 rounded-md border border-amber-200 text-[10px]">
+                                    <span className={`px-2.5 py-0.5 rounded-md border text-[10px] font-bold ${wState === 'open' ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-amber-50 text-amber-800 border-amber-200'}`}>
                                       FRS Window: {wStart} to {wEnd}
                                     </span>
                                     {rec.room && (
@@ -843,14 +870,24 @@ const Attendance = () => {
                                       <Check className="w-3.5 h-3.5 text-emerald-600" />
                                       Present
                                     </span>
-                                  ) : (
+                                  ) : wState === 'open' ? (
                                     <button
                                       onClick={() => startDailyVerification(rec.period, rec.subject)}
-                                      className="px-3.5 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-extrabold shadow-md flex items-center gap-1.5 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                                      className="px-3.5 py-1.5 bg-gradient-to-r from-emerald-600 to-indigo-600 hover:from-emerald-700 hover:to-indigo-700 text-white rounded-xl text-xs font-extrabold shadow-md flex items-center gap-1.5 transition-all hover:scale-105 active:scale-95 cursor-pointer animate-pulse"
                                     >
                                       <Camera className="w-3.5 h-3.5" />
-                                      Mark FRS
+                                      Mark FRS (Open Now)
                                     </button>
+                                  ) : wState === 'upcoming' ? (
+                                    <span className="px-3 py-1.5 rounded-xl text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1.5 select-none" title="Attendance window opens 10 minutes before class start time">
+                                      <Clock className="w-3.5 h-3.5 text-amber-600" />
+                                      Opens at {wStart}
+                                    </span>
+                                  ) : (
+                                    <span className="px-3 py-1.5 rounded-xl text-[11px] font-extrabold bg-slate-100 text-slate-500 border border-slate-250 flex items-center gap-1.5 select-none" title="Attendance window closed 15 minutes after class start time">
+                                      <Lock className="w-3.5 h-3.5 text-slate-400" />
+                                      Window Closed (Absent)
+                                    </span>
                                   )}
                                 </div>
                               </div>
