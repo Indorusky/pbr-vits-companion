@@ -362,8 +362,8 @@ const Attendance = () => {
                   const normalized = norm === 0 ? floats : floats.map(x => x / norm);
                   const liveEmbedding = JSON.stringify(normalized);
 
-                  // Smart Client-Side FRS Matching Fallback for 100% network resilience
-                  const runLocalBiometricVerification = () => {
+                  // Period-Specific Client-Side FRS Matcher
+                  const runLocalBiometricVerification = async () => {
                     const savedEnrolled = localStorage.getItem(`campus_ai_face_enrollment_${user?.username || 'student'}`);
                     let matchScore = 96.8;
                     let isMatched = true;
@@ -387,33 +387,121 @@ const Attendance = () => {
                       } catch { /* ignore parse error */ }
                     }
 
-                    if (isMatched) {
-                      const successResult = {
-                        status: 'PRESENT',
-                        message: `Biometric Verification Successful (${matchScore}% Match Score)`,
-                        match_score: matchScore,
-                        timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-                        subject: 'Generative AI'
-                      };
-                      setVerifyResult(successResult);
-                      setVerifyStep('success');
-
-                      try {
-                        const todayKey = `attendance_marked_${simDate}_${user?.username || 'student'}`;
-                        localStorage.setItem(todayKey, JSON.stringify(successResult));
-                        localStorage.setItem('campus_ai_attendance_summary', JSON.stringify({
-                          present: 19,
-                          total: 20,
-                          percentage: 95.0,
-                          healthScore: 92.0
-                        }));
-                      } catch { /* ignore */ }
-
-                      fetchDashboardData();
-                    } else {
+                    if (!isMatched) {
                       setVerifyError('Face Biometric Match Failed. Feature vector distance too high. Please align face under clear lighting.');
                       setVerifyStep('error');
+                      return;
                     }
+
+                    // Determine target time HH:MM (either override or real current time)
+                    const checkHHMM = useTimeOverride ? simTime : `${String(new Date().getHours()).padStart(2, '0')}:${String(new Date().getMinutes()).padStart(2, '0')}`;
+                    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                    const dayName = dayNames[new Date(simDate).getDay()] || 'Monday';
+                    const normDept = getNormalizedDepartment(user?.department || 'Computer Science');
+                    const sem = user?.semester || '3-1';
+
+                    let activePeriodInfo: { period: number; subject: string; room: string; startTime: string; endTime: string } | null = null;
+
+                    try {
+                      const res = await fetch(`${API_BASE_URL}/timetable?department=${normDept}&semester=${sem}&day=${dayName}`, {
+                        headers: {
+                          'x-requester-username': user?.username || 'student',
+                          'x-requester-role': 'student'
+                        }
+                      });
+                      if (res.ok) {
+                        const entries = await res.json();
+                        if (Array.isArray(entries)) {
+                          for (const entry of entries) {
+                            const startClean = (entry.start_time || '08:00').substring(0, 5);
+                            const [sH, sM] = startClean.split(':').map(Number);
+                            
+                            // Window: 10 mins before to 15 mins after
+                            let wStartTotal = sH * 60 + sM - 10;
+                            if (wStartTotal < 0) wStartTotal += 24 * 60;
+                            const wStartStr = `${String(Math.floor(wStartTotal / 60)).padStart(2, '0')}:${String(wStartTotal % 60).padStart(2, '0')}`;
+
+                            const wEndTotal = sH * 60 + sM + 15;
+                            const wEndStr = `${String(Math.floor(wEndTotal / 60)).padStart(2, '0')}:${String(wEndTotal % 60).padStart(2, '0')}`;
+
+                            if (checkHHMM >= wStartStr && checkHHMM <= wEndStr) {
+                              activePeriodInfo = {
+                                period: entry.period,
+                                subject: entry.subject,
+                                room: entry.room || 'LH-101',
+                                startTime: startClean,
+                                endTime: (entry.end_time || '09:00').substring(0, 5)
+                              };
+                              break;
+                            }
+                          }
+                        }
+                      }
+                    } catch { /* ignore */ }
+
+                    // If no timetable entry matched active window, check standard period slots
+                    if (!activePeriodInfo) {
+                      const standardSlots = [
+                        { period: 1, subject: 'Programming in C', start: '08:00', end: '09:00', wStart: '07:50', wEnd: '08:15' },
+                        { period: 2, subject: 'Data Structures', start: '09:00', end: '10:00', wStart: '08:50', wEnd: '09:15' },
+                        { period: 3, subject: 'Computer Networks', start: '10:15', end: '11:15', wStart: '10:05', wEnd: '10:30' },
+                        { period: 4, subject: 'Generative AI', start: '11:15', end: '12:15', wStart: '11:05', wEnd: '11:30' }
+                      ];
+
+                      for (const slot of standardSlots) {
+                        if (checkHHMM >= slot.wStart && checkHHMM <= slot.wEnd) {
+                          activePeriodInfo = {
+                            period: slot.period,
+                            subject: slot.subject,
+                            room: 'LH-101',
+                            startTime: slot.start,
+                            endTime: slot.end
+                          };
+                          break;
+                        }
+                      }
+                    }
+
+                    if (!activePeriodInfo) {
+                      setVerifyError(`No active class attendance window at ${checkHHMM}. Attendance window opens 10 mins before class start time and closes 15 mins after.`);
+                      setVerifyStep('error');
+                      return;
+                    }
+
+                    // Check if already marked for this specific period & date
+                    const periodKey = `att_marked_${simDate}_period_${activePeriodInfo.period}_${user?.username || 'student'}`;
+                    const alreadyMarked = localStorage.getItem(periodKey);
+                    if (alreadyMarked) {
+                      const parsed = JSON.parse(alreadyMarked);
+                      setVerifyResult({
+                        already_recorded: true,
+                        status: 'PRESENT',
+                        message: `Attendance already recorded for Period ${activePeriodInfo.period} (${activePeriodInfo.subject}) today.`,
+                        timestamp: parsed.timestamp || checkHHMM,
+                        subject: activePeriodInfo.subject,
+                        period: activePeriodInfo.period
+                      });
+                      setVerifyStep('success');
+                      return;
+                    }
+
+                    const successResult = {
+                      status: 'PRESENT',
+                      message: `Period ${activePeriodInfo.period} (${activePeriodInfo.subject}) Attendance Verified (${matchScore}% Match Score)`,
+                      match_score: matchScore,
+                      timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+                      subject: activePeriodInfo.subject,
+                      period: activePeriodInfo.period
+                    };
+
+                    setVerifyResult(successResult);
+                    setVerifyStep('success');
+
+                    try {
+                      localStorage.setItem(periodKey, JSON.stringify(successResult));
+                    } catch { /* ignore */ }
+
+                    fetchDashboardData();
                   };
                   
                   fetch(`${API_BASE_URL}/daily-attendance`, {
