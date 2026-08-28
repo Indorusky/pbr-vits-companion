@@ -1268,6 +1268,38 @@ def read_root():
 
 
 # Timetable API endpoints & validation
+def get_normalized_department(dept: Optional[str]) -> str:
+    d = (dept or "").lower()
+    if "aiml" in d:
+        return "CSE AIML"
+    if "ai" in d:
+        return "CSE AI"
+    if "cse" in d or "computer" in d:
+        return "Computer Science and Engineering (CSE)"
+    if "eee" in d or "electrical" in d:
+        return "Electrical and Electronics Engineering (EEE)"
+    if "ece" in d or "electronics" in d:
+        return "Electronics and Communication Engineering (ECE)"
+    if "civil" in d:
+        return "Civil Engineering"
+    return "Computer Science and Engineering (CSE)"
+
+def normalize_dept_name(dept: Optional[str]) -> str:
+    if not dept:
+        return "cse"
+    d = dept.lower()
+    if "aiml" in d:
+        return "cse aiml"
+    if "cse" in d or "computer" in d:
+        return "cse"
+    if "eee" in d or "electrical" in d:
+        return "eee"
+    if "ece" in d or "electronics" in d:
+        return "ece"
+    if "civil" in d:
+        return "civil"
+    return d
+
 def check_timetable_conflicts(db: Session, entry: schemas.TimetableEntryCreate, current_id: Optional[int] = None):
     query = db.query(models.TimetableEntry).filter(
         models.TimetableEntry.day == entry.day,
@@ -1278,7 +1310,7 @@ def check_timetable_conflicts(db: Session, entry: schemas.TimetableEntryCreate, 
         
     existing = query.all()
     for e in existing:
-        if e.department == entry.department and e.semester == entry.semester:
+        if normalize_dept_name(e.department) == normalize_dept_name(entry.department) and e.semester == entry.semester:
             raise HTTPException(
                 status_code=400, 
                 detail=f"Conflict: Semester {entry.semester} of Department {entry.department} already has class '{e.subject}' scheduled on {entry.day} period {entry.period}."
@@ -1299,7 +1331,8 @@ def ensure_timetable_seeded(db: Session, department: str, semester: str):
     sem_str = semester or "1-1"
 
     existing = db.query(models.TimetableEntry).filter(
-        models.TimetableEntry.department == dept_norm,
+        (models.TimetableEntry.department == dept_norm) |
+        (models.TimetableEntry.department == department),
         models.TimetableEntry.semester == sem_str
     ).first()
 
@@ -1313,12 +1346,17 @@ def ensure_timetable_seeded(db: Session, department: str, semester: str):
         elif "3" in sem_str:
             subjects = ["Software Engineering", "Machine Learning", "Artificial Intelligence", "Computer Networks"]
 
-        faculties = ["Dr. Clara Croft", "Prof. Alan Vance", "Dr. Sarah Jenkins", "Dr. Rajiv Sharma"]
+        faculties = [
+            "Dr. DODLA SRUJAN CHANDRA REDDY",
+            "Dr. GANUGULA VIJAY KUMAR",
+            "Dr. KUNI VENKATA SUBBAIAH",
+            "Dr. NUKAMREDDY SRINAD REDDY"
+        ]
         times = [
-            ("08:00", "09:00"),
-            ("09:00", "10:00"),
-            ("10:15", "11:15"),
-            ("11:15", "12:15")
+            ("08:00 AM", "09:00 AM"),
+            ("09:00 AM", "10:00 AM"),
+            ("10:15 AM", "11:15 AM"),
+            ("11:15 AM", "12:15 PM")
         ]
         days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
 
@@ -1354,11 +1392,12 @@ def get_timetable(
     requester_role: Optional[str] = Header(None, alias="x-requester-role"),
     db: Session = Depends(get_db)
 ):
-    if requester_role == "student" and requester_username:
-        user = db.query(models.User).filter(models.User.username == requester_username).first()
-        if user:
-            department = department or user.department or "Computer Science and Engineering (CSE)"
-            semester = semester or user.semester or "1-1"
+    dept_target = department or "Computer Science and Engineering (CSE)"
+    sem_target = semester or "1-1"
+    try:
+        ensure_timetable_seeded(db, dept_target, sem_target)
+    except Exception as e:
+        print(f"Error seeding timetable: {e}")
 
     query = db.query(models.TimetableEntry)
     if semester:
@@ -1373,13 +1412,9 @@ def get_timetable(
         target_norm = normalize_dept_name(department)
         filtered = [t for t in results if normalize_dept_name(t.department) == target_norm]
         if filtered:
-            return sorted(filtered, key=lambda x: x.period)
+            return sorted(filtered, key=lambda x: (x.period if x.period is not None else 0))
             
-    if not results and (department or semester):
-        ensure_timetable_seeded(db, department or "Computer Science and Engineering (CSE)", semester or "1-1")
-        results = query.all()
-
-    return sorted(results, key=lambda x: x.period)
+    return sorted(results, key=lambda x: (x.period if x.period is not None else 0))
 
 @app.post("/timetable", response_model=schemas.TimetableEntryResponse)
 def create_timetable_entry(entry: schemas.TimetableEntryCreate, overwrite: bool = False, db: Session = Depends(get_db)):
