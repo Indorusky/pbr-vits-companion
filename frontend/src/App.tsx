@@ -1,6 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import Sidebar from './components/Sidebar';
+import Sidebar, { MobileBottomNav } from './components/Sidebar';
 import AttendanceNotificationBanner from './components/AttendanceNotificationBanner';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -68,75 +68,79 @@ function AppRoutes() {
           <ProtectedRoute>
             <div className="flex flex-col md:flex-row h-screen bg-slate-50 text-slate-900 overflow-hidden">
               <Sidebar />
-              <main className="flex-1 flex flex-col min-h-0 bg-slate-50 relative pb-32 sm:pb-36 md:pb-6 overflow-y-auto">
-                <AttendanceNotificationBanner />
-                {isAuthenticated && user && user.role === 'student' && (
-                  <div className="bg-white border-b border-slate-200 px-4 md:px-6 py-2.5 md:py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-xs shrink-0 select-none">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
-                      <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Student Console</span>
-                    </div>
-                    <div className="text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-150 px-3 py-1 rounded-xl flex items-center justify-between sm:justify-start gap-2 sm:gap-4 flex-wrap">
-                      <div>
-                        Name: <span className="text-slate-900 font-extrabold">{user.name || user.username}</span>
+              <div className="flex-1 flex flex-col min-h-0 min-w-0 bg-slate-50 overflow-hidden">
+                <main className="flex-1 min-h-0 overflow-y-auto bg-slate-50 relative pb-6 md:pb-8">
+                  <AttendanceNotificationBanner />
+                  {isAuthenticated && user && user.role === 'student' && (
+                    <div className="bg-white border-b border-slate-200 px-4 md:px-6 py-2.5 md:py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-xs shrink-0 select-none">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
+                        <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Student Console</span>
                       </div>
-                      <div className="hidden sm:block w-px h-3 bg-slate-350"></div>
-                      <div>
-                        Roll: <span className="text-slate-900 font-extrabold">{user.roll_number || '2373A01001'}</span>
+                      <div className="text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-150 px-3 py-1 rounded-xl flex items-center justify-between sm:justify-start gap-2 sm:gap-4 flex-wrap">
+                        <div>
+                          Name: <span className="text-slate-900 font-extrabold">{user.name || user.username}</span>
+                        </div>
+                        <div className="hidden sm:block w-px h-3 bg-slate-350"></div>
+                        <div>
+                          Roll: <span className="text-slate-900 font-extrabold">{user.roll_number || '2373A01001'}</span>
+                        </div>
                       </div>
                     </div>
+                  )}
+                  <div className="flex-1 min-h-0 relative">
+                    <Routes>
+                      {/* Common Routes */}
+                      <Route path="/profile" element={<Profile />} />
+                      <Route path="/settings" element={<Settings />} />
+
+                      {/* Student Routes */}
+                      <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['student']}><Dashboard /></ProtectedRoute>} />
+                      <Route path="/academic-health" element={<ProtectedRoute allowedRoles={['student']}><AcademicHealth /></ProtectedRoute>} />
+                      <Route path="/timetable" element={<ProtectedRoute allowedRoles={['student', 'faculty', 'admin']}><Timetable /></ProtectedRoute>} />
+                      <Route path="/attendance" element={<ProtectedRoute allowedRoles={['student']}><Attendance /></ProtectedRoute>} />
+                      <Route path="/marks" element={<ProtectedRoute allowedRoles={['student']}><Marks /></ProtectedRoute>} />
+                      <Route path="/history" element={<ProtectedRoute allowedRoles={['student']}><AcademicHistory /></ProtectedRoute>} />
+                      <Route path="/assignments" element={<ProtectedRoute allowedRoles={['student', 'faculty']}><Assignments /></ProtectedRoute>} />
+                      <Route path="/study" element={<StudyMaterials />} />
+                      <Route path="/events" element={<ProtectedRoute allowedRoles={['student']}><Events /></ProtectedRoute>} />
+                      <Route path="/placements" element={<ProtectedRoute allowedRoles={['student']}><Placements /></ProtectedRoute>} />
+                      <Route path="/chat" element={<ProtectedRoute allowedRoles={['student']}><Chatbot /></ProtectedRoute>} />
+                      <Route path="/quizzes" element={<Quizzes />} />
+                      <Route path="/notifications" element={<ProtectedRoute allowedRoles={['student']}><Notifications /></ProtectedRoute>} />
+                      <Route path="/announcements" element={<Announcements />} />
+
+                      {/* Faculty Routes */}
+                      <Route path="/faculty-dashboard" element={<ProtectedRoute allowedRoles={['faculty']}><FacultyDashboard /></ProtectedRoute>} />
+                      <Route path="/manage-students" element={<ProtectedRoute allowedRoles={['faculty']}><ManageStudents /></ProtectedRoute>} />
+                      
+                      {/* Admin Routes */}
+                      <Route path="/admin-dashboard" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
+                      <Route path="/manage-users" element={<ProtectedRoute allowedRoles={['admin']}><ManageUsers /></ProtectedRoute>} />
+                      <Route path="/manage-departments" element={<ProtectedRoute allowedRoles={['admin']}><ManageDepartments /></ProtectedRoute>} />
+
+                      {/* Fallback */}
+                      <Route 
+                        path="*" 
+                        element={
+                          <Navigate 
+                            to={
+                              user?.role === 'admin' 
+                                ? "/admin-dashboard" 
+                                : (user?.role === 'faculty' 
+                                    ? "/faculty-dashboard" 
+                                    : "/dashboard")
+                            } 
+                            replace 
+                          />
+                        } 
+                      />
+                    </Routes>
                   </div>
-                )}
-                <div className="flex-1 min-h-0 relative">
-                  <Routes>
-                    {/* Common Routes */}
-                    <Route path="/profile" element={<Profile />} />
-                    <Route path="/settings" element={<Settings />} />
-
-                    {/* Student Routes */}
-                    <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['student']}><Dashboard /></ProtectedRoute>} />
-                    <Route path="/academic-health" element={<ProtectedRoute allowedRoles={['student']}><AcademicHealth /></ProtectedRoute>} />
-                    <Route path="/timetable" element={<ProtectedRoute allowedRoles={['student', 'faculty', 'admin']}><Timetable /></ProtectedRoute>} />
-                    <Route path="/attendance" element={<ProtectedRoute allowedRoles={['student']}><Attendance /></ProtectedRoute>} />
-                    <Route path="/marks" element={<ProtectedRoute allowedRoles={['student']}><Marks /></ProtectedRoute>} />
-                    <Route path="/history" element={<ProtectedRoute allowedRoles={['student']}><AcademicHistory /></ProtectedRoute>} />
-                    <Route path="/assignments" element={<ProtectedRoute allowedRoles={['student', 'faculty']}><Assignments /></ProtectedRoute>} />
-                    <Route path="/study" element={<StudyMaterials />} />
-                    <Route path="/events" element={<ProtectedRoute allowedRoles={['student']}><Events /></ProtectedRoute>} />
-                    <Route path="/placements" element={<ProtectedRoute allowedRoles={['student']}><Placements /></ProtectedRoute>} />
-                    <Route path="/chat" element={<ProtectedRoute allowedRoles={['student']}><Chatbot /></ProtectedRoute>} />
-                    <Route path="/quizzes" element={<Quizzes />} />
-                    <Route path="/notifications" element={<ProtectedRoute allowedRoles={['student']}><Notifications /></ProtectedRoute>} />
-                    <Route path="/announcements" element={<Announcements />} />
-
-                    {/* Faculty Routes */}
-                    <Route path="/faculty-dashboard" element={<ProtectedRoute allowedRoles={['faculty']}><FacultyDashboard /></ProtectedRoute>} />
-                    <Route path="/manage-students" element={<ProtectedRoute allowedRoles={['faculty']}><ManageStudents /></ProtectedRoute>} />
-                    
-                    {/* Admin Routes */}
-                    <Route path="/admin-dashboard" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
-                    <Route path="/manage-users" element={<ProtectedRoute allowedRoles={['admin']}><ManageUsers /></ProtectedRoute>} />
-                    <Route path="/manage-departments" element={<ProtectedRoute allowedRoles={['admin']}><ManageDepartments /></ProtectedRoute>} />
-
-                    {/* Fallback */}
-                    <Route 
-                      path="*" 
-                      element={
-                        <Navigate 
-                          to={
-                            user?.role === 'admin' 
-                              ? "/admin-dashboard" 
-                              : (user?.role === 'faculty' 
-                                  ? "/faculty-dashboard" 
-                                  : "/dashboard")
-                          } 
-                          replace 
-                        />
-                      } 
-                    />
-                  </Routes>
-                </div>
-              </main>
+                </main>
+                {/* Independent Mobile Footer Navigation Section */}
+                <MobileBottomNav />
+              </div>
             </div>
           </ProtectedRoute>
         }

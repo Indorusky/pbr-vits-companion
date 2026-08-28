@@ -304,31 +304,45 @@ const Sidebar = () => {
           </div>
         </div>
       )}
-
-      {/* 4. Mobile Bottom App Bar (Clean Elevated Footer Navigation) */}
-      <nav
-        aria-label="Mobile Bottom Navigation"
-        className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-slate-200/90 flex items-center justify-around py-2 px-1.5 z-40 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]"
-      >
-        {bottomNavItems.map((item) => (
-          <NavLink
-            key={item.name}
-            to={item.path}
-            className={({ isActive }) =>
-              `flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all ${
-                isActive
-                  ? 'text-blue-600 font-extrabold scale-105 bg-blue-50/80'
-                  : 'text-slate-400 hover:text-slate-600 font-semibold'
-              }`
-            }
-          >
-            <item.icon className="w-5 h-5" />
-            <span className="text-[10px] mt-0.5 tracking-tight font-bold">{item.name}</span>
-          </NavLink>
-        ))}
-      </nav>
     </>
   );
 };
 
+export const MobileBottomNav = () => {
+  const { viewMode } = useAuth();
+
+  const bottomNavItems = [
+    { name: 'Home', path: viewMode === 'faculty' || viewMode === 'admin' ? '/faculty-dashboard' : '/dashboard', icon: Home },
+    { name: 'Timetable', path: '/timetable', icon: Calendar },
+    { name: 'Attendance', path: '/attendance', icon: Percent },
+    { name: 'AI Chat', path: '/chat', icon: MessageSquare },
+    { name: 'Profile', path: '/profile', icon: User },
+  ];
+
+  return (
+    <nav
+      aria-label="Mobile Bottom Navigation"
+      className="md:hidden flex-shrink-0 w-full bg-white border-t border-slate-200/90 flex items-center justify-around py-1.5 px-2 z-30 shadow-[0_-2px_12px_rgba(0,0,0,0.06)] select-none"
+    >
+      {bottomNavItems.map((item) => (
+        <NavLink
+          key={item.name}
+          to={item.path}
+          className={({ isActive }) =>
+            `flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all ${
+              isActive
+                ? 'text-blue-600 font-extrabold bg-blue-50/80'
+                : 'text-slate-400 hover:text-slate-600 font-semibold'
+            }`
+          }
+        >
+          <item.icon className="w-5 h-5" />
+          <span className="text-[10px] mt-0.5 tracking-tight font-bold">{item.name}</span>
+        </NavLink>
+      ))}
+    </nav>
+  );
+};
+
 export default Sidebar;
+
