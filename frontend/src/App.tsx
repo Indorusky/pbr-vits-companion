@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Sidebar from './components/Sidebar';
+import AttendanceNotificationBanner from './components/AttendanceNotificationBanner';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Chatbot from './pages/Chatbot';
@@ -68,6 +69,7 @@ function AppRoutes() {
             <div className="flex flex-col md:flex-row h-screen bg-slate-50 text-slate-900 overflow-hidden">
               <Sidebar />
               <main className="flex-1 flex flex-col min-h-0 bg-slate-50 relative pb-24 md:pb-0 overflow-y-auto">
+                <AttendanceNotificationBanner />
                 {isAuthenticated && user && user.role === 'student' && (
                   <div className="bg-white border-b border-slate-200 px-4 md:px-6 py-2.5 md:py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-xs shrink-0 select-none">
                     <div className="flex items-center gap-2">
