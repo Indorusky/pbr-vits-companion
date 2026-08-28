@@ -1328,23 +1328,25 @@ def check_timetable_conflicts(db: Session, entry: schemas.TimetableEntryCreate, 
 
 def ensure_timetable_seeded(db: Session, department: str, semester: str):
     dept_norm = get_normalized_department(department) if department else "Computer Science and Engineering (CSE)"
-    sem_str = semester or "1-1"
+    sem_str = semester or "4-1"
 
-    existing = db.query(models.TimetableEntry).filter(
-        (models.TimetableEntry.department == dept_norm) |
-        (models.TimetableEntry.department == department),
+    # Count how many records exist for this department & semester
+    all_sem_entries = db.query(models.TimetableEntry).filter(
         models.TimetableEntry.semester == sem_str
-    ).first()
+    ).all()
+    
+    matching_entries = [t for t in all_sem_entries if normalize_dept_name(t.department) == normalize_dept_name(dept_norm)]
 
-    if not existing:
-        # Generate 4 periods per weekday for this department & semester
+    if len(matching_entries) < 20:
         subjects = ["Generative AI", "MLOps & Model Deployment", "Deep Learning", "Cloud Computing Lab"]
-        if "1" in sem_str:
+        if sem_str.startswith("1"):
             subjects = ["Linear Algebra & Calculus", "Engineering Physics", "Programming in C", "Engineering Drawing"]
-        elif "2" in sem_str:
+        elif sem_str.startswith("2"):
             subjects = ["Data Structures", "DBMS", "OOP (Java)", "Digital Logic & Computer Organization"]
-        elif "3" in sem_str:
+        elif sem_str.startswith("3"):
             subjects = ["Software Engineering", "Machine Learning", "Artificial Intelligence", "Computer Networks"]
+        elif sem_str.startswith("4"):
+            subjects = ["Generative AI", "MLOps & Model Deployment", "Deep Learning", "Cloud Computing Lab"]
 
         faculties = [
             "Dr. DODLA SRUJAN CHANDRA REDDY",
@@ -1362,24 +1364,27 @@ def ensure_timetable_seeded(db: Session, department: str, semester: str):
 
         for d_idx, day_name in enumerate(days):
             for p_idx in range(4):
-                subj_name = subjects[(d_idx + p_idx) % len(subjects)]
-                fac_name = faculties[(p_idx + d_idx) % len(faculties)]
-                t_start, t_end = times[p_idx]
-                room_no = f"LH-{(int(sem_str[0]) if sem_str[0].isdigit() else 1) * 100 + (p_idx + 1)}"
+                period_num = p_idx + 1
+                has_slot = any(e.day == day_name and e.period == period_num for e in matching_entries)
+                if not has_slot:
+                    subj_name = subjects[(d_idx + p_idx) % len(subjects)]
+                    fac_name = faculties[(p_idx + d_idx) % len(faculties)]
+                    t_start, t_end = times[p_idx]
+                    room_no = f"LH-{(int(sem_str[0]) if sem_str[0].isdigit() else 4) * 100 + period_num}"
 
-                entry = models.TimetableEntry(
-                    department=dept_norm,
-                    semester=sem_str,
-                    day=day_name,
-                    period=p_idx + 1,
-                    subject=subj_name,
-                    subject_type="Lecture" if p_idx < 3 else "Laboratory",
-                    faculty_username=fac_name,
-                    room=room_no,
-                    start_time=t_start,
-                    end_time=t_end
-                )
-                db.add(entry)
+                    entry = models.TimetableEntry(
+                        department=dept_norm,
+                        semester=sem_str,
+                        day=day_name,
+                        period=period_num,
+                        subject=subj_name,
+                        subject_type="Lecture" if p_idx < 3 else "Laboratory",
+                        faculty_username=fac_name,
+                        room=room_no,
+                        start_time=t_start,
+                        end_time=t_end
+                    )
+                    db.add(entry)
         db.commit()
 
 @app.get("/timetable", response_model=List[schemas.TimetableEntryResponse])
@@ -1393,7 +1398,7 @@ def get_timetable(
     db: Session = Depends(get_db)
 ):
     dept_target = department or "Computer Science and Engineering (CSE)"
-    sem_target = semester or "1-1"
+    sem_target = semester or "4-1"
     try:
         ensure_timetable_seeded(db, dept_target, sem_target)
     except Exception as e:
@@ -1411,8 +1416,7 @@ def get_timetable(
     if department:
         target_norm = normalize_dept_name(department)
         filtered = [t for t in results if normalize_dept_name(t.department) == target_norm]
-        if filtered:
-            return sorted(filtered, key=lambda x: (x.period if x.period is not None else 0))
+        return sorted(filtered, key=lambda x: (x.period if x.period is not None else 0))
             
     return sorted(results, key=lambda x: (x.period if x.period is not None else 0))
 
