@@ -258,8 +258,18 @@ const Timetable = () => {
   };
 
   const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-  const activeDaySchedule = sessions
-    .filter(s => s.day === activeDay)
+  
+  // Deduplicate active day schedule by period
+  const dedupedScheduleMap = new Map<number, TimetableRecord>();
+  sessions
+    .filter(s => s.day?.toLowerCase() === activeDay?.toLowerCase())
+    .forEach(s => {
+      if (!dedupedScheduleMap.has(s.period) || (s.faculty_username && !dedupedScheduleMap.get(s.period)?.faculty_username)) {
+        dedupedScheduleMap.set(s.period, s);
+      }
+    });
+
+  const activeDaySchedule = Array.from(dedupedScheduleMap.values())
     .sort((a, b) => a.period - b.period);
 
   // Available subjects for the selected form dept/sem

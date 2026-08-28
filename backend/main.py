@@ -1415,10 +1415,16 @@ def get_timetable(
     results = query.all()
     if department:
         target_norm = normalize_dept_name(department)
-        filtered = [t for t in results if normalize_dept_name(t.department) == target_norm]
-        return sorted(filtered, key=lambda x: (x.period if x.period is not None else 0))
-            
-    return sorted(results, key=lambda x: (x.period if x.period is not None else 0))
+        results = [t for t in results if normalize_dept_name(t.department) == target_norm]
+
+    # Deduplicate by (day, period) to prevent duplicate rows from ever returning
+    unique_slots = {}
+    for t in results:
+        key = (t.day.lower(), t.period)
+        if key not in unique_slots or (t.id and unique_slots[key].id and t.id >= unique_slots[key].id):
+            unique_slots[key] = t
+
+    return sorted(list(unique_slots.values()), key=lambda x: (x.period if x.period is not None else 0))
 
 @app.post("/timetable", response_model=schemas.TimetableEntryResponse)
 def create_timetable_entry(entry: schemas.TimetableEntryCreate, overwrite: bool = False, db: Session = Depends(get_db)):

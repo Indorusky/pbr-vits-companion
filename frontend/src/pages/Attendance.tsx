@@ -102,19 +102,23 @@ const Attendance = () => {
       if (ttRes.ok) {
         const liveEntries = await ttRes.json();
         if (Array.isArray(liveEntries) && liveEntries.length > 0) {
-          todaySchedule = liveEntries.map((e: any) => {
+          const dedupedScheduleMap = new Map<number, UnifiedPeriodSchedule>();
+          liveEntries.forEach((e: any) => {
             const sMin = parseTimeToMinutes(e.start_time);
-            return {
-              period: e.period,
-              subject: e.subject,
-              faculty: e.faculty_username || 'Faculty Member',
-              room: e.room || 'LH-101',
-              startTime: e.start_time || '09:00 AM',
-              endTime: e.end_time || '10:30 AM',
-              frsWindowStart: formatMinutesToHHMM(sMin - 10),
-              frsWindowEnd: formatMinutesToHHMM(sMin + 15)
-            };
+            if (!dedupedScheduleMap.has(e.period) || (e.faculty_username && !dedupedScheduleMap.get(e.period)?.faculty)) {
+              dedupedScheduleMap.set(e.period, {
+                period: e.period,
+                subject: e.subject,
+                faculty: e.faculty_username || 'Faculty Member',
+                room: e.room || 'LH-101',
+                startTime: e.start_time || '09:00 AM',
+                endTime: e.end_time || '10:30 AM',
+                frsWindowStart: formatMinutesToHHMM(sMin - 10),
+                frsWindowEnd: formatMinutesToHHMM(sMin + 15)
+              });
+            }
           });
+          todaySchedule = Array.from(dedupedScheduleMap.values());
         }
       }
     } catch { /* ignore network error, fallback used */ }
