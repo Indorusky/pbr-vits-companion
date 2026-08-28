@@ -84,6 +84,12 @@ const Attendance = () => {
       if (res.ok) {
         const data = await res.json();
         setStats(data);
+        try {
+          localStorage.setItem('campus_ai_attendance_summary', JSON.stringify({
+            overall_percentage: data.overall_percentage !== undefined ? data.overall_percentage : data.overall_pct
+          }));
+        } catch { /* ignore */ }
+
         if (data.subjects && data.subjects.length > 0 && !selectedSubject) {
           setSelectedSubject(data.subjects[0]);
           setPredAttended(data.subjects[0].attended);
@@ -127,7 +133,7 @@ const Attendance = () => {
     const totalClasses = fallbackSubjects.reduce((acc, s) => acc + s.total, 0);
     const presentClasses = fallbackSubjects.reduce((acc, s) => acc + s.attended, 0);
     const absentClasses = totalClasses - presentClasses;
-    const overallPercentage = totalClasses > 0 ? parseFloat(((presentClasses / totalClasses) * 100).toFixed(1)) : 100.0;
+    const overallPercentage = totalClasses > 0 ? parseFloat(((presentClasses / totalClasses) * 100).toFixed(1)) : 92.0;
 
     const fallbackStats = {
       overall_percentage: overallPercentage,
@@ -152,6 +158,11 @@ const Attendance = () => {
     };
 
     setStats(fallbackStats);
+    try {
+      localStorage.setItem('campus_ai_attendance_summary', JSON.stringify({
+        overall_percentage: overallPercentage
+      }));
+    } catch { /* ignore */ }
     if (fallbackSubjects.length > 0 && !selectedSubject) {
       setSelectedSubject(fallbackSubjects[0]);
       setPredAttended(fallbackSubjects[0].attended);

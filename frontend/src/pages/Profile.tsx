@@ -384,23 +384,23 @@ const Profile = () => {
 
   return (
     <div className="p-6 md:p-8 max-w-4xl mx-auto space-y-8 min-h-screen">
-      <header className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center space-x-3 sm:space-x-4 min-w-0">
           {user?.profile_photo ? (
-            <img src={user.profile_photo} alt="Profile" className="w-16 h-16 rounded-2xl object-cover shadow-lg border border-slate-200" />
+            <img src={user.profile_photo} alt="Profile" className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl object-cover shadow-md border border-slate-200 shrink-0" />
           ) : (
-            <div className="w-16 h-16 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-bold text-2xl shadow-lg">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-bold text-xl sm:text-2xl shadow-md shrink-0">
               {name.charAt(0) || 'S'}
             </div>
           )}
-          <div>
-            <h1 className="text-3xl font-extrabold text-slate-900">{name || 'Student User'}</h1>
-            <p className="text-slate-500 text-sm font-medium">{user?.department || 'Computer Science & Engineering'} • {user?.year || 'Year 3'}</p>
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-3xl font-extrabold text-slate-900 leading-tight truncate">{name || 'Student User'}</h1>
+            <p className="text-slate-500 text-xs sm:text-sm font-medium truncate">{user?.department || 'Computer Science & Engineering'} • {user?.year || 'Year 3'}</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <span className={`text-xs font-bold px-3 py-1.5 rounded-xl border flex items-center gap-1.5 ${
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
+          <span className={`text-xs font-bold px-3 py-1.5 rounded-xl border flex items-center gap-1.5 shrink-0 ${
             attemptsCount >= 3 
               ? 'bg-red-50 text-red-700 border-red-200' 
               : 'bg-blue-50 text-blue-700 border-blue-200'
@@ -562,15 +562,15 @@ const Profile = () => {
           </div>
         </div>
 
-        <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-          <div className="flex items-center space-x-6 text-xs text-slate-500">
+        <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-6 text-xs text-slate-500">
             <span className="flex items-center gap-1 font-medium"><Award className="w-4 h-4 text-purple-600" /> Academic Health: Active</span>
             <span className="flex items-center gap-1 font-medium"><BookOpen className="w-4 h-4 text-blue-600" /> Enrolled Student</span>
           </div>
 
           <button
             type="submit"
-            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm rounded-xl transition-colors shadow-sm flex items-center gap-2"
+            className="w-full sm:w-auto px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm rounded-xl transition-colors shadow-sm flex items-center justify-center gap-2"
           >
             <Save className="w-4 h-4" />
             <span>Save Profile</span>

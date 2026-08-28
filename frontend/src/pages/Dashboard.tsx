@@ -114,12 +114,11 @@ const Dashboard = () => {
       'Dr. Helen Hunt'
     ];
 
-    // Live class attendance calculation (e.g., 4 classes held per subject up to date)
-    const totalClassesHeld = 4;
-    // Vary attended classes by student ID/name & subject index so it varies dynamically student by student (e.g., 4/4 = 100%, 3/4 = 75%, 2/4 = 50%)
+    // Live class attendance calculation (20 classes held per subject)
     const studentSeed = (user?.username || user?.name || 'student').length;
     const hash = idx * 7 + studentSeed * 13;
-    const attendedClasses = (studentSeed + idx) % 2 === 0 ? 4 : (studentSeed + idx) % 3 === 0 ? 3 : 2;
+    const totalClassesHeld = 20;
+    const attendedClasses = (studentSeed + idx) % 2 === 0 ? 20 : (studentSeed + idx) % 3 === 0 ? 18 : 14;
     const attendanceVal = parseFloat(((attendedClasses / totalClassesHeld) * 100).toFixed(1));
     const marksVal = 70 + ((hash + studentSeed) % 28); // 70 to 97%
     
@@ -146,15 +145,30 @@ const Dashboard = () => {
   useEffect(() => {
     setSubjects(generatedSubjects);
     if (generatedSubjects.length > 0) {
-      // Calculate live overall attendance as ratio of total classes attended / total classes held across all subjects
+      // Calculate live overall attendance identically to Attendance.tsx
       const totalAttended = generatedSubjects.reduce((sum, s, idx) => {
         const studentSeed = (user?.username || user?.name || 'student').length;
-        const attended = (studentSeed + idx) % 2 === 0 ? 4 : (studentSeed + idx) % 3 === 0 ? 3 : 2;
+        const attended = (studentSeed + idx) % 2 === 0 ? 20 : (studentSeed + idx) % 3 === 0 ? 18 : 14;
         return sum + attended;
       }, 0);
-      const totalHeld = generatedSubjects.length * 4;
-      const avgAtt = totalHeld > 0 ? parseFloat(((totalAttended / totalHeld) * 100).toFixed(1)) : 0;
+      const totalHeld = generatedSubjects.length * 20;
+      const avgAtt = totalHeld > 0 ? parseFloat(((totalAttended / totalHeld) * 100).toFixed(1)) : 92.0;
       const avgMks = Math.round(generatedSubjects.reduce((acc, s) => acc + s.marks, 0) / generatedSubjects.length);
+      
+      // Check if cached summary exists
+      try {
+        const cached = localStorage.getItem('campus_ai_attendance_summary');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed.overall_percentage !== undefined) {
+            setAttendance(parsed.overall_percentage);
+            const computedHealth = Math.min(100, Math.round((avgMks * 0.40) + (parsed.overall_percentage * 0.40) + (90 * 0.10) + (88 * 0.10)));
+            setHealthScore(computedHealth);
+            return;
+          }
+        }
+      } catch { /* ignore */ }
+
       setAttendance(avgAtt);
       const computedHealth = Math.min(100, Math.round((avgMks * 0.40) + (avgAtt * 0.40) + (90 * 0.10) + (88 * 0.10)));
       setHealthScore(computedHealth);
@@ -791,31 +805,31 @@ const Dashboard = () => {
       )}
 
       {/* Student Profile Card at bottom of Dashboard */}
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+      <div className="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-100">
         <h3 className="text-base font-bold text-slate-900 border-b border-slate-100 pb-3 mb-4 flex items-center gap-2">
           <Book className="w-4 h-4 text-blue-600" />
           Student Profile Summary
         </h3>
-        <div className="flex flex-col sm:flex-row items-center gap-4">
-          <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold text-sm shadow-sm shrink-0">
+        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
+          <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center font-bold text-base shadow-sm shrink-0">
             {user?.name?.charAt(0) || 'S'}
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 flex-1 text-xs">
-            <div>
-              <p className="text-slate-400 font-semibold uppercase">Full Name</p>
-              <p className="text-slate-850 font-bold text-sm mt-0.5">{user?.name || 'Alex Johnson'}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 flex-1 min-w-0 w-full text-xs">
+            <div className="min-w-0">
+              <p className="text-slate-400 font-semibold uppercase text-[10px]">Full Name</p>
+              <p className="text-slate-900 font-extrabold text-sm mt-0.5 break-words">{user?.name || 'Alex Johnson'}</p>
             </div>
-            <div>
-              <p className="text-slate-400 font-semibold uppercase">Email Address</p>
-              <p className="text-slate-850 font-bold text-sm mt-0.5">{user?.email || 'alex.j@campus.edu'}</p>
+            <div className="min-w-0">
+              <p className="text-slate-400 font-semibold uppercase text-[10px]">Email Address</p>
+              <p className="text-slate-900 font-extrabold text-sm mt-0.5 break-all">{user?.email || 'alex.j@campus.edu'}</p>
             </div>
-            <div>
-              <p className="text-slate-400 font-semibold uppercase">Department</p>
-              <p className="text-slate-850 font-bold text-sm mt-0.5">{user?.department || 'Computer Science'}</p>
+            <div className="min-w-0">
+              <p className="text-slate-400 font-semibold uppercase text-[10px]">Department</p>
+              <p className="text-slate-900 font-extrabold text-sm mt-0.5 break-words">{user?.department || 'Computer Science'}</p>
             </div>
-            <div>
-              <p className="text-slate-400 font-semibold uppercase">Academic Year</p>
-              <p className="text-slate-850 font-bold text-sm mt-0.5">{user?.year || '3rd Year'}</p>
+            <div className="min-w-0">
+              <p className="text-slate-400 font-semibold uppercase text-[10px]">Academic Year</p>
+              <p className="text-slate-900 font-extrabold text-sm mt-0.5">{user?.year || '3rd Year'}</p>
             </div>
           </div>
         </div>
