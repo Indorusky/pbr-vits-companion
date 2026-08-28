@@ -305,8 +305,11 @@ const Sidebar = () => {
         </div>
       )}
 
-      {/* 4. Mobile Bottom App Bar */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 flex items-center justify-around py-1.5 px-1 z-30 shadow-lg">
+      {/* 4. Mobile Bottom App Bar (Clean Elevated Footer Navigation) */}
+      <nav
+        aria-label="Mobile Bottom Navigation"
+        className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-slate-200/90 flex items-center justify-around py-2 px-1.5 z-40 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]"
+      >
         {bottomNavItems.map((item) => (
           <NavLink
             key={item.name}
@@ -314,16 +317,16 @@ const Sidebar = () => {
             className={({ isActive }) =>
               `flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all ${
                 isActive
-                  ? 'text-blue-600 font-extrabold scale-105'
-                  : 'text-slate-400 hover:text-slate-600 font-medium'
+                  ? 'text-blue-600 font-extrabold scale-105 bg-blue-50/80'
+                  : 'text-slate-400 hover:text-slate-600 font-semibold'
               }`
             }
           >
             <item.icon className="w-5 h-5" />
-            <span className="text-[10px] mt-0.5 tracking-tight">{item.name}</span>
+            <span className="text-[10px] mt-0.5 tracking-tight font-bold">{item.name}</span>
           </NavLink>
         ))}
-      </div>
+      </nav>
     </>
   );
 };

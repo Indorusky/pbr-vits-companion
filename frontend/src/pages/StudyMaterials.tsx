@@ -607,7 +607,7 @@ const StudyMaterials = () => {
   };
 
   return (
-    <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-8 min-h-screen">
+    <div className="p-4 sm:p-6 md:p-8 max-w-7xl mx-auto space-y-8 pb-36 md:pb-12 min-h-screen">
       <style>{`
         .perspective-1000 {
           perspective: 1000px;

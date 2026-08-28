@@ -325,14 +325,81 @@ def seed_timetable(db: Session):
         # Subjects Map
         subjects_map = {
             "CSE": {
-                "1-1": ['Mathematics-I', 'Engineering Physics', 'Programming in C', 'English', 'C Programming Lab'],
-                "1-2": ['Mathematics-II', 'Data Structures', 'Basic Electrical', 'Python Programming', 'Data Structures Lab'],
-                "2-1": ['Discrete Mathematics', 'DBMS', 'Operating Systems', 'OOP using Java', 'DBMS Lab'],
-                "2-2": ['Design & Analysis of Algorithms', 'Computer Networks', 'Software Engineering', 'Automata Theory', 'Algorithms Lab'],
-                "3-1": ['Compiler Design', 'Web Technologies', 'Artificial Intelligence', 'Cyber Security', 'Web Lab'],
-                "3-2": ['Cloud Computing', 'Distributed Systems', 'Data Warehousing', 'Professional Elective-I', 'Cloud Lab'],
-                "4-1": ['Cryptography', 'Big Data Analytics', 'DevOps', 'Project Phase-I', 'Big Data Lab'],
-                "4-2": ['Management Science', 'Professional Elective-II', 'Major Project Phase-II', 'Seminar']
+                "1-1": [
+                    'Engineering Mathematics-I (Calculus & Linear Algebra)',
+                    'Engineering Physics',
+                    'Communicative English',
+                    'Programming for Problem Solving using C',
+                    'Basic Electrical & Electronics Engineering (BEEE)',
+                    'Engineering Drawing & Computer Graphics',
+                    'Programming in C Laboratory',
+                    'Engineering Physics Laboratory',
+                    'English Language Communication Skills Lab'
+                ],
+                "1-2": [
+                    'Engineering Mathematics-II (Differential Equations & Vector Calculus)',
+                    'Engineering Chemistry',
+                    'Data Structures & Algorithms',
+                    'Basic Civil & Mechanical Engineering',
+                    'Python Programming & IT Workshop',
+                    'Data Structures Laboratory',
+                    'Engineering Chemistry Laboratory',
+                    'Python Programming Laboratory'
+                ],
+                "2-1": [
+                    'Discrete Mathematics & Graph Theory',
+                    'Computer Organization & Architecture (COA)',
+                    'Object Oriented Programming through Java',
+                    'Digital Logic Design (DLD)',
+                    'Database Management Systems (DBMS)',
+                    'Managerial Economics & Financial Analysis (MEFA)',
+                    'Java Programming Lab',
+                    'DBMS Laboratory'
+                ],
+                "2-2": [
+                    'Operating Systems (OS)',
+                    'Design & Analysis of Algorithms (DAA)',
+                    'Formal Languages & Automata Theory (FLAT)',
+                    'Probability & Statistics',
+                    'Software Engineering & Agile Methodologies',
+                    'Operating Systems Laboratory',
+                    'Algorithms Laboratory'
+                ],
+                "3-1": [
+                    'Computer Networks (CN)',
+                    'Web Technologies & Full Stack Development',
+                    'Artificial Intelligence & Machine Learning',
+                    'Professional Elective-I (Advanced Java / Unix)',
+                    'Open Elective-I',
+                    'Computer Networks & Web Tech Lab',
+                    'AI & Machine Learning Lab'
+                ],
+                "3-2": [
+                    'Compiler Design (CD)',
+                    'Cloud Computing & Virtualization',
+                    'Data Warehousing & Data Mining',
+                    'Professional Elective-II (Cyber Security / Mobile App Dev)',
+                    'Open Elective-II',
+                    'Compiler Design Lab',
+                    'Cloud Computing Lab'
+                ],
+                "4-1": [
+                    'Generative AI & Deep Learning',
+                    'Cryptography & Network Security (CNS)',
+                    'Big Data Analytics (BDA)',
+                    'MLOps & Model Deployment',
+                    'Professional Elective-III',
+                    'Open Elective-III',
+                    'Deep Learning & GenAI Lab',
+                    'Major Project Phase-I'
+                ],
+                "4-2": [
+                    'Management Science & Entrepreneurship',
+                    'Professional Elective-IV (Distributed Systems)',
+                    'Open Elective-IV',
+                    'Comprehensive Technical Seminar',
+                    'Major Project Phase-II / Industry Internship'
+                ]
             },
             "AI": {
                 "1-1": ['Mathematics-I', 'Engineering Chemistry', 'Programming in C', 'Communicative English', 'C Programming Lab'],

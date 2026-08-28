@@ -1,6 +1,210 @@
 export const SUBJECTS_DATABASE: Record<string, Record<string, string[]>> = {
+  'Computer Science and Engineering (CSE)': {
+    '1-1': [
+      'Engineering Mathematics-I (Calculus & Linear Algebra)',
+      'Engineering Physics',
+      'Communicative English',
+      'Programming for Problem Solving using C',
+      'Basic Electrical & Electronics Engineering (BEEE)',
+      'Engineering Drawing & Computer Graphics',
+      'Programming in C Laboratory',
+      'Engineering Physics Laboratory',
+      'English Language Communication Skills Lab'
+    ],
+    '1-2': [
+      'Engineering Mathematics-II (Differential Equations & Vector Calculus)',
+      'Engineering Chemistry',
+      'Data Structures & Algorithms',
+      'Basic Civil & Mechanical Engineering',
+      'Python Programming & IT Workshop',
+      'Data Structures Laboratory',
+      'Engineering Chemistry Laboratory',
+      'Python Programming Laboratory'
+    ],
+    '2-1': [
+      'Discrete Mathematics & Graph Theory',
+      'Computer Organization & Architecture (COA)',
+      'Object Oriented Programming through Java',
+      'Digital Logic Design (DLD)',
+      'Database Management Systems (DBMS)',
+      'Managerial Economics & Financial Analysis (MEFA)',
+      'Java Programming Lab',
+      'DBMS Laboratory'
+    ],
+    '2-2': [
+      'Operating Systems (OS)',
+      'Design & Analysis of Algorithms (DAA)',
+      'Formal Languages & Automata Theory (FLAT)',
+      'Probability & Statistics',
+      'Software Engineering & Agile Methodologies',
+      'Operating Systems Laboratory',
+      'Algorithms Laboratory'
+    ],
+    '3-1': [
+      'Computer Networks (CN)',
+      'Web Technologies & Full Stack Development',
+      'Artificial Intelligence & Machine Learning',
+      'Professional Elective-I (Advanced Java / Unix)',
+      'Open Elective-I',
+      'Computer Networks & Web Tech Lab',
+      'AI & Machine Learning Lab'
+    ],
+    '3-2': [
+      'Compiler Design (CD)',
+      'Cloud Computing & Virtualization',
+      'Data Warehousing & Data Mining',
+      'Professional Elective-II (Cyber Security / Mobile App Dev)',
+      'Open Elective-II',
+      'Compiler Design Lab',
+      'Cloud Computing Lab'
+    ],
+    '4-1': [
+      'Generative AI & Deep Learning',
+      'Cryptography & Network Security (CNS)',
+      'Big Data Analytics (BDA)',
+      'MLOps & Model Deployment',
+      'Professional Elective-III',
+      'Open Elective-III',
+      'Deep Learning & GenAI Lab',
+      'Major Project Phase-I'
+    ],
+    '4-2': [
+      'Management Science & Entrepreneurship',
+      'Professional Elective-IV (Distributed Systems)',
+      'Open Elective-IV',
+      'Comprehensive Technical Seminar',
+      'Major Project Phase-II / Industry Internship'
+    ]
+  },
+  'CSE AI': {
+    '1-1': [
+      'Linear Algebra & Calculus',
+      'Engineering Physics',
+      'Programming in C',
+      'Basic Civil & Mechanical Engineering',
+      'Communicative English',
+      'Engineering Physics Lab',
+      'C Programming Lab'
+    ],
+    '1-2': [
+      'Differential Equations & Vector Calculus',
+      'Engineering Chemistry',
+      'Data Structures',
+      'Basic Electrical & Electronics Engineering',
+      'Graphics & Workshop',
+      'Data Structures Lab'
+    ],
+    '2-1': [
+      'Discrete Mathematics',
+      'Object Oriented Programming through Java',
+      'Database Management Systems',
+      'Digital Logic & Computer Organization',
+      'Design Thinking & UI/UX',
+      'Java & DBMS Labs'
+    ],
+    '2-2': [
+      'Machine Learning Foundations',
+      'Probability & Statistics',
+      'Operating Systems',
+      'Software Engineering',
+      'Optimization Techniques in AI',
+      'Machine Learning Lab'
+    ],
+    '3-1': [
+      'Artificial Intelligence & Expert Systems',
+      'Computer Networks',
+      'Automata Theory & Compiler Design',
+      'Natural Language Processing (NLP)',
+      'Computer Vision',
+      'AI & NLP Lab'
+    ],
+    '3-2': [
+      'Deep Learning Architectures',
+      'Data Analytics & Big Data',
+      'Web Technologies & REST APIs',
+      'Professional Elective-II',
+      'Open Elective-I',
+      'Deep Learning Lab'
+    ],
+    '4-1': [
+      'Generative AI & LLM Systems',
+      'MLOps & Model Deployment Pipelines',
+      'Reinforcement Learning',
+      'Professional Elective-III',
+      'Open Elective-II',
+      'Major Project Phase-I'
+    ],
+    '4-2': [
+      'AI Ethics, Security & Governance',
+      'Major Industry Internship',
+      'Final Major Project Dissertation & Defense'
+    ]
+  },
+  'CSE AIML': {
+    '1-1': [
+      'Linear Algebra & Calculus',
+      'Engineering Physics & Chemistry',
+      'Programming for Problem Solving in C',
+      'Engineering Workshop & CAD',
+      'Communicative English',
+      'Programming in C Lab'
+    ],
+    '1-2': [
+      'Differential Equations & Vector Calculus',
+      'Python Programming for Data Science',
+      'Data Structures & Algorithms',
+      'Basic Electrical & Electronics',
+      'Environmental Science',
+      'Data Structures & Python Labs'
+    ],
+    '2-1': [
+      'Probability & Statistics for Machine Learning',
+      'Computer Organization & Architecture',
+      'Operating Systems',
+      'Software Engineering',
+      'Database Management Systems',
+      'DBMS & OS Labs'
+    ],
+    '2-2': [
+      'Discrete Mathematics & Structures',
+      'Java & Object Oriented Design',
+      'Design & Analysis of Algorithms',
+      'Introduction to Artificial Intelligence',
+      'Formal Languages & Automata',
+      'AI & Algorithms Lab'
+    ],
+    '3-1': [
+      'Machine Learning Algorithms',
+      'Data Warehousing & Mining',
+      'Computer Networks',
+      'Design Thinking & Innovation',
+      'Professional Elective-I',
+      'Machine Learning Lab'
+    ],
+    '3-2': [
+      'Deep Learning Systems',
+      'Natural Language Processing',
+      'Data Analytics with Big Data Tools',
+      'Knowledge Representation & Reasoning',
+      'Open Elective-I',
+      'Deep Learning Lab'
+    ],
+    '4-1': [
+      'Generative AI & Prompt Engineering',
+      'MLOps & Cloud Model Serving',
+      'Professional Elective-II & III',
+      'Open Elective-II',
+      'Major Project Phase-I'
+    ],
+    '4-2': [
+      'Professional Elective-IV',
+      'Open Elective-IV',
+      'Technical Seminar',
+      'Major Project Phase-II / Internship'
+    ]
+  },
   'Electrical and Electronics Engineering (EEE)': {
-    '1-1': ['Linear Algebra & Calculus', 'Engineering Physics/Chemistry', 'Programming in C', 'Engineering Drawing', 'English', 'Labs'],
+    '1-1': ['Linear Algebra & Calculus', 'Engineering Physics', 'Programming in C', 'Engineering Drawing', 'English', 'Labs'],
     '1-2': ['Differential Equations & Vector Calculus', 'Applied Physics', 'Basic Electrical Engineering', 'Data Structures', 'Workshops/Labs'],
     '2-1': ['Electrical Circuit Analysis-I', 'Electromagnetic Fields', 'DC Machines & Transformers', 'Thermal & Hydro Prime Movers', 'MEFA', 'Electrical Labs'],
     '2-2': ['Electrical Circuit Analysis-II', 'Electrical Machines-II', 'Control Systems', 'Analog Circuits', 'STLD', 'Machines Labs'],
@@ -8,36 +212,6 @@ export const SUBJECTS_DATABASE: Record<string, Record<string, string[]>> = {
     '3-2': ['Power System Analysis', 'Microprocessors & Microcontrollers', 'DSP', 'Professional Elective-II', 'Open Elective-II', 'Skill Course (ML with Python)', 'Labs'],
     '4-1': ['Switchgear & Protection', 'Utilization of Electrical Energy', 'Professional Electives (III & IV)', 'Open Elective-III', 'Internship evaluations'],
     '4-2': ['Professional Elective-V', 'Open Elective-IV', 'Major Project Work / Industry Internship']
-  },
-  'CSE AI': {
-    '1-1': ['Linear Algebra & Calculus', 'Engineering Physics', 'Programming in C', 'Basic Civil & Mechanical Engineering', 'Communicative English', 'Labs'],
-    '1-2': ['Differential Equations & Vector Calculus', 'Engineering Chemistry', 'Data Structures', 'Basic Electrical & Electronics Engineering', 'Graphics/Workshop', 'Data Structures Lab'],
-    '2-1': ['Discrete Mathematics', 'OOP (Java/C++)', 'DBMS', 'Digital Logic & Computer Organization', 'Skill Course (Design Thinking / Full Stack-1)'],
-    '2-2': ['Machine Learning', 'Probability & Statistics', 'Operating Systems', 'Software Engineering', 'Optimization Techniques', 'Labs'],
-    '3-1': ['Artificial Intelligence', 'Computer Networks', 'Automata Theory & Compiler Design', 'NLP', 'Computer Vision', 'Professional Elective-I'],
-    '3-2': ['Deep Learning', 'Data Analytics/Big Data', 'Web Technologies', 'Professional Elective-II', 'Open Elective-I', 'Labs'],
-    '4-1': ['Generative AI', 'MLOps & Model Deployment', 'Professional Electives (III & IV)', 'Open Elective-II', 'Project Work Part-1'],
-    '4-2': ['Major Industry Internship', 'Final Major Project / Dissertation']
-  },
-  'CSE AIML': {
-    '1-1': ['Linear Algebra & Calculus', 'Engineering Physics/Chemistry', 'Programming in C', 'Workshop', 'English', 'Labs'],
-    '1-2': ['Differential Equations & Vector Calculus', 'Python Programming', 'Data Structures', 'Basic Electrical & Electronics Engineering', 'Environmental Science', 'Labs'],
-    '2-1': ['Probability & Statistics', 'Computer Organization', 'Operating Systems', 'Software Engineering', 'DBMS', 'Labs'],
-    '2-2': ['Discrete Mathematics', 'Java OOP', 'Algorithms', 'Intro to AI', 'Automata Theory', 'Labs'],
-    '3-1': ['Machine Learning', 'Data Warehousing', 'Computer Networks', 'Design Thinking', 'Professional Elective-I', 'Labs'],
-    '3-2': ['Deep Learning', 'NLP', 'Data Analytics', 'Knowledge Representation', 'Open Elective-I', 'Labs'],
-    '4-1': ['Generative AI', 'MLOps', 'Professional Electives (II & III)', 'Open Electives (II & III)', 'Major Project Phase-I'],
-    '4-2': ['Professional Elective-IV', 'Open Elective-IV', 'Seminar', 'Major Project Phase-II']
-  },
-  'Computer Science and Engineering (CSE)': {
-    '1-1': ['Engineering Mathematics-I', 'Physics/Chemistry', 'Programming in C', 'Engineering Graphics', 'English', 'Labs'],
-    '1-2': ['Engineering Mathematics-II', 'Data Structures', 'Basic Electrical', 'Python/IT Workshop', 'Labs'],
-    '2-1': ['Discrete Mathematics', 'Computer Organization', 'OOP (Java/C++)', 'Digital Logic Design', 'Business Economics', 'Labs'],
-    '2-2': ['Operating Systems', 'DBMS', 'Advanced OOP', 'Automata Theory', 'Probability & Statistics', 'Labs'],
-    '3-1': ['Software Engineering', 'Computer Networks', 'Algorithms', 'Web Technologies', 'Professional Elective-I', 'Labs'],
-    '3-2': ['Compiler Design', 'Machine Learning', 'Data Warehousing', 'Cloud Computing', 'Professional Elective-II', 'Labs'],
-    '4-1': ['Cryptography', 'Big Data Analytics', 'Professional Electives (III & IV)', 'Cloud Computing Lab', 'Project Stage-I'],
-    '4-2': ['Management Science', 'Open Electives', 'Major Project Work', 'Seminar']
   },
   'Electronics and Communication Engineering (ECE)': {
     '1-1': ['Linear Algebra & Calculus', 'Physics/Chemistry', 'Basic Electrical', 'Programming in C', 'Graphics', 'Labs'],
