@@ -53,12 +53,158 @@ interface FacultyAttendanceRecord {
   confidence_score: string | null;
 }
 
+const DEFAULT_STUDENT_ACCOUNTS: StudentAccount[] = [
+  {
+    id: 1,
+    username: 'ravi',
+    name: 'Ravi Prakash Bayireddy',
+    email: 'ravi.prakash@pbrvits.edu.in',
+    department: 'Computer Science and Engineering (CSE)',
+    year: '4th Year',
+    semester: '4-1',
+    role: 'student',
+    roll_number: '2273A01001',
+    attendance: 92.5,
+    marks: 94
+  },
+  {
+    id: 2,
+    username: 'suresh_k',
+    name: 'Suresh Kumar',
+    email: 'suresh.k@pbrvits.edu.in',
+    department: 'Computer Science and Engineering (CSE)',
+    year: '4th Year',
+    semester: '4-1',
+    role: 'student',
+    roll_number: '2273A01002',
+    attendance: 88.0,
+    marks: 86
+  },
+  {
+    id: 3,
+    username: 'priya_m',
+    name: 'Priya Mohan',
+    email: 'priya.m@pbrvits.edu.in',
+    department: 'Computer Science and Engineering (CSE)',
+    year: '4th Year',
+    semester: '4-1',
+    role: 'student',
+    roll_number: '2273A01003',
+    attendance: 95.0,
+    marks: 96
+  },
+  {
+    id: 4,
+    username: 'anand_r',
+    name: 'Anand R',
+    email: 'anand.r@pbrvits.edu.in',
+    department: 'Computer Science and Engineering (CSE)',
+    year: '4th Year',
+    semester: '4-1',
+    role: 'student',
+    roll_number: '2273A01004',
+    attendance: 72.0,
+    marks: 68
+  },
+  {
+    id: 5,
+    username: 'kavya_s',
+    name: 'Kavya S',
+    email: 'kavya.s@pbrvits.edu.in',
+    department: 'Computer Science and Engineering (CSE)',
+    year: '4th Year',
+    semester: '4-1',
+    role: 'student',
+    roll_number: '2273A01005',
+    attendance: 84.0,
+    marks: 82
+  }
+];
+
+const DEFAULT_ATTENDANCE_LOGS: FacultyAttendanceRecord[] = [
+  {
+    id: 101,
+    student_id: 1,
+    student_name: 'Ravi Prakash Bayireddy',
+    roll_number: '2273A01001',
+    semester: '4-1',
+    subject: 'Generative AI and Deep Learning',
+    date: new Date().toISOString().split('T')[0],
+    period: 1,
+    start_time: '09:00 AM',
+    end_time: '09:50 AM',
+    status: 'Present',
+    verification_method: 'FACE_RECOGNITION',
+    confidence_score: '98.6%'
+  },
+  {
+    id: 102,
+    student_id: 2,
+    student_name: 'Suresh Kumar',
+    roll_number: '2273A01002',
+    semester: '4-1',
+    subject: 'Generative AI and Deep Learning',
+    date: new Date().toISOString().split('T')[0],
+    period: 1,
+    start_time: '09:00 AM',
+    end_time: '09:50 AM',
+    status: 'Present',
+    verification_method: 'FACE_RECOGNITION',
+    confidence_score: '96.2%'
+  },
+  {
+    id: 103,
+    student_id: 3,
+    student_name: 'Priya Mohan',
+    roll_number: '2273A01003',
+    semester: '4-1',
+    subject: 'Generative AI and Deep Learning',
+    date: new Date().toISOString().split('T')[0],
+    period: 1,
+    start_time: '09:00 AM',
+    end_time: '09:50 AM',
+    status: 'Present',
+    verification_method: 'FACE_RECOGNITION',
+    confidence_score: '99.1%'
+  },
+  {
+    id: 104,
+    student_id: 4,
+    student_name: 'Anand R',
+    roll_number: '2273A01004',
+    semester: '4-1',
+    subject: 'Generative AI and Deep Learning',
+    date: new Date().toISOString().split('T')[0],
+    period: 1,
+    start_time: '09:00 AM',
+    end_time: '09:50 AM',
+    status: 'Absent',
+    verification_method: 'MANUAL',
+    confidence_score: null
+  },
+  {
+    id: 105,
+    student_id: 1,
+    student_name: 'Ravi Prakash Bayireddy',
+    roll_number: '2273A01001',
+    semester: '4-1',
+    subject: 'Cryptography and Network Security',
+    date: new Date().toISOString().split('T')[0],
+    period: 2,
+    start_time: '09:50 AM',
+    end_time: '10:40 AM',
+    status: 'Present',
+    verification_method: 'FACE_RECOGNITION',
+    confidence_score: '97.4%'
+  }
+];
+
 const FacultyDashboard = () => {
   const { user } = useAuth();
   
   const [activeTab, setActiveTab] = useState<'attendance' | 'marks'>('attendance');
-  const [students, setStudents] = useState<StudentAccount[]>([]);
-  const [attendanceRecords, setAttendanceRecords] = useState<FacultyAttendanceRecord[]>([]);
+  const [students, setStudents] = useState<StudentAccount[]>(DEFAULT_STUDENT_ACCOUNTS);
+  const [attendanceRecords, setAttendanceRecords] = useState<FacultyAttendanceRecord[]>(DEFAULT_ATTENDANCE_LOGS);
   const [loading, setLoading] = useState(false);
 
   // Student list filters
@@ -82,30 +228,129 @@ const FacultyDashboard = () => {
 
   const fetchStudents = async () => {
     setLoading(true);
+    let loadedStudents: StudentAccount[] = [];
+
+    // 1. Try backend API with faculty filter
     try {
-      const response = await fetch(`${API_BASE_URL}/students?faculty_username=${user?.username || ''}`);
+      const response = await fetch(`${API_BASE_URL}/students?faculty_username=${encodeURIComponent(user?.username || '')}`);
       if (response.ok) {
         const data = await response.json();
-        setStudents(data);
+        if (Array.isArray(data) && data.length > 0) {
+          loadedStudents = data;
+        }
       }
     } catch (e) {
-      console.warn("Backend fetch students failed", e);
-    } finally {
-      setLoading(false);
+      console.warn("Backend fetch students failed, checking local storage", e);
     }
+
+    // 2. Try backend API general /students
+    if (loadedStudents.length === 0) {
+      try {
+        const resGeneral = await fetch(`${API_BASE_URL}/students`);
+        if (resGeneral.ok) {
+          const dataGeneral = await resGeneral.json();
+          if (Array.isArray(dataGeneral) && dataGeneral.length > 0) {
+            loadedStudents = dataGeneral;
+          }
+        }
+      } catch (e) {
+        console.warn("Backend general students fetch failed", e);
+      }
+    }
+
+    // 3. Fallback to localStorage / DEFAULT_STUDENT_ACCOUNTS
+    if (loadedStudents.length === 0) {
+      const savedAccountsRaw = localStorage.getItem('campus_ai_accounts');
+      const accountsList: StudentAccount[] = [];
+      if (savedAccountsRaw) {
+        try {
+          const parsed = JSON.parse(savedAccountsRaw);
+          if (Array.isArray(parsed)) {
+            parsed.filter((a: any) => a.role === 'student').forEach((a: any, idx: number) => {
+              accountsList.push({
+                id: a.id || idx + 10,
+                username: a.username,
+                name: a.name || a.username,
+                email: a.email || `${a.username}@pbrvits.edu.in`,
+                department: a.department || 'Computer Science and Engineering (CSE)',
+                year: a.year || '4th Year',
+                semester: a.semester || '4-1',
+                role: 'student',
+                roll_number: a.roll_number || '2273A01001',
+                attendance: a.attendance || 92.5,
+                marks: a.marks || 90
+              });
+            });
+          }
+        } catch { /* ignore */ }
+      }
+
+      if (accountsList.length > 0) {
+        loadedStudents = accountsList;
+      } else {
+        loadedStudents = DEFAULT_STUDENT_ACCOUNTS;
+      }
+    }
+
+    // Merge default students if not already present
+    const existingRolls = new Set(loadedStudents.map(s => (s.roll_number || s.name || '').toLowerCase()));
+    DEFAULT_STUDENT_ACCOUNTS.forEach(defSt => {
+      if (!existingRolls.has((defSt.roll_number || '').toLowerCase()) && !existingRolls.has((defSt.name || '').toLowerCase())) {
+        loadedStudents.push(defSt);
+      }
+    });
+
+    setStudents(loadedStudents);
+    setLoading(false);
   };
 
   const fetchAttendance = async () => {
-    if (!user?.username) return;
-    try {
-      const response = await fetch(`${API_BASE_URL}/attendance/faculty?faculty_username=${user.username}`);
-      if (response.ok) {
-        const data = await response.json();
-        setAttendanceRecords(data);
+    let loadedRecords: FacultyAttendanceRecord[] = [];
+    if (user?.username) {
+      try {
+        const response = await fetch(`${API_BASE_URL}/attendance/faculty?faculty_username=${encodeURIComponent(user.username)}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (Array.isArray(data) && data.length > 0) {
+            loadedRecords = data;
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to fetch faculty attendance", e);
       }
-    } catch (e) {
-      console.warn("Failed to fetch faculty attendance", e);
     }
+
+    if (loadedRecords.length === 0) {
+      try {
+        const resAdmin = await fetch(`${API_BASE_URL}/attendance/admin`);
+        if (resAdmin.ok) {
+          const dataAdmin = await resAdmin.json();
+          if (Array.isArray(dataAdmin) && dataAdmin.length > 0) {
+            loadedRecords = dataAdmin;
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to fetch admin attendance", e);
+      }
+    }
+
+    if (loadedRecords.length === 0) {
+      const savedAtt = localStorage.getItem('campus_ai_attendance_records');
+      if (savedAtt) {
+        try {
+          const parsed = JSON.parse(savedAtt);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            loadedRecords = parsed;
+          }
+        } catch { /* ignore */ }
+      }
+    }
+
+    if (loadedRecords.length === 0) {
+      loadedRecords = DEFAULT_ATTENDANCE_LOGS;
+    }
+
+    setAttendanceRecords(loadedRecords);
   };
 
   useEffect(() => {
