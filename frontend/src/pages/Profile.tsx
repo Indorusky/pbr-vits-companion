@@ -22,8 +22,22 @@ const Profile = () => {
   const [isModelsLoading, setIsModelsLoading] = useState(false);
   const [faceRegistered, setFaceRegistered] = useState(false);
   const [augmentedVariantsCount, setAugmentedVariantsCount] = useState(4);
-  const [attemptsCount, setAttemptsCount] = useState(0);
-  const [resetRequestStatus, setResetRequestStatus] = useState<'None' | 'Pending' | 'Approved' | 'Rejected'>('None');
+  const [attemptsCount, setAttemptsCount] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem(`campus_ai_attempts_${user?.username || 'student'}`);
+      return saved !== null ? parseInt(saved, 10) : 0;
+    } catch {
+      return 0;
+    }
+  });
+  const [resetRequestStatus, setResetRequestStatus] = useState<'None' | 'Pending' | 'Approved' | 'Rejected'>(() => {
+    try {
+      const saved = localStorage.getItem(`campus_ai_reset_status_${user?.username || 'student'}`);
+      return (saved as any) || 'None';
+    } catch {
+      return 'None';
+    }
+  });
 
   // Sync initial values when user context loads
   useEffect(() => {
@@ -33,6 +47,15 @@ const Profile = () => {
       setSemester(user.semester || 'Semester 1');
       setName(user.name || '');
       setEmail(user.email || '');
+
+      // Load local attempt count and reset status first
+      const savedLocalAttempts = localStorage.getItem(`campus_ai_attempts_${user.username}`);
+      if (savedLocalAttempts !== null) {
+        const parsedAtt = parseInt(savedLocalAttempts, 10);
+        if (!isNaN(parsedAtt)) setAttemptsCount(parsedAtt);
+      }
+      const savedResetStatus = localStorage.getItem(`campus_ai_reset_status_${user.username}`);
+      if (savedResetStatus) setResetRequestStatus(savedResetStatus as any);
       
       if (user.role === 'faculty' && user.roll_number) {
         fetch(`${API_BASE_URL}/faculties/${user.roll_number}`)
@@ -52,8 +75,14 @@ const Profile = () => {
           .then(res => res.json())
           .then(data => {
             if (data.face_registered) setFaceRegistered(true);
-            if (data.enrollment_count !== undefined) setAttemptsCount(data.enrollment_count);
-            if (data.reset_request_status) setResetRequestStatus(data.reset_request_status);
+            if (data.enrollment_count !== undefined && data.enrollment_count > 0) {
+              setAttemptsCount(data.enrollment_count);
+              localStorage.setItem(`campus_ai_attempts_${user.username}`, String(data.enrollment_count));
+            }
+            if (data.reset_request_status) {
+              setResetRequestStatus(data.reset_request_status);
+              localStorage.setItem(`campus_ai_reset_status_${user.username}`, data.reset_request_status);
+            }
           })
           .catch(() => setFaceRegistered(true));
       }
@@ -61,21 +90,19 @@ const Profile = () => {
   }, [user]);
 
   const handleSendResetRequest = async () => {
+    if (user?.username) {
+      localStorage.setItem(`campus_ai_reset_status_${user.username}`, 'Pending');
+    }
+    setResetRequestStatus('Pending');
+
     try {
-      const res = await fetch(`${API_BASE_URL}/student/request-biometric-reset`, {
+      await fetch(`${API_BASE_URL}/student/request-biometric-reset`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ student_id: user?.id })
       });
-      if (res.ok) {
-        setResetRequestStatus('Pending');
-        alert('🎉 Biometric reset request sent to Admin! Waiting for administrator approval.');
-      } else {
-        setResetRequestStatus('Pending');
-        alert('🎉 Biometric reset request sent to Admin!');
-      }
+      alert('🎉 Biometric reset request sent to Admin! Waiting for administrator approval.');
     } catch (e) {
-      setResetRequestStatus('Pending');
       alert('🎉 Biometric reset request sent to Admin!');
     }
   };
