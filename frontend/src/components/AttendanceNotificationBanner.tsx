@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Camera, Clock, X, Bell, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
-import { getNormalizedDepartment } from '../utils/subjectsData';
+import { getNormalizedDepartment, parseTimeToMinutes, formatMinutesToHHMM } from '../utils/subjectsData';
 
 interface ActiveSessionNotice {
   period: number;
@@ -60,7 +60,7 @@ export default function AttendanceNotificationBanner() {
       const normDept = getNormalizedDepartment(user.department || 'Computer Science');
       const sem = user.semester || '3-1';
 
-      const res = await fetch(`${API_BASE_URL}/timetable?department=${normDept}&semester=${sem}&day=${todayDayName}`, {
+      const res = await fetch(`${API_BASE_URL}/timetable?department=${encodeURIComponent(normDept)}&semester=${encodeURIComponent(sem)}&day=${todayDayName}`, {
         headers: {
           'x-requester-username': user.username,
           'x-requester-role': 'student'
@@ -70,33 +70,25 @@ export default function AttendanceNotificationBanner() {
       if (res.ok) {
         const entries = await res.json();
         if (Array.isArray(entries) && entries.length > 0) {
+          const currentTotalMin = now.getHours() * 60 + now.getMinutes();
+
           for (const entry of entries) {
             try {
-              const startClean = (entry.start_time || '08:00').substring(0, 5);
-              const [sHour, sMin] = startClean.split(':').map(Number);
-              
-              // windowStart = start_time - 10 minutes
-              let wStartTotalMin = sHour * 60 + sMin - 10;
-              if (wStartTotalMin < 0) wStartTotalMin += 24 * 60;
-              const wStartHH = String(Math.floor(wStartTotalMin / 60)).padStart(2, '0');
-              const wStartMM = String(wStartTotalMin % 60).padStart(2, '0');
-              const windowStartStr = `${wStartHH}:${wStartMM}`;
+              const sMin = parseTimeToMinutes(entry.start_time);
+              const eMin = parseTimeToMinutes(entry.end_time);
+              const wStartMin = sMin - 15;
+              const wEndMin = (eMin || sMin + 60) + 15;
 
-              // windowEnd = start_time + 15 minutes
-              const wEndTotalMin = sHour * 60 + sMin + 15;
-              const wEndHH = String(Math.floor(wEndTotalMin / 60)).padStart(2, '0');
-              const wEndMM = String(wEndTotalMin % 60).padStart(2, '0');
-              const windowEndStr = `${wEndHH}:${wEndMM}`;
-
-              if (currentHHMM >= windowStartStr && currentHHMM <= windowEndStr) {
+              if (currentTotalMin >= wStartMin && currentTotalMin <= wEndMin) {
                 const dismissKey = `${todayDateStr}_period_${entry.period}`;
                 if (!dismissedPeriods[dismissKey]) {
+                  const windowEndStr = formatMinutesToHHMM(wEndMin);
                   const notice: ActiveSessionNotice = {
                     period: entry.period,
                     subject: entry.subject,
                     room: entry.room || 'LH-101',
-                    startTime: startClean,
-                    endTime: (entry.end_time || '09:00').substring(0, 5),
+                    startTime: entry.start_time || '09:00',
+                    endTime: entry.end_time || '10:30',
                     windowEnd: windowEndStr
                   };
 
@@ -111,7 +103,7 @@ export default function AttendanceNotificationBanner() {
                   if ('Notification' in window && Notification.permission === 'granted') {
                     try {
                       new Notification(`Attendance Window OPEN: Period ${entry.period}`, {
-                        body: `${entry.subject} (${entry.room}) attendance is open now until ${windowEndStr}. Tap to mark presence!`,
+                        body: `${entry.subject} (${entry.room || 'LH-101'}) attendance is open until ${windowEndStr}. Tap to mark presence!`,
                         icon: '/favicon.ico',
                         tag: `att_period_${entry.period}`
                       });

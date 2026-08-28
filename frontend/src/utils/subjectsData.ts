@@ -83,6 +83,38 @@ export interface UnifiedPeriodSchedule {
   frsWindowEnd: string;
 }
 
+export const parseTimeToMinutes = (timeStr?: string): number => {
+  if (!timeStr) return 8 * 60;
+  const s = timeStr.trim().toUpperCase();
+  try {
+    if (s.includes('AM') || s.includes('PM')) {
+      const parts = s.split(/\s+/);
+      const timeParts = parts[0].split(':');
+      let h = parseInt(timeParts[0], 10);
+      const m = parseInt(timeParts[1] || '0', 10);
+      const isPM = s.includes('PM');
+      const isAM = s.includes('AM');
+      if (isPM && h !== 12) h += 12;
+      if (isAM && h === 12) h = 0;
+      return h * 60 + m;
+    }
+    const parts = s.split(':');
+    const h = parseInt(parts[0], 10);
+    const m = parseInt(parts[1] || '0', 10);
+    return h * 60 + m;
+  } catch {
+    return 8 * 60;
+  }
+};
+
+export const formatMinutesToHHMM = (totalMin: number): string => {
+  let m = totalMin % (24 * 60);
+  if (m < 0) m += 24 * 60;
+  const hh = String(Math.floor(m / 60)).padStart(2, '0');
+  const mm = String(m % 60).padStart(2, '0');
+  return `${hh}:${mm}`;
+};
+
 export const getTimetableScheduleForDay = (sem: string = '4-1', dayName: string = 'Monday'): UnifiedPeriodSchedule[] => {
   let subjects = ["Generative AI", "MLOps & Model Deployment", "Deep Learning", "Cloud Computing Lab"];
   if (sem.startsWith("1")) {
@@ -93,12 +125,19 @@ export const getTimetableScheduleForDay = (sem: string = '4-1', dayName: string 
     subjects = ["Software Engineering", "Machine Learning", "Artificial Intelligence", "Computer Networks"];
   }
 
-  const faculties = ["Dr. Clara Croft", "Prof. Alan Vance", "Dr. Sarah Jenkins", "Dr. Rajiv Sharma"];
+  const faculties = [
+    "Dr. DODLA SRUJAN CHANDRA REDDY",
+    "Dr. GANUGULA VIJAY KUMAR",
+    "Dr. KUNI VENKATA SUBBAIAH",
+    "Dr. NUKAMREDDY SRINAD REDDY"
+  ];
   const times = [
     { start: "08:00", end: "09:00", wStart: "07:50", wEnd: "08:15" },
     { start: "09:00", end: "10:00", wStart: "08:50", wEnd: "09:15" },
     { start: "10:15", end: "11:15", wStart: "10:05", wEnd: "10:30" },
-    { start: "11:15", end: "12:15", wStart: "11:05", wEnd: "11:30" }
+    { start: "11:15", end: "12:15", wStart: "11:05", wEnd: "11:30" },
+    { start: "01:00 PM", end: "02:30 PM", wStart: "12:50 PM", wEnd: "01:15 PM" },
+    { start: "02:45 PM", end: "04:15 PM", wStart: "02:35 PM", wEnd: "03:00 PM" }
   ];
 
   const daysList = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
@@ -107,7 +146,7 @@ export const getTimetableScheduleForDay = (sem: string = '4-1', dayName: string 
 
   const semNum = parseInt(sem.charAt(0)) || 4;
 
-  return times.map((t, pIdx) => {
+  return times.slice(0, 4).map((t, pIdx) => {
     const subjName = subjects[(dIdx + pIdx) % subjects.length];
     const facName = faculties[(pIdx + dIdx) % faculties.length];
     const roomNo = `LH-${semNum * 100 + (pIdx + 1)}`;
