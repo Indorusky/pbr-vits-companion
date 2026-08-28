@@ -1288,8 +1288,8 @@ def normalize_dept_name(dept: Optional[str]) -> str:
     if not dept:
         return "cse"
     d = dept.lower()
-    if "aiml" in d:
-        return "cse aiml"
+    if "aiml" in d or "ai" in d:
+        return "cse"
     if "cse" in d or "computer" in d:
         return "cse"
     if "eee" in d or "electrical" in d:
