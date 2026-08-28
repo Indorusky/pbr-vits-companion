@@ -1,6 +1,43 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { API_BASE_URL } from '../config';
 
+const CLOUD_SYNC_URL = 'https://kvdb.io/pbr_vits_companion_v2_db/global_accounts';
+
+export const pushAccountsToCloudSync = async (accountsList: any[]) => {
+  try {
+    const deletedRaw = localStorage.getItem('campus_ai_deleted_accounts');
+    const deletedSet = new Set<string>(deletedRaw ? JSON.parse(deletedRaw) : []);
+
+    const customOnly = accountsList.filter(a => {
+      const u = (a.username || '').toLowerCase();
+      const r = (a.roll_number || '').toLowerCase();
+      const n = (a.name || '').toLowerCase();
+      return u !== 'admin' && u !== 'student' && u !== 'ravi' && !deletedSet.has(u) && !deletedSet.has(r) && !deletedSet.has(n);
+    });
+
+    await fetch(CLOUD_SYNC_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(customOnly)
+    });
+  } catch (e) {
+    console.warn("Cloud sync write failed", e);
+  }
+};
+
+export const pullAccountsFromCloudSync = async (): Promise<any[]> => {
+  try {
+    const res = await fetch(CLOUD_SYNC_URL);
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data)) return data;
+    }
+  } catch (e) {
+    console.warn("Cloud sync read failed", e);
+  }
+  return [];
+};
+
 
 export type Role = 'student' | 'faculty' | 'admin' | null;
 
@@ -290,6 +327,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [user]);
 
+  // Pull cloud accounts on load to sync custom registered accounts across devices
+  useEffect(() => {
+    pullAccountsFromCloudSync().then(cloudAccs => {
+      if (Array.isArray(cloudAccs) && cloudAccs.length > 0) {
+        const deletedRaw = localStorage.getItem('campus_ai_deleted_accounts');
+        const deletedSet = new Set<string>(deletedRaw ? JSON.parse(deletedRaw) : []);
+
+        const validCloudAccs = cloudAccs.filter(a => {
+          const u = (a.username || '').toLowerCase();
+          const r = (a.roll_number || '').toLowerCase();
+          const n = (a.name || '').toLowerCase();
+          return !deletedSet.has(u) && !deletedSet.has(r) && !deletedSet.has(n);
+        });
+
+        setAccounts(prev => {
+          const existingUsernames = new Set(prev.map(a => (a.username || '').toLowerCase()));
+          const merged = [...prev];
+          validCloudAccs.forEach(ca => {
+            if (ca.username && !existingUsernames.has(ca.username.toLowerCase())) {
+              merged.push(ca);
+              existingUsernames.add(ca.username.toLowerCase());
+            }
+          });
+          try {
+            localStorage.setItem('campus_ai_accounts', JSON.stringify(merged));
+          } catch { /* ignore */ }
+          return merged;
+        });
+      }
+    });
+  }, []);
+
   const [viewMode, setViewModeInternal] = useState<'student' | 'faculty' | 'admin'>('student');
 
   useEffect(() => {
@@ -370,6 +439,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const updated = [...accounts, newAcc];
     setAccounts(updated);
     localStorage.setItem('campus_ai_accounts', JSON.stringify(updated));
+    pushAccountsToCloudSync(updated);
     return { success: true, message: 'Registration successful!', user: newAcc };
   };
 
@@ -483,6 +553,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           section: (defAcc as any).section || 'Section A'
         }
       };
+    }
+
+    // Try pulling from cloud sync bucket in case account was created on another device (e.g. mobile phone)
+    const cloudAccs = await pullAccountsFromCloudSync();
+    if (Array.isArray(cloudAccs) && cloudAccs.length > 0) {
+      const matched = cloudAccs.find(a => (a.username || '').toLowerCase() === username.toLowerCase() && a.password === pass);
+      if (matched) {
+        setAccounts(prev => {
+          if (!prev.some(a => (a.username || '').toLowerCase() === matched.username.toLowerCase())) {
+            const next = [...prev, matched];
+            try { localStorage.setItem('campus_ai_accounts', JSON.stringify(next)); } catch {}
+            return next;
+          }
+          return prev;
+        });
+        return {
+          success: true,
+          user: {
+            id: matched.id || Math.floor(1000 + Math.random() * 9000),
+            username: matched.username,
+            role: matched.role || 'student',
+            name: matched.name,
+            department: matched.department || 'Computer Science and Engineering (CSE)',
+            year: matched.year || '1st Year',
+            semester: matched.semester || '1-1',
+            email: matched.email,
+            roll_number: matched.roll_number || '2273A01001',
+            section: matched.section || 'Section A',
+            profile_photo: matched.profile_photo
+          }
+        };
+      }
     }
 
     return { success: false, message: 'Invalid username or password.' };
