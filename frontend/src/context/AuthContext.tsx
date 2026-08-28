@@ -438,33 +438,54 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             }
           };
         }
-      } else {
-        const err = await response.json();
-        return { success: false, message: err.detail || 'Login failed.' };
       }
     } catch (e) {
       console.warn("Backend authentication failed, falling back to local storage", e);
     }
 
-    const acc = accounts.find(a => a.username.toLowerCase() === username.toLowerCase() && a.password === pass);
-    if (!acc) return { success: false };
-    return {
-      success: true,
-      user: {
-        id: acc.id || 1,
-        username: acc.username,
-        role: acc.role,
-        name: acc.name,
-        department: acc.department,
-        year: acc.year,
-        semester: acc.semester,
-        subjects: acc.subjects,
-        email: acc.email,
-        profile_photo: acc.profile_photo,
-        roll_number: acc.roll_number || '2373A01001',
-        section: acc.section || 'Section A'
-      }
-    };
+    const acc = accounts.find(a => (a.username || '').toLowerCase() === username.toLowerCase() && a.password === pass);
+    if (acc) {
+      return {
+        success: true,
+        user: {
+          id: acc.id || 1,
+          username: acc.username,
+          role: acc.role,
+          name: acc.name,
+          department: acc.department,
+          year: acc.year,
+          semester: acc.semester,
+          subjects: acc.subjects,
+          email: acc.email,
+          profile_photo: acc.profile_photo,
+          roll_number: acc.roll_number || '2273A01001',
+          section: acc.section || 'Section A'
+        }
+      };
+    }
+
+    const defAcc = DEFAULT_ACCOUNTS.find(a => (a.username || '').toLowerCase() === username.toLowerCase() && a.password === pass);
+    if (defAcc) {
+      return {
+        success: true,
+        user: {
+          id: defAcc.id || 1,
+          username: defAcc.username,
+          role: defAcc.role,
+          name: defAcc.name,
+          department: defAcc.department,
+          year: (defAcc as any).year,
+          semester: (defAcc as any).semester,
+          subjects: (defAcc as any).subjects,
+          email: defAcc.email,
+          profile_photo: (defAcc as any).profile_photo,
+          roll_number: (defAcc as any).roll_number || '2273A01001',
+          section: (defAcc as any).section || 'Section A'
+        }
+      };
+    }
+
+    return { success: false, message: 'Invalid username or password.' };
   };
 
   return (
