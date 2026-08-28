@@ -60,7 +60,7 @@ const ManageUsers = () => {
     }
     
     const existingNames = new Set((loaded || []).map(a => (a.username || '').toLowerCase()));
-    const defaultMapped: AccountRecord[] = DEFAULT_ACCOUNTS.map(a => ({
+    const defaultMapped: AccountRecord[] = DEFAULT_ACCOUNTS.map((a: any) => ({
       username: a.username,
       role: (a.role || 'student') as 'student' | 'faculty' | 'admin',
       name: a.name || a.username,

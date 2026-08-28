@@ -92,6 +92,90 @@ export const generateRollNumberLocal = (accounts: any[], department: string, yea
   return `${prefix}${serialStr}`;
 };
 
+export const RAW_FACULTY_POOL = [
+  "Dr. DODLA SRUJAN CHANDRA REDDY",
+  "Dr. GANUGULA VIJAY KUMAR",
+  "Dr. KUNI VENKATA SUBBAIAH",
+  "Dr. NUKAMREDDY SRINAD REDDY",
+  "Dr. BONTHALA VAMSEE MOHAN",
+  "Dr. POLEBOINA VENKATA N RAJESWARI",
+  "Dr. RAMIREDDY KONDAIAH",
+  "Dr. PATHAKAMURI SRINIVASULU",
+  "Mr. SHAIK SHABBIR BASHA",
+  "Mr. PUTTU ESWARAIAH",
+  "Ms. THORAINELLORE MANJULA",
+  "Mr. MENTA VIJAYABHASKAR",
+  "Mrs. SIVADANAM USHA RANI",
+  "Ms. AKSHAYAM PRASMITA",
+  "Ms. KODALI BHARGAVI",
+  "Mr. PERAM KAMALAKAR",
+  "Mr. CHEEDELLA CHANDRA SEKHAR",
+  "Mis. MALISETTY TEJASWINI",
+  "Mrs. GUMMADI TIRUMALA",
+  "Mrs. KANAMATHAREDDY RESHMA REDDY",
+  "Ms. JARUGUMALLI MADHURI",
+  "Mr. GUNUPATI VENKATESWARLU",
+  "Ms. K V SUPRAJA",
+  "Ms. NUNNA SAI SINDHURA",
+  "Ms. KOPILA RAVI CHAND",
+  "Mr. PEDDIREDDY VENKATESWARA REDDY",
+  "Mr. PANDITAAJAYA KUMAR",
+  "Ms. ALANKARAM SHOBITHA LAKSHMI",
+  "Mr. ANGALAKUDURU SRINIVASA RAO",
+  "Mr. THAMMINENI DAYAKAR",
+  "Mr. RAJA BHARGAVA",
+  "Mr. GUDAMSETTY RAJESH",
+  "Mr. CH VENKATESWARLU",
+  "Mr. RONDLA PRAPULLA KUMAR",
+  "Mr. MODEM JEEVAN KUMAR",
+  "Mr. PASUPULETI MOHAN",
+  "Ms. GUNA GAYATHRI PRASEETHA K",
+  "Ms. DARBALA PAVAN KUMAR",
+  "Mr. PERAM MALLIKARJUNA",
+  "Mr. KUNI SAI SUMANTH",
+  "Ms. PONNURU VENKATA SUSHMA",
+  "Mr. CHALLA AKHIL",
+  "Ms. CHEVURI ROJA",
+  "Mr. MUNAGALA VENKATESWARLU",
+  "Mr. MANCHERLAPATI NEERJA",
+  "Mr. METTA SATHYA SAI LAKSHMAN",
+  "Mr. ADUSUMALLI PRASANNA KUMAR",
+  "Mr. KATAMREDDI MAHENDRA",
+  "Ms. KOMMURI SRAVANI",
+  "Mrs. KUPPAM SAMEERA",
+  "Ms. PASUPILETI VIMALASANYHI",
+  "Mr. SINGAMANENI MALLIKARJUNA",
+  "Mrs. NIDAMANURI V SOUNDARYA"
+];
+
+const generatedFacultyAccounts = RAW_FACULTY_POOL.map((fullName, idx) => {
+  const cleanName = fullName.replace(/^(Dr\.|Mr\.|Ms\.|Mrs\.|Mis\.)\s+/i, '').trim();
+  const parts = cleanName.toLowerCase().split(/\s+/).filter(Boolean);
+  let uname = parts.length > 1 ? `${parts[0]}.${parts[parts.length - 1]}` : parts[0];
+  uname = uname.replace(/[^a-z0-9.]/g, '');
+  if (!uname || uname.length < 3) uname = `fac.${idx + 1}`;
+
+  const depts = [
+    'Computer Science and Engineering (CSE)',
+    'Artificial Intelligence & Machine Learning (AI&ML)',
+    'Electronics and Communication Engineering (ECE)',
+    'Electrical and Electronics Engineering (EEE)',
+    'Civil Engineering'
+  ];
+
+  return {
+    id: 100 + idx,
+    username: uname,
+    password: 'faculty123',
+    role: 'faculty' as Role,
+    name: fullName,
+    department: depts[idx % depts.length],
+    email: `${uname}@pbrvits.ac.in`,
+    subjects: ['Generative AI', 'Data Structures', 'DBMS', 'Software Engineering'],
+    approval_status: 'Approved'
+  };
+});
+
 export const DEFAULT_ACCOUNTS = [
   {
     id: 1,
@@ -166,7 +250,8 @@ export const DEFAULT_ACCOUNTS = [
     email: 'clara.croft@campus.edu',
     subjects: ['Generative AI', 'Data Structures'],
     approval_status: 'Approved'
-  }
+  },
+  ...generatedFacultyAccounts
 ];
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
