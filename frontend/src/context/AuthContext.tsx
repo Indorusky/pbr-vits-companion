@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { API_BASE_URL } from '../config';
 import { saveUserToCloudDb, getUserFromCloudDb, getAllUsersFromCloudDb } from '../utils/cloudSync';
+import { supabaseRegisterUser, supabaseValidateUser, supabaseFetchAllUsers } from '../utils/supabaseClient';
 
 export const pushAccountsToCloudSync = async (accountsList: any[]) => {
   try {
@@ -332,7 +333,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     } catch { /* ignore */ }
 
-    // 2. Pull all accounts from Master Cloud DB to sync with other devices
+    // 2. Pull all accounts from Supabase and Master Cloud DB to sync with other devices
+    supabaseFetchAllUsers().then(supaUsers => {
+      if (Array.isArray(supaUsers) && supaUsers.length > 0) {
+        setAccounts(prev => {
+          const existing = new Set(prev.map(a => (a.username || '').toLowerCase()));
+          const merged = [...prev];
+          supaUsers.forEach(u => {
+            if (u.username && !existing.has(u.username.toLowerCase())) {
+              merged.push(u);
+              existing.add(u.username.toLowerCase());
+            }
+          });
+          try { localStorage.setItem('campus_ai_accounts', JSON.stringify(merged)); } catch {}
+          return merged;
+        });
+      }
+    });
+
     getAllUsersFromCloudDb().then(cloudUsers => {
       if (Array.isArray(cloudUsers) && cloudUsers.length > 0) {
         const deletedRaw = localStorage.getItem('campus_ai_deleted_accounts');
@@ -444,7 +462,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setAccounts(updated);
     localStorage.setItem('campus_ai_accounts', JSON.stringify(updated));
 
-    // Save user record to Master Cloud DB via API
+    // Save user record to Supabase & Cloud DB
+    await supabaseRegisterUser(newAcc as any);
     await saveUserToCloudDb(newAcc);
 
     return { success: true, message: 'Registration successful!', user: newAcc };
@@ -562,6 +581,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       };
     }
+
+    // Supabase Cloud Validation
+    try {
+      const supaRes = await supabaseValidateUser(username, pass);
+      if (supaRes.success && supaRes.user) {
+        const u = supaRes.user;
+        setAccounts(prev => {
+          if (!prev.some(a => (a.username || '').toLowerCase() === u.username.toLowerCase())) {
+            const next = [...prev, u];
+            try { localStorage.setItem('campus_ai_accounts', JSON.stringify(next)); } catch {}
+            return next;
+          }
+          return prev;
+        });
+        return {
+          success: true,
+          user: {
+            id: typeof u.id === 'number' ? u.id : Math.floor(1000 + Math.random() * 9000),
+            username: u.username,
+            role: u.role || 'student',
+            name: u.name,
+            department: u.department || 'Computer Science and Engineering (CSE)',
+            year: u.year || '1st Year',
+            semester: u.semester || '1-1',
+            email: u.email,
+            roll_number: u.roll_number || '2273A01001',
+            section: u.section || 'Section A',
+            profile_photo: u.profile_photo
+          }
+        };
+      }
+    } catch { /* ignore */ }
 
     // Master Cloud DB Lookup for instant cross-device authentication
     const cleanUname = username.trim().toLowerCase();
