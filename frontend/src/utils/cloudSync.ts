@@ -1,41 +1,38 @@
-const APP_TOKEN = 'c07g6t40';
-const BASE_URL = 'https://keyvalue.immanuel.co/api/KeyVal';
-
-const stringToHex = (str: string): string => {
-  let hex = '';
-  for (let i = 0; i < str.length; i++) {
-    const code = str.charCodeAt(i);
-    hex += code.toString(16).padStart(2, '0');
-  }
-  return hex;
-};
-
-const hexToString = (hex: string): string => {
-  let str = '';
-  for (let i = 0; i < hex.length; i += 2) {
-    const hexVal = hex.substr(i, 2);
-    const code = parseInt(hexVal, 16);
-    if (!isNaN(code)) {
-      str += String.fromCharCode(code);
-    }
-  }
-  return str;
-};
+const NPOINT_BIN_ID = '0aef6f14dd0ddf8a7e08';
+const NPOINT_URL = `https://api.npoint.io/${NPOINT_BIN_ID}`;
 
 export const saveUserToCloudDb = async (account: any): Promise<boolean> => {
   try {
     const cleanUname = (account.username || '').trim().toLowerCase();
     if (!cleanUname) return false;
 
-    const jsonStr = JSON.stringify(account);
-    const hex = stringToHex(encodeURIComponent(jsonStr));
+    let currentUsers: Record<string, any> = {};
+    try {
+      const getRes = await fetch(NPOINT_URL);
+      if (getRes.ok) {
+        const text = await getRes.text();
+        if (text) {
+          const parsed = JSON.parse(text);
+          if (parsed && parsed.users) {
+            currentUsers = parsed.users;
+          }
+        }
+      }
+    } catch { /* ignore */ }
 
-    const res = await fetch(`${BASE_URL}/UpdateValue/${APP_TOKEN}/user_${cleanUname}/${hex}`, {
-      method: 'POST'
+    currentUsers[cleanUname] = {
+      ...account,
+      username: cleanUname
+    };
+
+    const postRes = await fetch(NPOINT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ users: currentUsers })
     });
-    return res.ok;
+    return postRes.ok;
   } catch (e) {
-    console.warn(`saveUserToCloudDb failed for ${account.username}`, e);
+    console.warn("saveUserToCloudDb error", e);
     return false;
   }
 };
@@ -45,20 +42,36 @@ export const getUserFromCloudDb = async (username: string): Promise<any | null> 
     const cleanUname = (username || '').trim().toLowerCase();
     if (!cleanUname) return null;
 
-    const res = await fetch(`${BASE_URL}/GetValue/${APP_TOKEN}/user_${cleanUname}`);
-    if (res.ok) {
-      let rawHex = await res.json();
-      if (typeof rawHex === 'string' && rawHex.trim().length > 0) {
-        const jsonStr = decodeURIComponent(hexToString(rawHex.trim()));
-        return JSON.parse(jsonStr);
+    const getRes = await fetch(NPOINT_URL);
+    if (getRes.ok) {
+      const text = await getRes.text();
+      if (text) {
+        const parsed = JSON.parse(text);
+        if (parsed && parsed.users && parsed.users[cleanUname]) {
+          return parsed.users[cleanUname];
+        }
       }
     }
   } catch (e) {
-    console.warn(`getUserFromCloudDb failed for ${username}`, e);
+    console.warn("getUserFromCloudDb error", e);
   }
   return null;
 };
 
 export const getAllUsersFromCloudDb = async (): Promise<any[]> => {
+  try {
+    const getRes = await fetch(NPOINT_URL);
+    if (getRes.ok) {
+      const text = await getRes.text();
+      if (text) {
+        const parsed = JSON.parse(text);
+        if (parsed && parsed.users) {
+          return Object.values(parsed.users);
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("getAllUsersFromCloudDb error", e);
+  }
   return [];
 };
