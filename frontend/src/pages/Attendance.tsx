@@ -85,13 +85,13 @@ const Attendance = () => {
     if (!user?.id) return;
     const studentSem = user?.semester || '4-1';
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const todayDate = new Date();
-    const todayDayName = dayNames[todayDate.getDay()] || 'Monday';
-    const todayStr = todayDate.toISOString().split('T')[0];
+    const activeDateObj = (useTimeOverride && simDate) ? new Date(simDate) : new Date();
+    const todayDayName = dayNames[activeDateObj.getDay()] || 'Monday';
+    const todayStr = activeDateObj.toISOString().split('T')[0];
     const normDept = getNormalizedDepartment(user?.department || 'Computer Science and Engineering (CSE)');
 
-    // 1. Fetch live timetable entries from backend / database
-    let todaySchedule: UnifiedPeriodSchedule[] = getTimetableScheduleForDay(studentSem, todayDayName);
+    // 1. Fetch live timetable entries from backend / database (including added extra classes)
+    let todaySchedule: UnifiedPeriodSchedule[] = [];
     try {
       const ttRes = await fetch(`${API_BASE_URL}/timetable?department=${encodeURIComponent(normDept)}&semester=${encodeURIComponent(studentSem)}&day=${todayDayName}`, {
         headers: {
@@ -104,7 +104,6 @@ const Attendance = () => {
         if (Array.isArray(liveEntries) && liveEntries.length > 0) {
           todaySchedule = liveEntries.map((e: any) => {
             const sMin = parseTimeToMinutes(e.start_time);
-            const eMin = parseTimeToMinutes(e.end_time);
             return {
               period: e.period,
               subject: e.subject,
@@ -112,13 +111,18 @@ const Attendance = () => {
               room: e.room || 'LH-101',
               startTime: e.start_time || '09:00 AM',
               endTime: e.end_time || '10:30 AM',
-              frsWindowStart: formatMinutesToHHMM(sMin - 15),
-              frsWindowEnd: formatMinutesToHHMM((eMin || sMin + 90) + 15)
+              frsWindowStart: formatMinutesToHHMM(sMin - 10),
+              frsWindowEnd: formatMinutesToHHMM(sMin + 15)
             };
           });
         }
       }
     } catch { /* ignore network error, fallback used */ }
+
+    if (todaySchedule.length === 0) {
+      todaySchedule = getTimetableScheduleForDay(studentSem, todayDayName);
+    }
+    todaySchedule.sort((a, b) => a.period - b.period);
 
     try {
       setLoading(true);
@@ -136,12 +140,31 @@ const Attendance = () => {
           const hDateStr = h.date || todayStr;
           const hDayName = dayNames[new Date(hDateStr).getDay()] || 'Monday';
           
-          // Use todaySchedule if today, else fallback day schedule
-          const daySched = (hDateStr === todayStr && todaySchedule.length > 0) 
+          // Use todaySchedule if today/simDate, else fallback day schedule
+          const baseSched = (hDateStr === todayStr && todaySchedule.length > 0) 
             ? todaySchedule 
             : getTimetableScheduleForDay(studentSem, hDayName);
 
-          const syncedRecords = daySched.map((item) => {
+          const allPeriodsMap = new Map<number, UnifiedPeriodSchedule>();
+          baseSched.forEach(item => allPeriodsMap.set(item.period, item));
+          (h.records || []).forEach((r: any) => {
+            if (!allPeriodsMap.has(r.period)) {
+              const sMin = parseTimeToMinutes(r.start_time || '01:00 PM');
+              allPeriodsMap.set(r.period, {
+                period: r.period,
+                subject: r.subject || `Period ${r.period} Class`,
+                faculty: r.faculty_username || 'Faculty Member',
+                room: r.room || 'LH-101',
+                startTime: r.start_time || '01:00 PM',
+                endTime: r.end_time || '02:30 PM',
+                frsWindowStart: formatMinutesToHHMM(sMin - 10),
+                frsWindowEnd: formatMinutesToHHMM(sMin + 15)
+              });
+            }
+          });
+          const combinedSched = Array.from(allPeriodsMap.values()).sort((a, b) => a.period - b.period);
+
+          const syncedRecords = combinedSched.map((item) => {
             const periodKey = `att_marked_${hDateStr}_period_${item.period}_${user?.username || 'student'}`;
             const localRecord = localStorage.getItem(periodKey);
             const backendRec = (h.records || []).find((r: any) => r.period === item.period);
@@ -298,7 +321,7 @@ const Attendance = () => {
   useEffect(() => {
     fetchDashboardData();
     fetchConfigs();
-  }, [user]);
+  }, [user, useTimeOverride, simDate, simTime]);
 
   const generateFaceEmbedding = (userNm: string) => {
     const embedding = [];

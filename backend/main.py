@@ -1354,20 +1354,13 @@ def get_timetable(
     requester_role: Optional[str] = Header(None, alias="x-requester-role"),
     db: Session = Depends(get_db)
 ):
-    # Security: Students can only access their current semester and department
     if requester_role == "student" and requester_username:
         user = db.query(models.User).filter(models.User.username == requester_username).first()
         if user:
-            student_dept = get_normalized_department(user.department)
-            department = student_dept
-            semester = user.semester or "1-1"
-
-    if department or semester:
-        ensure_timetable_seeded(db, department or "Computer Science and Engineering (CSE)", semester or "1-1")
+            department = department or user.department or "Computer Science and Engineering (CSE)"
+            semester = semester or user.semester or "1-1"
 
     query = db.query(models.TimetableEntry)
-    if department:
-        query = query.filter(models.TimetableEntry.department == department)
     if semester:
         query = query.filter(models.TimetableEntry.semester == semester)
     if day:
@@ -1376,11 +1369,17 @@ def get_timetable(
         query = query.filter(models.TimetableEntry.faculty_username == faculty_username)
 
     results = query.all()
+    if department:
+        target_norm = normalize_dept_name(department)
+        filtered = [t for t in results if normalize_dept_name(t.department) == target_norm]
+        if filtered:
+            return sorted(filtered, key=lambda x: x.period)
+            
     if not results and (department or semester):
         ensure_timetable_seeded(db, department or "Computer Science and Engineering (CSE)", semester or "1-1")
         results = query.all()
 
-    return results
+    return sorted(results, key=lambda x: x.period)
 
 @app.post("/timetable", response_model=schemas.TimetableEntryResponse)
 def create_timetable_entry(entry: schemas.TimetableEntryCreate, overwrite: bool = False, db: Session = Depends(get_db)):
