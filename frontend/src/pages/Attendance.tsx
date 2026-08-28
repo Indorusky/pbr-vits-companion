@@ -173,14 +173,33 @@ const Attendance = () => {
             const localRecord = localStorage.getItem(periodKey);
             const backendRec = (h.records || []).find((r: any) => r.period === item.period);
 
-            const isPresent = localRecord ? true : (backendRec ? backendRec.status === 'Present' : false);
+            let isPresent = false;
+            let confScore = null;
+            let vMethod = 'SYSTEM';
+
+            if (backendRec && backendRec.status === 'Present') {
+              isPresent = true;
+              confScore = backendRec.confidence_score || '96.5%';
+              vMethod = backendRec.verification_method || 'FACE_RECOGNITION';
+            } else if (localRecord) {
+              try {
+                const parsed = JSON.parse(localRecord);
+                if (parsed.status === 'PRESENT' || parsed.status === 'Present') {
+                  isPresent = true;
+                  confScore = parsed.match_score ? `${parsed.match_score}%` : '96.5%';
+                  vMethod = 'FACE_RECOGNITION';
+                }
+              } catch {
+                isPresent = false;
+              }
+            }
 
             return {
               period: item.period,
               subject: item.subject,
               status: isPresent ? ('Present' as const) : ('Absent' as const),
-              verification_method: (backendRec && backendRec.verification_method) || (localRecord ? 'FACE_RECOGNITION' : 'SYSTEM'),
-              confidence_score: (backendRec && backendRec.confidence_score) || '96.5%',
+              verification_method: vMethod,
+              confidence_score: confScore,
               start_time: item.startTime,
               end_time: item.endTime,
               frs_window_start: item.frsWindowStart,
@@ -196,13 +215,14 @@ const Attendance = () => {
           };
         });
 
-        // Compute dynamic subject breakdown
+        // Compute dynamic subject breakdown based on actual period presence
         const uniqueSubjects = Array.from(new Set(todaySchedule.map(item => item.subject)));
         const syncedSubjects: SubjectAttendance[] = uniqueSubjects.map((subj) => {
-          const periodKey = `att_marked_${todayStr}_${subj}_${user?.username || 'student'}`;
-          const isMarked = localStorage.getItem(periodKey) || sanitizedHistory.some((d: any) => d.records.some((r: any) => r.subject === subj && r.status === 'Present'));
+          const presentCount = sanitizedHistory.reduce((acc: number, d: any) => {
+            return acc + (d.records || []).filter((r: any) => r.subject === subj && r.status === 'Present').length;
+          }, 0);
           const total = 20;
-          const attended = isMarked ? 19 : 17;
+          const attended = Math.max(presentCount, 15);
           const absent = total - attended;
           const percentage = parseFloat(((attended / total) * 100).toFixed(1));
           return {
@@ -241,9 +261,9 @@ const Attendance = () => {
       setLoading(false);
     }
 
-    const fallbackSubjects: SubjectAttendance[] = todaySchedule.map((item, idx) => {
+    const fallbackSubjects: SubjectAttendance[] = todaySchedule.map((item) => {
       const total = 20;
-      const attended = idx < 3 ? 19 : 18;
+      const attended = 18;
       const absent = total - attended;
       const percentage = parseFloat(((attended / total) * 100).toFixed(1));
       return {
@@ -258,7 +278,7 @@ const Attendance = () => {
     const totalClasses = fallbackSubjects.reduce((acc, s) => acc + s.total, 0);
     const presentClasses = fallbackSubjects.reduce((acc, s) => acc + s.attended, 0);
     const absentClasses = totalClasses - presentClasses;
-    const overallPercentage = totalClasses > 0 ? parseFloat(((presentClasses / totalClasses) * 100).toFixed(1)) : 93.8;
+    const overallPercentage = totalClasses > 0 ? parseFloat(((presentClasses / totalClasses) * 100).toFixed(1)) : 90.0;
 
     const fallbackStats = {
       overall_percentage: overallPercentage,
@@ -272,14 +292,21 @@ const Attendance = () => {
           records: todaySchedule.map((item) => {
             const periodKey = `att_marked_${todayStr}_period_${item.period}_${user?.username || 'student'}`;
             const localRecord = localStorage.getItem(periodKey);
-            const isPresent = localRecord ? true : item.period < 4;
-
+            let isPresent = false;
+            if (localRecord) {
+              try {
+                const parsed = JSON.parse(localRecord);
+                isPresent = (parsed.status === 'PRESENT' || parsed.status === 'Present');
+              } catch {
+                isPresent = false;
+              }
+            }
             return {
               period: item.period,
               subject: item.subject,
               status: isPresent ? ('Present' as const) : ('Absent' as const),
-              verification_method: 'FACE_RECOGNITION',
-              confidence_score: '96.5%',
+              verification_method: isPresent ? 'FACE_RECOGNITION' : 'SYSTEM',
+              confidence_score: isPresent ? '96.5%' : null,
               start_time: item.startTime,
               end_time: item.endTime,
               frs_window_start: item.frsWindowStart,
@@ -736,10 +763,22 @@ const Attendance = () => {
               </label>
             </div>
           </div>
-          <div className="flex items-end">
-            <div className="bg-indigo-50 border border-indigo-150 p-2.5 rounded-xl text-[11px] text-indigo-850 font-bold w-full">
+          <div className="flex items-end gap-2">
+            <div className="bg-indigo-50 border border-indigo-150 p-2.5 rounded-xl text-[11px] text-indigo-850 font-bold flex-1">
               Status: Period Window Rule <b>[-10 min, +15 min]</b> active for verification.
             </div>
+            <button
+              onClick={() => {
+                Object.keys(localStorage).forEach(k => {
+                  if (k.startsWith('att_marked_')) localStorage.removeItem(k);
+                });
+                fetchDashboardData();
+              }}
+              className="px-3 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded-xl transition-all whitespace-nowrap cursor-pointer"
+              title="Reset any local test presence flags to start testing cleanly"
+            >
+              Reset Test Marks
+            </button>
           </div>
         </div>
       </div>
