@@ -522,6 +522,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const acc = accounts.find(a => (a.username || '').toLowerCase() === username.toLowerCase() && a.password === pass);
     if (acc) {
+      saveUserToCloudDb(acc);
       return {
         success: true,
         user: {
@@ -566,32 +567,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const cleanUname = username.trim().toLowerCase();
     try {
       const cloudUser = await getUserFromCloudDb(cleanUname);
-      if (cloudUser && cloudUser.password === pass) {
-        setAccounts(prev => {
-          if (!prev.some(a => (a.username || '').toLowerCase() === cleanUname)) {
-            const next = [...prev, cloudUser];
-            try { localStorage.setItem('campus_ai_accounts', JSON.stringify(next)); } catch {}
-            return next;
-          }
-          return prev;
-        });
+      if (cloudUser) {
+        const isPassMatch = !cloudUser.password || cloudUser.password === pass;
+        if (isPassMatch) {
+          const fullAcc = { ...cloudUser, password: pass };
+          saveUserToCloudDb(fullAcc);
+          setAccounts(prev => {
+            if (!prev.some(a => (a.username || '').toLowerCase() === cleanUname)) {
+              const next = [...prev, fullAcc];
+              try { localStorage.setItem('campus_ai_accounts', JSON.stringify(next)); } catch {}
+              return next;
+            }
+            return prev;
+          });
 
-        return {
-          success: true,
-          user: {
-            id: cloudUser.id || Math.floor(1000 + Math.random() * 9000),
-            username: cloudUser.username,
-            role: cloudUser.role || 'student',
-            name: cloudUser.name,
-            department: cloudUser.department || 'Computer Science and Engineering (CSE)',
-            year: cloudUser.year || '1st Year',
-            semester: cloudUser.semester || '1-1',
-            email: cloudUser.email,
-            roll_number: cloudUser.roll_number || '2273A01001',
-            section: cloudUser.section || 'Section A',
-            profile_photo: cloudUser.profile_photo
-          }
-        };
+          return {
+            success: true,
+            user: {
+              id: fullAcc.id || Math.floor(1000 + Math.random() * 9000),
+              username: fullAcc.username,
+              role: fullAcc.role || 'student',
+              name: fullAcc.name,
+              department: fullAcc.department || 'Computer Science and Engineering (CSE)',
+              year: fullAcc.year || '1st Year',
+              semester: fullAcc.semester || '1-1',
+              email: fullAcc.email,
+              roll_number: fullAcc.roll_number || '2273A01001',
+              section: fullAcc.section || 'Section A',
+              profile_photo: fullAcc.profile_photo
+            }
+          };
+        }
       }
     } catch { /* ignore */ }
 
