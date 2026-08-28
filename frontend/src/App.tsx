@@ -104,7 +104,7 @@ function AppRoutes() {
                       <Route path="/assignments" element={<ProtectedRoute allowedRoles={['student', 'faculty']}><Assignments /></ProtectedRoute>} />
                       <Route path="/study" element={<StudyMaterials />} />
                       <Route path="/events" element={<ProtectedRoute allowedRoles={['student']}><Events /></ProtectedRoute>} />
-                      <Route path="/placements" element={<ProtectedRoute allowedRoles={['student']}><Placements /></ProtectedRoute>} />
+                      <Route path="/placements" element={<ProtectedRoute allowedRoles={['student', 'faculty', 'admin']}><Placements /></ProtectedRoute>} />
                       <Route path="/chat" element={<ProtectedRoute allowedRoles={['student']}><Chatbot /></ProtectedRoute>} />
                       <Route path="/quizzes" element={<Quizzes />} />
                       <Route path="/notifications" element={<ProtectedRoute allowedRoles={['student']}><Notifications /></ProtectedRoute>} />

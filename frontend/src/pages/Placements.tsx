@@ -57,7 +57,7 @@ export interface JobApplication {
   studentDept: string;
   studentCgpa: number;
   resumeFileName: string;
-  resumeFileData?: string; // base64
+  resumeFileData?: string;
   resumeUrl?: string;
   coverNote?: string;
   appliedAt: string;
@@ -169,17 +169,33 @@ const INITIAL_APPLICATIONS: JobApplication[] = [
 
 const Placements = () => {
   const { user, viewMode } = useAuth();
-  const isAdminOrFaculty = viewMode === 'admin' || viewMode === 'faculty';
+  const isAdminOrFaculty = viewMode === 'admin' || viewMode === 'faculty' || user?.role === 'admin' || user?.role === 'faculty';
   const isStudent = !isAdminOrFaculty;
 
-  const [activeTab, setActiveTab] = useState<'openings' | 'my-applications' | 'admin-applicants'>(
-    isAdminOrFaculty ? 'openings' : 'openings'
-  );
+  const [activeTab, setActiveTab] = useState<'openings' | 'my-applications' | 'admin-applicants'>('openings');
 
   const [jobs, setJobs] = useState<JobOpening[]>(() => {
     try {
       const saved = localStorage.getItem('campus_ai_jobs');
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((j: any, idx: number) => ({
+            id: j.id || `job_${idx}`,
+            role: j.role || 'Software Engineer',
+            company: j.company || 'Tech Partner',
+            package: j.package || 'Competitive',
+            eligibility: j.eligibility || 'CGPA >= 7.5',
+            minCgpa: typeof j.minCgpa === 'number' ? j.minCgpa : 7.5,
+            deadline: j.deadline || 'Sep 30, 2026',
+            type: j.type === 'Internship' ? 'Internship' : 'Full-time',
+            location: j.location || 'Hyderabad Campus',
+            description: j.description || 'Full-time engineering role at a leading technology firm.',
+            skills: Array.isArray(j.skills) ? j.skills : ['Python', 'Data Structures', 'Web Development'],
+            postedDate: j.postedDate || 'Aug 2026'
+          }));
+        }
+      }
     } catch { /* ignore */ }
     return INITIAL_JOBS;
   });
@@ -187,7 +203,32 @@ const Placements = () => {
   const [applications, setApplications] = useState<JobApplication[]>(() => {
     try {
       const saved = localStorage.getItem('campus_ai_job_applications');
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((a: any, idx: number) => ({
+            id: a.id || `app_${idx}`,
+            jobId: a.jobId || 'j1',
+            jobRole: a.jobRole || 'Software Engineer',
+            company: a.company || 'Tech Corp',
+            studentId: a.studentId || 1,
+            studentName: a.studentName || 'Student',
+            studentRoll: a.studentRoll || '2273A01001',
+            studentEmail: a.studentEmail || 'student@pbrvits.edu.in',
+            studentPhone: a.studentPhone || '+91 98765 43210',
+            studentDept: a.studentDept || 'CSE',
+            studentCgpa: typeof a.studentCgpa === 'number' ? a.studentCgpa : 8.5,
+            resumeFileName: a.resumeFileName || 'Resume.pdf',
+            resumeFileData: a.resumeFileData,
+            resumeUrl: a.resumeUrl,
+            coverNote: a.coverNote,
+            appliedAt: a.appliedAt || 'Aug 2026',
+            status: a.status || 'Applied',
+            interviewDate: a.interviewDate,
+            interviewNotes: a.interviewNotes
+          }));
+        }
+      }
     } catch { /* ignore */ }
     return INITIAL_APPLICATIONS;
   });
@@ -238,11 +279,15 @@ const Placements = () => {
 
   // Sync with localStorage
   useEffect(() => {
-    localStorage.setItem('campus_ai_jobs', JSON.stringify(jobs));
+    try {
+      localStorage.setItem('campus_ai_jobs', JSON.stringify(jobs));
+    } catch {}
   }, [jobs]);
 
   useEffect(() => {
-    localStorage.setItem('campus_ai_job_applications', JSON.stringify(applications));
+    try {
+      localStorage.setItem('campus_ai_job_applications', JSON.stringify(applications));
+    } catch {}
   }, [applications]);
 
   // Open apply modal with pre-filled student details
@@ -255,7 +300,7 @@ const Placements = () => {
     setApplPhone('+91 98765 43210');
     setApplRoll(user?.roll_number || '2273A01001');
     setApplDept(user?.department || 'Computer Science and Engineering (CSE)');
-    setApplCgpa(academicProfile.cgpa || 8.74);
+    setApplCgpa(academicProfile?.cgpa ?? 8.74);
     setApplResumeName(`${(user?.name || user?.username || 'Student').replace(/\s+/g, '_')}_Resume_2026.pdf`);
     setApplResumeUrl('');
     setApplCoverNote('');
@@ -290,9 +335,11 @@ const Placements = () => {
     }
 
     // Check if already applied
+    const cleanApplRoll = (applRoll || '').toLowerCase();
+    const cleanApplEmail = (applEmail || '').toLowerCase();
     const alreadyApplied = applications.some(
       a => a.jobId === selectedJobToApply.id && 
-      (a.studentRoll.toLowerCase() === applRoll.toLowerCase() || a.studentEmail.toLowerCase() === applEmail.toLowerCase())
+      ((a.studentRoll || '').toLowerCase() === cleanApplRoll || (a.studentEmail || '').toLowerCase() === cleanApplEmail)
     );
 
     if (alreadyApplied) {
@@ -384,16 +431,16 @@ const Placements = () => {
   const openEditJobModal = (job: JobOpening, e: React.MouseEvent) => {
     e.stopPropagation();
     setEditingJobId(job.id);
-    setJobRole(job.role);
-    setJobCompany(job.company);
-    setJobPkg(job.package);
-    setJobEligibility(job.eligibility);
+    setJobRole(job.role || '');
+    setJobCompany(job.company || '');
+    setJobPkg(job.package || '');
+    setJobEligibility(job.eligibility || '');
     setJobMinCgpa(job.minCgpa || 7.5);
-    setJobDeadline(job.deadline);
-    setJobType(job.type);
-    setJobLocation(job.location);
-    setJobDesc(job.description);
-    setJobSkills(job.skills.join(', '));
+    setJobDeadline(job.deadline || '');
+    setJobType(job.type || 'Full-time');
+    setJobLocation(job.location || '');
+    setJobDesc(job.description || '');
+    setJobSkills((job.skills || []).join(', '));
     setShowAddJobModal(true);
   };
 
@@ -448,10 +495,15 @@ const Placements = () => {
 
   // Filtered jobs
   const filteredJobs = jobs.filter(job => {
+    const roleText = (job.role || '').toLowerCase();
+    const compText = (job.company || '').toLowerCase();
+    const skillsList = Array.isArray(job.skills) ? job.skills : [];
+    const searchLower = searchQuery.toLowerCase();
+
     const matchesSearch = !searchQuery || 
-      job.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      job.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      job.skills.some(s => s.toLowerCase().includes(searchQuery.toLowerCase()));
+      roleText.includes(searchLower) ||
+      compText.includes(searchLower) ||
+      skillsList.some(s => (s || '').toLowerCase().includes(searchLower));
     const matchesType = filterType === 'ALL' || job.type === filterType;
     return matchesSearch && matchesType;
   });
@@ -461,21 +513,32 @@ const Placements = () => {
     const userRoll = (user?.roll_number || '').toLowerCase();
     const userUname = (user?.username || '').toLowerCase();
     const userEmail = (user?.email || '').toLowerCase();
+    const appRoll = (a.studentRoll || '').toLowerCase();
+    const appName = (a.studentName || '').toLowerCase();
+    const appEmail = (a.studentEmail || '').toLowerCase();
+
     return (
-      a.studentRoll.toLowerCase() === userRoll ||
-      a.studentName.toLowerCase().includes(userUname) ||
-      a.studentEmail.toLowerCase() === userEmail ||
-      (a.studentRoll.toLowerCase() === '2273a01001')
+      (userRoll && appRoll === userRoll) ||
+      (userUname && appName.includes(userUname)) ||
+      (userEmail && appEmail === userEmail) ||
+      (appRoll === '2273a01001' && userRoll === '2273a01001') ||
+      appRoll === '2273a01001'
     );
   });
 
   // Filtered Admin applications
   const filteredAdminApplications = applications.filter(a => {
+    const sName = (a.studentName || '').toLowerCase();
+    const sRoll = (a.studentRoll || '').toLowerCase();
+    const sComp = (a.company || '').toLowerCase();
+    const sRole = (a.jobRole || '').toLowerCase();
+    const searchLower = applicantSearch.toLowerCase();
+
     const matchesSearch = !applicantSearch ||
-      a.studentName.toLowerCase().includes(applicantSearch.toLowerCase()) ||
-      a.studentRoll.toLowerCase().includes(applicantSearch.toLowerCase()) ||
-      a.company.toLowerCase().includes(applicantSearch.toLowerCase()) ||
-      a.jobRole.toLowerCase().includes(applicantSearch.toLowerCase());
+      sName.includes(searchLower) ||
+      sRoll.includes(searchLower) ||
+      sComp.includes(searchLower) ||
+      sRole.includes(searchLower);
     const matchesStatus = applicantFilterStatus === 'ALL' || a.status === applicantFilterStatus;
     const matchesJob = applicantFilterJob === 'ALL' || a.jobId === applicantFilterJob;
     return matchesSearch && matchesStatus && matchesJob;
@@ -483,6 +546,7 @@ const Placements = () => {
 
   // User academic profile for eligibility check
   const studentAcademic = getStudentAcademicProfile(user);
+  const userCgpa = studentAcademic?.cgpa ?? 8.74;
 
   return (
     <div className="p-4 sm:p-6 md:p-8 max-w-7xl mx-auto space-y-6 min-h-screen pb-28">
@@ -599,14 +663,16 @@ const Placements = () => {
           {/* Job Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {filteredJobs.map((job) => {
+              const uRoll = (user?.roll_number || '').toLowerCase();
+              const uEmail = (user?.email || '').toLowerCase();
               const hasApplied = applications.some(
                 a => a.jobId === job.id && 
-                (a.studentRoll.toLowerCase() === (user?.roll_number || '').toLowerCase() || 
-                 a.studentEmail.toLowerCase() === (user?.email || '').toLowerCase() ||
-                 (a.studentRoll.toLowerCase() === '2273a01001' && (user?.roll_number || '').toLowerCase() === '2273a01001'))
+                ((a.studentRoll || '').toLowerCase() === uRoll || 
+                 (a.studentEmail || '').toLowerCase() === uEmail ||
+                 (a.studentRoll || '').toLowerCase() === '2273a01001')
               );
-              const userApp = applications.find(a => a.jobId === job.id && (a.studentRoll.toLowerCase() === (user?.roll_number || '').toLowerCase() || a.studentRoll.toLowerCase() === '2273a01001'));
-              const isEligible = (studentAcademic.cgpa || 8.74) >= job.minCgpa;
+              const userApp = applications.find(a => a.jobId === job.id && ((a.studentRoll || '').toLowerCase() === uRoll || (a.studentRoll || '').toLowerCase() === '2273a01001'));
+              const isEligible = userCgpa >= (job.minCgpa || 7.0);
 
               return (
                 <div
@@ -620,11 +686,11 @@ const Placements = () => {
                           ? 'bg-blue-50 text-blue-700 border-blue-200'
                           : 'bg-purple-50 text-purple-700 border-purple-200'
                       }`}>
-                        {job.type}
+                        {job.type || 'Full-time'}
                       </span>
                       <span className="text-xs text-slate-400 font-bold flex items-center gap-1">
                         <Calendar className="w-3.5 h-3.5" />
-                        Deadline: {job.deadline}
+                        Deadline: {job.deadline || 'Open'}
                       </span>
                     </div>
 
@@ -655,7 +721,7 @@ const Placements = () => {
 
                     {/* Skill Tags */}
                     <div className="flex flex-wrap gap-1.5 pt-1">
-                      {job.skills.map((sk, sIdx) => (
+                      {(job.skills || []).map((sk, sIdx) => (
                         <span key={sIdx} className="text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md">
                           {sk}
                         </span>
@@ -672,7 +738,7 @@ const Placements = () => {
                           <span>Status: {userApp?.status || 'Applied'}</span>
                         </span>
                       ) : isEligible ? (
-                        <span className="text-xs font-bold text-blue-600">Eligible to Apply (CGPA {studentAcademic.cgpa.toFixed(2)})</span>
+                        <span className="text-xs font-bold text-blue-600">Eligible to Apply (CGPA {userCgpa.toFixed(2)})</span>
                       ) : (
                         <span className="text-xs font-bold text-amber-600">Min CGPA required: {job.minCgpa}</span>
                       )}
@@ -893,7 +959,7 @@ const Placements = () => {
                       </td>
                       <td className="p-3.5">
                         <span className="px-2 py-0.5 rounded-md font-extrabold bg-blue-50 text-blue-700 border border-blue-200">
-                          {app.studentCgpa.toFixed(2)}
+                          {typeof app.studentCgpa === 'number' ? app.studentCgpa.toFixed(2) : '8.50'}
                         </span>
                       </td>
                       <td className="p-3.5">
@@ -1276,7 +1342,7 @@ const Placements = () => {
                 <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-600 block">Candidate Review & Interview Approval</span>
                 <h3 className="text-base font-black text-slate-900">{selectedAppToSchedule.studentName}</h3>
                 <p className="text-xs text-slate-500 font-bold">
-                  Roll: {selectedAppToSchedule.studentRoll} • CGPA: {selectedAppToSchedule.studentCgpa.toFixed(2)} • {selectedAppToSchedule.company}
+                  Roll: {selectedAppToSchedule.studentRoll} • CGPA: {(typeof selectedAppToSchedule.studentCgpa === 'number' ? selectedAppToSchedule.studentCgpa : 8.5).toFixed(2)} • {selectedAppToSchedule.company}
                 </p>
               </div>
               <button onClick={() => setShowScheduleModal(false)} className="p-1 text-slate-400 hover:text-slate-600 rounded-lg">
