@@ -167,8 +167,15 @@ const FacultyDashboard = () => {
     setShowEditModal(true);
   };
 
-  // Get distinct subjects from records
-  const distinctSubjects = Array.from(new Set(attendanceRecords.map(r => r.subject)));
+  // Get distinct subjects from faculty assigned subjects and recorded logs
+  const facultyAssignedSubjects = Array.isArray(user?.subjects) 
+    ? user.subjects 
+    : (typeof user?.subjects === 'string' ? (user.subjects as string).split(',').map(s => s.trim()).filter(Boolean) : []);
+
+  const distinctSubjects = Array.from(new Set([
+    ...facultyAssignedSubjects,
+    ...attendanceRecords.map(r => r.subject)
+  ])).filter(Boolean);
 
   // Filtered records
   const filteredRecords = attendanceRecords.filter(r => {
