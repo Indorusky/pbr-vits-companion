@@ -1164,6 +1164,56 @@ def check_timetable_conflicts(db: Session, entry: schemas.TimetableEntryCreate, 
                 detail=f"Room conflict: Room/Lab '{entry.room}' is already occupied by class '{e.subject}' on {entry.day} period {entry.period}."
             )
 
+def ensure_timetable_seeded(db: Session, department: str, semester: str):
+    dept_norm = get_normalized_department(department) if department else "Computer Science and Engineering (CSE)"
+    sem_str = semester or "1-1"
+
+    existing = db.query(models.TimetableEntry).filter(
+        models.TimetableEntry.department == dept_norm,
+        models.TimetableEntry.semester == sem_str
+    ).first()
+
+    if not existing:
+        # Generate 4 periods per weekday for this department & semester
+        subjects = ["Generative AI", "MLOps & Model Deployment", "Deep Learning", "Cloud Computing Lab"]
+        if "1" in sem_str:
+            subjects = ["Linear Algebra & Calculus", "Engineering Physics", "Programming in C", "Engineering Drawing"]
+        elif "2" in sem_str:
+            subjects = ["Data Structures", "DBMS", "OOP (Java)", "Digital Logic & Computer Organization"]
+        elif "3" in sem_str:
+            subjects = ["Software Engineering", "Machine Learning", "Artificial Intelligence", "Computer Networks"]
+
+        faculties = ["Dr. Clara Croft", "Prof. Alan Vance", "Dr. Sarah Jenkins", "Dr. Rajiv Sharma"]
+        times = [
+            ("08:00", "09:00"),
+            ("09:00", "10:00"),
+            ("10:15", "11:15"),
+            ("11:15", "12:15")
+        ]
+        days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+
+        for d_idx, day_name in enumerate(days):
+            for p_idx in range(4):
+                subj_name = subjects[(d_idx + p_idx) % len(subjects)]
+                fac_name = faculties[(p_idx + d_idx) % len(faculties)]
+                t_start, t_end = times[p_idx]
+                room_no = f"LH-{(int(sem_str[0]) if sem_str[0].isdigit() else 1) * 100 + (p_idx + 1)}"
+
+                entry = models.TimetableEntry(
+                    department=dept_norm,
+                    semester=sem_str,
+                    day=day_name,
+                    period=p_idx + 1,
+                    subject=subj_name,
+                    subject_type="Lecture" if p_idx < 3 else "Laboratory",
+                    faculty_username=fac_name,
+                    room=room_no,
+                    start_time=t_start,
+                    end_time=t_end
+                )
+                db.add(entry)
+        db.commit()
+
 @app.get("/timetable", response_model=List[schemas.TimetableEntryResponse])
 def get_timetable(
     department: Optional[str] = None,
@@ -1179,16 +1229,12 @@ def get_timetable(
         user = db.query(models.User).filter(models.User.username == requester_username).first()
         if user:
             student_dept = get_normalized_department(user.department)
-            req_dept = get_normalized_department(department) if department else ""
-            
-            if (department and req_dept != student_dept) or (semester and semester != user.semester):
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Access Denied: Students can only access their current department and semester."
-                )
             department = student_dept
-            semester = user.semester
-            
+            semester = user.semester or "1-1"
+
+    if department or semester:
+        ensure_timetable_seeded(db, department or "Computer Science and Engineering (CSE)", semester or "1-1")
+
     query = db.query(models.TimetableEntry)
     if department:
         query = query.filter(models.TimetableEntry.department == department)
@@ -1198,7 +1244,13 @@ def get_timetable(
         query = query.filter(models.TimetableEntry.day == day)
     if faculty_username:
         query = query.filter(models.TimetableEntry.faculty_username == faculty_username)
-    return query.all()
+
+    results = query.all()
+    if not results and (department or semester):
+        ensure_timetable_seeded(db, department or "Computer Science and Engineering (CSE)", semester or "1-1")
+        results = query.all()
+
+    return results
 
 @app.post("/timetable", response_model=schemas.TimetableEntryResponse)
 def create_timetable_entry(entry: schemas.TimetableEntryCreate, db: Session = Depends(get_db)):
