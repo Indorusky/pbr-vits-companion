@@ -20,6 +20,16 @@ interface StudentRecord {
 const DEFAULT_ROSTER: StudentRecord[] = [
   {
     id: '1',
+    name: 'Ravi Prakash Bayireddy',
+    roll: '2273A01001',
+    attendance: 92.0,
+    attendedClasses: 46,
+    totalClasses: 50,
+    marks: { 'Generative AI': 94, 'MLOps': 88, 'Deep Learning': 92 },
+    status: 'Good'
+  },
+  {
+    id: '2',
     name: 'Alex Johnson',
     roll: '2373A01001',
     attendance: 87.5,
@@ -29,7 +39,7 @@ const DEFAULT_ROSTER: StudentRecord[] = [
     status: 'Good'
   },
   {
-    id: '2',
+    id: '3',
     name: 'Beatrix Kiddo',
     roll: '2373A01002',
     attendance: 79.5,
@@ -39,7 +49,7 @@ const DEFAULT_ROSTER: StudentRecord[] = [
     status: 'Warning'
   },
   {
-    id: '3',
+    id: '4',
     name: 'Charles Xavier',
     roll: '2373A01003',
     attendance: 94.0,
@@ -74,29 +84,34 @@ const ManageStudents = () => {
       const response = await fetch(`${API_BASE_URL}/students`);
       if (response.ok) {
         const data = await response.json();
-        const mapped: StudentRecord[] = data.map((st: any) => ({
-          id: String(st.id),
-          name: st.name || st.username,
-          roll: st.roll_number || `ROLL-${st.id}`,
-          attendance: st.attendance || 85,
-          attendedClasses: 35,
-          totalClasses: 40,
-          marks: { 'Math': st.marks || 90, 'Physics': 85, 'CS': 95 },
-          status: (st.attendance || 85.5) < 75 ? 'Warning' : 'Good',
-          profilePhoto: st.profile_photo
-        }));
-        setRoster(mapped);
-        return;
+        if (Array.isArray(data) && data.length > 0) {
+          const mapped: StudentRecord[] = data.map((st: any) => ({
+            id: String(st.id),
+            name: st.name || st.username,
+            roll: st.roll_number || `ROLL-${st.id}`,
+            attendance: st.attendance || 85,
+            attendedClasses: 35,
+            totalClasses: 40,
+            marks: { 'Math': st.marks || 90, 'Physics': 85, 'CS': 95 },
+            status: (st.attendance || 85.5) < 75 ? 'Warning' : 'Good',
+            profilePhoto: st.profile_photo
+          }));
+          setRoster(mapped);
+          return;
+        }
       }
     } catch (e) {
       console.warn("Backend fetch roster failed, local storage fallback", e);
     }
     const saved = localStorage.getItem('campus_ai_roster');
     if (saved !== null) {
-      setRoster(JSON.parse(saved));
-    } else {
-      setRoster(DEFAULT_ROSTER);
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        setRoster(parsed);
+        return;
+      }
     }
+    setRoster(DEFAULT_ROSTER);
   };
 
   useEffect(() => {

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { API_BASE_URL } from '../config';
 
 import { Shield, Search, Trash2, Plus, X, UserPlus, CheckCircle2 } from 'lucide-react';
-import { generateRollNumberLocal } from '../context/AuthContext';
+import { generateRollNumberLocal, DEFAULT_ACCOUNTS } from '../context/AuthContext';
 
 interface AccountRecord {
   username: string;
@@ -43,12 +43,29 @@ const ManageUsers = () => {
       const response = await fetch(`${API_BASE_URL}/users`);
       if (response.ok) {
         const data = await response.json();
-        setAccounts(data);
+        if (Array.isArray(data) && data.length > 0) {
+          setAccounts(data);
+          return;
+        }
       }
     } catch (e) {
       console.warn("Backend fetch users failed, local storage fallback", e);
-      const saved = localStorage.getItem('campus_ai_accounts');
-      if (saved) setAccounts(JSON.parse(saved));
+    }
+    const saved = localStorage.getItem('campus_ai_accounts');
+    if (saved) {
+      setAccounts(JSON.parse(saved));
+    } else {
+      setAccounts(DEFAULT_ACCOUNTS.map(a => ({
+        username: a.username,
+        role: (a.role || 'student') as 'student' | 'faculty' | 'admin',
+        name: a.name || a.username,
+        department: a.department || 'General',
+        year: a.year,
+        email: a.email || '',
+        roll_number: a.roll_number,
+        subjects: Array.isArray(a.subjects) ? a.subjects.join(', ') : a.subjects,
+        approval_status: a.approval_status
+      })));
     }
   };
 

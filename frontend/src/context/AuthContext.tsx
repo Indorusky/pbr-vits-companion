@@ -92,14 +92,80 @@ export const generateRollNumberLocal = (accounts: any[], department: string, yea
   return `${prefix}${serialStr}`;
 };
 
-const DEFAULT_ACCOUNTS = [
+export const DEFAULT_ACCOUNTS = [
   {
+    id: 1,
     username: 'admin',
     password: 'admin',
     role: 'admin' as Role,
-    name: 'Admin',
+    name: 'System Admin',
     department: 'Administration',
-    email: 'admin@gmail.com'
+    email: 'admin@campus.edu',
+    approval_status: 'Approved'
+  },
+  {
+    id: 2,
+    username: 'student',
+    password: 'student',
+    role: 'student' as Role,
+    name: 'Ravi Prakash Bayireddy',
+    department: 'Computer Science and Engineering (CSE)',
+    year: '4th Year',
+    semester: '4-1',
+    roll_number: '2273A01001',
+    email: 'optimindian@gmail.com',
+    section: 'Section A',
+    approval_status: 'Approved'
+  },
+  {
+    id: 3,
+    username: 'ravi',
+    password: 'ravi123',
+    role: 'student' as Role,
+    name: 'Ravi Prakash Bayireddy',
+    department: 'Computer Science and Engineering (CSE)',
+    year: '4th Year',
+    semester: '4-1',
+    roll_number: '2273A01001',
+    email: 'optimindian@gmail.com',
+    section: 'Section A',
+    approval_status: 'Approved'
+  },
+  {
+    id: 4,
+    username: 'alex',
+    password: 'alex123',
+    role: 'student' as Role,
+    name: 'Alex Johnson',
+    department: 'Computer Science and Engineering (CSE)',
+    year: '3rd Year',
+    semester: '3-1',
+    roll_number: '2373A01001',
+    email: 'alex.j@campus.edu',
+    section: 'Section A',
+    approval_status: 'Approved'
+  },
+  {
+    id: 5,
+    username: 'faculty',
+    password: 'faculty',
+    role: 'faculty' as Role,
+    name: 'Dr. Clara Croft',
+    department: 'Computer Science and Engineering (CSE)',
+    email: 'clara.croft@campus.edu',
+    subjects: ['Generative AI', 'Data Structures'],
+    approval_status: 'Approved'
+  },
+  {
+    id: 6,
+    username: 'clara',
+    password: 'clara123',
+    role: 'faculty' as Role,
+    name: 'Dr. Clara Croft',
+    department: 'Computer Science and Engineering (CSE)',
+    email: 'clara.croft@campus.edu',
+    subjects: ['Generative AI', 'Data Structures'],
+    approval_status: 'Approved'
   }
 ];
 
@@ -120,7 +186,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [accounts, setAccounts] = useState<any[]>(() => {
     try {
       const saved = localStorage.getItem('campus_ai_accounts');
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Merge missing default accounts into saved
+          const existingUsernames = new Set(parsed.map((a: any) => (a.username || '').toLowerCase()));
+          const merged = [...parsed];
+          DEFAULT_ACCOUNTS.forEach(defAcc => {
+            if (!existingUsernames.has(defAcc.username.toLowerCase())) {
+              merged.push(defAcc);
+            }
+          });
+          return merged;
+        }
+      }
     } catch {
       // fallback
     }
