@@ -230,6 +230,34 @@ export const DEFAULT_ACCOUNTS = [
     approval_status: 'Approved'
   },
   {
+    id: 7,
+    username: 'beatrix',
+    password: 'beatrix123',
+    role: 'student' as Role,
+    name: 'Beatrix Kiddo',
+    department: 'Computer Science and Engineering (CSE)',
+    year: '3rd Year',
+    semester: '3-1',
+    roll_number: '2373A01002',
+    email: 'beatrix.k@campus.edu',
+    section: 'Section A',
+    approval_status: 'Approved'
+  },
+  {
+    id: 8,
+    username: 'charles',
+    password: 'charles123',
+    role: 'student' as Role,
+    name: 'Charles Xavier',
+    department: 'Computer Science and Engineering (CSE)',
+    year: '3rd Year',
+    semester: '3-1',
+    roll_number: '2373A01003',
+    email: 'charles.x@campus.edu',
+    section: 'Section A',
+    approval_status: 'Approved'
+  },
+  {
     id: 5,
     username: 'faculty',
     password: 'faculty',
