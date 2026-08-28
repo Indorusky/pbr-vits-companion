@@ -905,16 +905,15 @@ const Attendance = () => {
                                       <Camera className="w-3.5 h-3.5" />
                                       Mark FRS (Open Now)
                                     </button>
-                                  ) : wState === 'upcoming' ? (
-                                    <span className="px-3 py-1.5 rounded-xl text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1.5 select-none" title="Attendance window opens 10 minutes before class start time">
-                                      <Clock className="w-3.5 h-3.5 text-amber-600" />
-                                      Opens at {wStart}
-                                    </span>
                                   ) : (
-                                    <span className="px-3 py-1.5 rounded-xl text-[11px] font-extrabold bg-slate-100 text-slate-500 border border-slate-250 flex items-center gap-1.5 select-none" title="Attendance window closed 15 minutes after class start time">
-                                      <Lock className="w-3.5 h-3.5 text-slate-400" />
-                                      Window Closed (Absent)
-                                    </span>
+                                    <button
+                                      onClick={() => startDailyVerification(rec.period, rec.subject)}
+                                      className="px-3.5 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-extrabold shadow-md flex items-center gap-1.5 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                                      title="Scan Face biometrics to mark attendance for this class"
+                                    >
+                                      <Camera className="w-3.5 h-3.5" />
+                                      Mark FRS
+                                    </button>
                                   )}
                                 </div>
                               </div>
