@@ -69,7 +69,7 @@ const Sidebar = () => {
     { name: 'Study Materials', icon: BookOpen, path: '/study' },
     { name: 'Announcements', icon: Megaphone, path: '/announcements' },
     { name: 'Events', icon: Sparkles, path: '/events' },
-    { name: 'Placements', icon: FileText, path: '/placements' },
+    { name: 'Placements & Jobs', icon: FileText, path: '/placements' },
     { name: 'AI Chatbot', icon: MessageSquare, path: '/chat' },
     { name: 'Interactive Quizzes', icon: HelpCircle, path: '/quizzes' },
     { name: 'Notifications', icon: Bell, path: '/notifications' },
@@ -79,6 +79,7 @@ const Sidebar = () => {
     { name: 'Dashboard', icon: Home, path: '/faculty-dashboard' },
     { name: 'Timetable', icon: Calendar, path: '/timetable' },
     { name: 'Manage Students', icon: Users, path: '/manage-students' },
+    { name: 'Career & Placements', icon: FileText, path: '/placements' },
     { name: 'Assignments', icon: ClipboardList, path: '/assignments' },
     { name: 'Study Materials', icon: BookOpen, path: '/study' },
     { name: 'Manage Quizzes', icon: HelpCircle, path: '/quizzes' },
@@ -88,8 +89,10 @@ const Sidebar = () => {
   const adminNavItems = [
     { name: 'Dashboard', icon: Home, path: '/admin-dashboard' },
     { name: 'Timetable', icon: Calendar, path: '/timetable' },
+    { name: 'Career & Placements', icon: FileText, path: '/placements' },
     { name: 'Manage Users', icon: Users, path: '/manage-users' },
     { name: 'Manage Departments', icon: Building, path: '/manage-departments' },
+    { name: 'Announcements', icon: Megaphone, path: '/announcements' },
   ];
 
   let navItems = studentNavItems;
@@ -101,7 +104,7 @@ const Sidebar = () => {
     { name: 'Home', icon: Home, path: '/dashboard' },
     { name: 'Timetable', icon: Calendar, path: '/timetable' },
     { name: 'Attendance', icon: Percent, path: '/attendance' },
-    { name: 'AI Chat', icon: MessageSquare, path: '/chat' },
+    { name: 'Placements', icon: FileText, path: '/placements' },
     { name: 'Profile', icon: User, path: '/profile' },
   ];
 
@@ -110,12 +113,13 @@ const Sidebar = () => {
       { name: 'Home', icon: Home, path: '/faculty-dashboard' },
       { name: 'Timetable', icon: Calendar, path: '/timetable' },
       { name: 'Students', icon: Users, path: '/manage-students' },
-      { name: 'Assignments', icon: ClipboardList, path: '/assignments' },
+      { name: 'Placements', icon: FileText, path: '/placements' },
       { name: 'Profile', icon: User, path: '/profile' },
     ];
   } else if (viewMode === 'admin') {
     bottomNavItems = [
       { name: 'Home', icon: Home, path: '/admin-dashboard' },
+      { name: 'Placements', icon: FileText, path: '/placements' },
       { name: 'Users', icon: Users, path: '/manage-users' },
       { name: 'Depts', icon: Building, path: '/manage-departments' },
       { name: 'Settings', icon: Settings, path: '/settings' },

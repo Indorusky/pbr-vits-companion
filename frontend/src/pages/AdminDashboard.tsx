@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Users, Building, Activity, BookOpen, ChevronRight, Clock, Trash2, Camera, Search, Filter, CheckCircle, XCircle, Loader2, Video } from 'lucide-react';
+import { Shield, Users, Building, Activity, BookOpen, ChevronRight, Clock, Trash2, Camera, Search, Filter, CheckCircle, XCircle, Loader2, Video, Briefcase } from 'lucide-react';
 import { loadFaceApiModels, getFaceEmbedding } from '../utils/faceRecognition';
 import { API_BASE_URL } from '../config';
 
@@ -343,8 +343,18 @@ const AdminDashboard = () => {
             Admin Overview
           </h1>
           <p className="text-slate-500 mt-1 text-sm font-medium">
-            Biometrics monitoring, morning window configs, and global logs manual override panels.
+            Biometrics monitoring, campus placement drives, and global administrative controls.
           </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => navigate('/placements')}
+            className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-2 transition-all cursor-pointer"
+          >
+            <Briefcase className="w-4 h-4" />
+            <span>Manage Placements & Applicants</span>
+          </button>
         </div>
       </header>
 
@@ -378,34 +388,41 @@ const AdminDashboard = () => {
 
       {activeTab === 'infra' && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div onClick={() => navigate('/manage-users')} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer group">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div onClick={() => navigate('/manage-users')} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer group">
               <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl w-fit mb-3 group-hover:scale-105 transition-transform">
                 <Users className="w-5 h-5" />
               </div>
-              <p className="text-sm font-medium text-slate-500">Total Enrolled</p>
-              <h3 className="text-2xl font-bold text-slate-900 mt-1">{studentCount} Students</h3>
+              <p className="text-xs font-semibold text-slate-500">Total Enrolled</p>
+              <h3 className="text-xl font-bold text-slate-900 mt-1">{studentCount} Students</h3>
             </div>
-            <div onClick={() => navigate('/manage-departments')} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer group">
+            <div onClick={() => navigate('/manage-departments')} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer group">
               <div className="p-2.5 bg-purple-50 text-purple-600 rounded-xl w-fit mb-3 group-hover:scale-105 transition-transform">
                 <Building className="w-5 h-5" />
               </div>
-              <p className="text-sm font-medium text-slate-500">Active Departments</p>
-              <h3 className="text-2xl font-bold text-slate-900 mt-1">{departments.length} Departments</h3>
+              <p className="text-xs font-semibold text-slate-500">Active Depts</p>
+              <h3 className="text-xl font-bold text-slate-900 mt-1">{departments.length} Depts</h3>
             </div>
-            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+            <div onClick={() => navigate('/placements')} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer group ring-1 ring-blue-100">
+              <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl w-fit mb-3 group-hover:scale-105 transition-transform">
+                <Briefcase className="w-5 h-5" />
+              </div>
+              <p className="text-xs font-semibold text-indigo-600">Career & Jobs</p>
+              <h3 className="text-xl font-bold text-slate-900 mt-1">Placements Hub</h3>
+            </div>
+            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
               <div className="p-2.5 bg-green-50 text-green-600 rounded-xl w-fit mb-3">
                 <Activity className="w-5 h-5" />
               </div>
-              <p className="text-sm font-medium text-slate-500">System Health</p>
-              <h3 className="text-2xl font-bold text-emerald-600 mt-1">99.9% Uptime</h3>
+              <p className="text-xs font-semibold text-slate-500">System Health</p>
+              <h3 className="text-xl font-bold text-emerald-600 mt-1">99.9% Uptime</h3>
             </div>
-            <div onClick={() => navigate('/manage-users')} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer group">
+            <div onClick={() => navigate('/manage-users')} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer group">
               <div className="p-2.5 bg-amber-50 text-amber-600 rounded-xl w-fit mb-3 group-hover:scale-105 transition-transform">
                 <Shield className="w-5 h-5" />
               </div>
-              <p className="text-sm font-medium text-slate-500">Faculty Members</p>
-              <h3 className="text-2xl font-bold text-slate-900 mt-1">{facultyCount} Faculty</h3>
+              <p className="text-xs font-semibold text-slate-500">Faculty Members</p>
+              <h3 className="text-xl font-bold text-slate-900 mt-1">{facultyCount} Faculty</h3>
             </div>
           </div>
 
