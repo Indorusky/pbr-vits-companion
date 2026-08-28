@@ -284,26 +284,50 @@ export const OFFICIAL_CSE_PDF_NOTES = [
 const StudyMaterials = () => {
   const { user, viewMode } = useAuth();
   
+  const isFacultyOrAdmin = viewMode === 'faculty' || viewMode === 'admin';
+  const isStudent = !isFacultyOrAdmin;
+
+  // Student specific lock values
+  const studentDept = getNormalizedDepartment(user?.department || 'Computer Science');
+  const studentSem = user?.semester || '4-1';
+  const getYearFromSem = (sem: string) => {
+    if (sem.startsWith('1')) return '1st Year';
+    if (sem.startsWith('2')) return '2nd Year';
+    if (sem.startsWith('3')) return '3rd Year';
+    if (sem.startsWith('4')) return '4th Year';
+    return '4th Year';
+  };
+  const studentYear = getYearFromSem(studentSem);
+
   // Navigation Modes (Default to Official 5-Unit Notes Library)
   const [activeModeTab, setActiveModeTab] = useState<'pdf-notes' | 'curriculum' | 'uploads'>('pdf-notes');
   const [pdfSearch, setPdfSearch] = useState('');
-  const [pdfSemFilter, setPdfSemFilter] = useState('ALL');
+  const [pdfSemFilter, setPdfSemFilter] = useState(isStudent ? studentSem : 'ALL');
 
-  // Filters State (default to student settings)
-  const defaultDept = getNormalizedDepartment(user?.department || 'Computer Science');
-  const defaultSem = user?.semester || '3-1';
-  
-  const [selectedDept, setSelectedDept] = useState(defaultDept);
-  const [selectedYear, setSelectedYear] = useState('3rd Year');
-  const [selectedSem, setSelectedSem] = useState(defaultSem);
+  // Filters State
+  const [selectedDept, setSelectedDept] = useState(isStudent ? studentDept : studentDept);
+  const [selectedYear, setSelectedYear] = useState(isStudent ? studentYear : '3rd Year');
+  const [selectedSem, setSelectedSem] = useState(isStudent ? studentSem : studentSem);
 
-  // Synchronize selectedSem with selectedYear if user selects a different year
+  // Keep student locked to their enrolled credentials
   useEffect(() => {
-    if (selectedYear === '1st Year') setSelectedSem('1-1');
-    else if (selectedYear === '2nd Year') setSelectedSem('2-1');
-    else if (selectedYear === '3rd Year') setSelectedSem('3-1');
-    else if (selectedYear === '4th Year') setSelectedSem('4-1');
-  }, [selectedYear]);
+    if (isStudent) {
+      setSelectedDept(studentDept);
+      setSelectedSem(studentSem);
+      setSelectedYear(studentYear);
+      setPdfSemFilter(studentSem);
+    }
+  }, [isStudent, studentDept, studentSem, studentYear]);
+
+  // Synchronize selectedSem with selectedYear if faculty selects a different year
+  useEffect(() => {
+    if (!isStudent) {
+      if (selectedYear === '1st Year') setSelectedSem('1-1');
+      else if (selectedYear === '2nd Year') setSelectedSem('2-1');
+      else if (selectedYear === '3rd Year') setSelectedSem('3-1');
+      else if (selectedYear === '4th Year') setSelectedSem('4-1');
+    }
+  }, [selectedYear, isStudent]);
 
   // List of semesters available for selected year
   const semestersForYear: Record<string, string[]> = {
@@ -582,8 +606,6 @@ const StudyMaterials = () => {
     setQuizSubmitted(true);
   };
 
-  const isFacultyOrAdmin = viewMode === 'faculty' || viewMode === 'admin';
-
   return (
     <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-8 min-h-screen">
       <style>{`
@@ -655,58 +677,76 @@ const StudyMaterials = () => {
       {activeModeTab === 'curriculum' && (
         <div className="space-y-6">
           {/* Filter Bar */}
-          <div className="bg-white rounded-2xl p-5 border border-slate-150 shadow-sm flex flex-col md:flex-row md:items-center gap-5 justify-between">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full">
-              {/* Department Filter */}
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Department</label>
-                <select
-                  value={selectedDept}
-                  onChange={(e) => setSelectedDept(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                >
-                  {Object.keys(SUBJECTS_DATABASE).map(dept => (
-                    <option key={dept} value={dept}>{dept}</option>
-                  ))}
-                </select>
+          {isStudent ? (
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-5 shadow-xs flex items-center justify-between">
+              <div className="flex items-center gap-3.5">
+                <div className="p-3 bg-blue-600 text-white rounded-xl shadow-sm">
+                  <GraduationCap className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-700">Enrolled Department & Term</span>
+                  <h3 className="text-sm font-extrabold text-slate-900">{studentDept} • {studentYear} (Semester {studentSem})</h3>
+                  <p className="text-[11px] text-slate-500 font-medium mt-0.5">Showing registered curriculum subjects and official notes for your enrolled semester.</p>
+                </div>
               </div>
+              <span className="px-3.5 py-1.5 bg-white border border-blue-200 text-blue-700 text-xs font-extrabold rounded-xl shadow-xs shrink-0">
+                Active: Sem {studentSem}
+              </span>
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl p-5 border border-slate-150 shadow-sm flex flex-col md:flex-row md:items-center gap-5 justify-between">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full">
+                {/* Department Filter */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Department</label>
+                  <select
+                    value={selectedDept}
+                    onChange={(e) => setSelectedDept(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  >
+                    {Object.keys(SUBJECTS_DATABASE).map(dept => (
+                      <option key={dept} value={dept}>{dept}</option>
+                    ))}
+                  </select>
+                </div>
 
-              {/* Year Filter */}
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Academic Year</label>
-                <select
-                  value={selectedYear}
-                  onChange={(e) => setSelectedYear(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                >
-                  <option value="1st Year">1st Year</option>
-                  <option value="2nd Year">2nd Year</option>
-                  <option value="3rd Year">3rd Year</option>
-                  <option value="4th Year">4th Year</option>
-                </select>
-              </div>
+                {/* Year Filter */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Academic Year</label>
+                  <select
+                    value={selectedYear}
+                    onChange={(e) => setSelectedYear(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  >
+                    <option value="1st Year">1st Year</option>
+                    <option value="2nd Year">2nd Year</option>
+                    <option value="3rd Year">3rd Year</option>
+                    <option value="4th Year">4th Year</option>
+                  </select>
+                </div>
 
-              {/* Semester Filter */}
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Semester</label>
-                <div className="flex gap-2">
-                  {(semestersForYear[selectedYear] || []).map(sem => (
-                    <button
-                      key={sem}
-                      onClick={() => setSelectedSem(sem)}
-                      className={`flex-1 py-2.5 rounded-xl border text-xs font-bold transition-all ${
-                        selectedSem === sem
-                          ? 'border-blue-600 bg-blue-50 text-blue-600'
-                          : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
-                      }`}
-                    >
-                      Semester {sem}
-                    </button>
-                  ))}
+                {/* Semester Filter */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Semester</label>
+                  <div className="flex gap-2">
+                    {(semestersForYear[selectedYear] || []).map(sem => (
+                      <button
+                        key={sem}
+                        onClick={() => setSelectedSem(sem)}
+                        className={`flex-1 py-2.5 rounded-xl border text-xs font-bold transition-all ${
+                          selectedSem === sem
+                            ? 'border-blue-600 bg-blue-50 text-blue-600'
+                            : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
+                        }`}
+                      >
+                        Semester {sem}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             {/* Subject Grid Selector */}
@@ -917,27 +957,35 @@ const StudyMaterials = () => {
             <div className="flex-1">
               <input
                 type="text"
-                placeholder="Search subject title, course code (e.g. 23CS401, Operating Systems)..."
+                placeholder={isStudent ? `Search ${studentDept} Semester ${studentSem} materials (e.g. 23CS401, Deep Learning)...` : "Search subject title, course code (e.g. 23CS401, Operating Systems)..."}
                 value={pdfSearch}
                 onChange={(e) => setPdfSearch(e.target.value)}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-slate-400"
               />
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {['ALL', '1-1', '1-2', '2-1', '2-2', '3-1', '3-2', '4-1'].map(sem => (
-                <button
-                  key={sem}
-                  onClick={() => setPdfSemFilter(sem)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all ${
-                    pdfSemFilter === sem
-                      ? 'bg-blue-600 text-white shadow-sm'
-                      : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
-                  }`}
-                >
-                  {sem === 'ALL' ? 'All Semesters' : `Sem ${sem}`}
-                </button>
-              ))}
-            </div>
+
+            {isStudent ? (
+              <div className="flex items-center gap-2 px-3.5 py-2 bg-blue-50 border border-blue-200 rounded-xl text-xs font-extrabold text-blue-800 shrink-0">
+                <GraduationCap className="w-4 h-4 text-blue-600" />
+                <span>{studentDept} • Sem {studentSem} ({studentYear})</span>
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center gap-2">
+                {['ALL', '1-1', '1-2', '2-1', '2-2', '3-1', '3-2', '4-1'].map(sem => (
+                  <button
+                    key={sem}
+                    onClick={() => setPdfSemFilter(sem)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all ${
+                      pdfSemFilter === sem
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                    }`}
+                  >
+                    {sem === 'ALL' ? 'All Semesters' : `Sem ${sem}`}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Cards Grid */}
@@ -945,7 +993,9 @@ const StudyMaterials = () => {
             {OFFICIAL_CSE_PDF_NOTES
               .filter(item => {
                 const matchesSearch = item.title.toLowerCase().includes(pdfSearch.toLowerCase()) || item.code.toLowerCase().includes(pdfSearch.toLowerCase());
-                const matchesSem = pdfSemFilter === 'ALL' || item.semester === pdfSemFilter;
+                const matchesSem = isStudent
+                  ? (item.semester === studentSem)
+                  : (pdfSemFilter === 'ALL' || item.semester === pdfSemFilter);
                 return matchesSearch && matchesSem;
               })
               .map((item) => (
