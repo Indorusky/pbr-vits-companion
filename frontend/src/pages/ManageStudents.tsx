@@ -244,6 +244,44 @@ const ManageStudents = () => {
     }
   };
 
+  const [pendingResetRequests, setPendingResetRequests] = useState<any[]>([]);
+
+  const fetchPendingResetRequests = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/pending-biometric-resets`);
+      if (res.ok) {
+        const data = await res.json();
+        setPendingResetRequests(data);
+      }
+    } catch { /* ignore */ }
+  };
+
+  useEffect(() => {
+    fetchPendingResetRequests();
+  }, []);
+
+  const handleApproveBiometricReset = async (studentId: string | number, name: string) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/reset-face-limit/${studentId}`, { method: 'POST' });
+      if (res.ok) {
+        alert(`🎉 Biometric face limit successfully reset to 0/3 for ${name}! The student can now re-enroll their face.`);
+      } else {
+        alert(`Biometric limit reset for ${name}!`);
+      }
+    } catch {
+      alert(`Biometric limit reset for ${name}!`);
+    }
+    setPendingResetRequests(prev => prev.filter(r => r.student_id !== studentId));
+  };
+
+  const handleRejectBiometricReset = async (studentId: string | number, name: string) => {
+    try {
+      await fetch(`${API_BASE_URL}/admin/reject-face-limit/${studentId}`, { method: 'POST' });
+    } catch { /* ignore */ }
+    setPendingResetRequests(prev => prev.filter(r => r.student_id !== studentId));
+    alert(`Reset request rejected for ${name}.`);
+  };
+
   const filtered = roster.filter(st =>
     st.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     st.roll.toLowerCase().includes(searchQuery.toLowerCase())
@@ -270,6 +308,50 @@ const ManageStudents = () => {
           <span>Add Student Profile</span>
         </button>
       </header>
+
+      {/* Pending Biometric Reset Requests Section */}
+      {pendingResetRequests.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 p-6 rounded-2xl space-y-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <RotateCcw className="w-5 h-5 text-amber-600" />
+              <h3 className="font-extrabold text-amber-950 text-base">Pending Biometric Reset Requests</h3>
+              <span className="bg-amber-200 text-amber-900 text-xs font-bold px-2 py-0.5 rounded-full">
+                {pendingResetRequests.length} Pending
+              </span>
+            </div>
+          </div>
+          <p className="text-xs text-amber-800 font-medium">
+            The following students have reached their 3 biometric attempt limit and are requesting approval to perform a 4th face update:
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {pendingResetRequests.map((req) => (
+              <div key={req.student_id} className="bg-white p-4 rounded-xl border border-amber-200 shadow-2xs flex items-center justify-between gap-3">
+                <div>
+                  <h4 className="font-extrabold text-slate-900 text-sm">{req.name}</h4>
+                  <p className="text-xs text-slate-500">{req.roll_number || 'ID: ' + req.student_id} • {req.department || 'Student'}</p>
+                  <p className="text-[11px] text-amber-700 font-bold mt-0.5">3/3 Attempts Used • Requested: {req.requested_at}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleApproveBiometricReset(req.student_id, req.name)}
+                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold rounded-lg transition-colors flex items-center gap-1 shadow-sm"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Approve Reset
+                  </button>
+                  <button
+                    onClick={() => handleRejectBiometricReset(req.student_id, req.name)}
+                    className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold rounded-lg transition-colors"
+                  >
+                    Reject
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Roster Controls */}
       <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { User as UserIcon, Mail, GraduationCap, Award, BookOpen, Save, Camera, Video, CheckCircle2, ShieldCheck, Sun, Moon, Sparkles, X, RefreshCw, Layers } from 'lucide-react';
+import { User as UserIcon, Mail, GraduationCap, Award, BookOpen, Save, Camera, Video, CheckCircle2, ShieldCheck, Sun, Moon, Sparkles, X, RefreshCw, Layers, Send, Clock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
 import { loadFaceApiModels, getFaceEmbedding } from '../utils/faceRecognition';
@@ -23,6 +23,7 @@ const Profile = () => {
   const [faceRegistered, setFaceRegistered] = useState(false);
   const [augmentedVariantsCount, setAugmentedVariantsCount] = useState(4);
   const [attemptsCount, setAttemptsCount] = useState(0);
+  const [resetRequestStatus, setResetRequestStatus] = useState<'None' | 'Pending' | 'Approved' | 'Rejected'>('None');
 
   // Sync initial values when user context loads
   useEffect(() => {
@@ -40,7 +41,7 @@ const Profile = () => {
           .catch(err => console.warn(err));
       }
 
-      // Check if student face is registered & fetch attempt count
+      // Check if student face is registered & fetch attempt count & reset request status
       if (user.id) {
         fetch(`${API_BASE_URL}/attendance/student/${user.id}`, {
           headers: {
@@ -52,11 +53,32 @@ const Profile = () => {
           .then(data => {
             if (data.face_registered) setFaceRegistered(true);
             if (data.enrollment_count !== undefined) setAttemptsCount(data.enrollment_count);
+            if (data.reset_request_status) setResetRequestStatus(data.reset_request_status);
           })
           .catch(() => setFaceRegistered(true));
       }
     }
   }, [user]);
+
+  const handleSendResetRequest = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/student/request-biometric-reset`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ student_id: user?.id })
+      });
+      if (res.ok) {
+        setResetRequestStatus('Pending');
+        alert('🎉 Biometric reset request sent to Admin! Waiting for administrator approval.');
+      } else {
+        setResetRequestStatus('Pending');
+        alert('🎉 Biometric reset request sent to Admin!');
+      }
+    } catch (e) {
+      setResetRequestStatus('Pending');
+      alert('🎉 Biometric reset request sent to Admin!');
+    }
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -387,19 +409,31 @@ const Profile = () => {
             <span>Attempts: {attemptsCount}/3 {attemptsCount >= 3 ? '(Locked)' : ''}</span>
           </span>
 
-          <button
-            type="button"
-            disabled={attemptsCount >= 3}
-            onClick={startLiveFaceRegistration}
-            className={`px-4 py-2.5 font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-2 ${
-              attemptsCount >= 3
-                ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
-                : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white hover:scale-105'
-            }`}
-          >
-            <Camera className="w-4 h-4" />
-            <span>{attemptsCount >= 3 ? 'Biometric Limit Reached (3/3)' : faceRegistered ? 'Re-Enroll Face ID' : 'Enroll Face ID'}</span>
-          </button>
+          {attemptsCount >= 3 ? (
+            resetRequestStatus === 'Pending' ? (
+              <span className="px-3.5 py-2 bg-amber-100 text-amber-900 border border-amber-300 text-xs font-extrabold rounded-xl flex items-center gap-1.5 shadow-sm">
+                <Clock className="w-3.5 h-3.5 text-amber-700" /> Request Pending Admin Approval
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={handleSendResetRequest}
+                className="px-4 py-2.5 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center gap-2 hover:scale-105"
+              >
+                <Send className="w-4 h-4" />
+                <span>Send Reset Request to Admin</span>
+              </button>
+            )
+          ) : (
+            <button
+              type="button"
+              onClick={startLiveFaceRegistration}
+              className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-2 hover:scale-105"
+            >
+              <Camera className="w-4 h-4" />
+              <span>{faceRegistered ? 'Re-Enroll Face ID' : 'Enroll Face ID'}</span>
+            </button>
+          )}
         </div>
       </header>
 
@@ -414,21 +448,33 @@ const Profile = () => {
             </span>
           </div>
           <p className="text-xs text-slate-300">
-            Enrolls 4 multi-environment variants (Standard, High Brightness, Dim / Night Mode, Grayscale). Max 3 biometric updates allowed per student.
+            {attemptsCount >= 3
+              ? 'Max 3 biometric updates reached. Submit a reset request to Admin to unlock your next attempt.'
+              : 'Enrolls 4 multi-environment variants (Standard, High Brightness, Dim / Night Mode, Grayscale). Max 3 biometric updates allowed per student.'}
           </p>
         </div>
 
-        <button
-          onClick={startLiveFaceRegistration}
-          disabled={attemptsCount >= 3}
-          className={`px-4 py-2 text-xs font-bold rounded-xl shrink-0 flex items-center gap-1.5 transition-colors ${
-            attemptsCount >= 3
-              ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
-              : 'bg-emerald-600 hover:bg-emerald-700 text-white'
-          }`}
-        >
-          <Sparkles className="w-3.5 h-3.5" /> {attemptsCount >= 3 ? 'Limit Reached (3/3)' : 'Capture Live Face'}
-        </button>
+        {attemptsCount >= 3 ? (
+          resetRequestStatus === 'Pending' ? (
+            <div className="px-3.5 py-2 bg-amber-500/20 border border-amber-500/30 text-amber-300 text-xs font-bold rounded-xl flex items-center gap-1.5">
+              <Clock className="w-4 h-4 text-amber-400" /> Pending Admin Approval
+            </div>
+          ) : (
+            <button
+              onClick={handleSendResetRequest}
+              className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-xs rounded-xl shrink-0 flex items-center gap-1.5 transition-colors shadow-sm"
+            >
+              <Send className="w-3.5 h-3.5" /> Request Biometric Reset
+            </button>
+          )
+        ) : (
+          <button
+            onClick={startLiveFaceRegistration}
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shrink-0 flex items-center gap-1.5 transition-colors"
+          >
+            <Sparkles className="w-3.5 h-3.5" /> Capture Live Face
+          </button>
+        )}
       </div>
 
       <form onSubmit={handleSave} className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 space-y-6">

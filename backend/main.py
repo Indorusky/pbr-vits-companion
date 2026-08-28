@@ -1474,15 +1474,59 @@ def register_face(req: FaceRegisterRequest, db: Session = Depends(get_db)):
         "max_limit": 3
     }
 
+class BiometricResetRequest(BaseModel):
+    student_id: int
+
+@app.post("/student/request-biometric-reset")
+def request_biometric_reset(req: BiometricResetRequest, db: Session = Depends(get_db)):
+    enrollment = db.query(models.FaceEnrollment).filter(models.FaceEnrollment.student_id == req.student_id).first()
+    if not enrollment:
+        enrollment = models.FaceEnrollment(student_id=req.student_id, enrollment_count=3, reset_request_status="Pending")
+        db.add(enrollment)
+    else:
+        enrollment.reset_request_status = "Pending"
+    db.commit()
+    return {"message": "Biometric reset request sent to Admin successfully", "reset_request_status": "Pending"}
+
+@app.get("/admin/pending-biometric-resets")
+def get_pending_biometric_resets(db: Session = Depends(get_db)):
+    pending_enrollments = db.query(models.FaceEnrollment).filter(models.FaceEnrollment.reset_request_status == "Pending").all()
+    res = []
+    for e in pending_enrollments:
+        user = db.query(models.User).filter(models.User.id == e.student_id).first()
+        if user:
+            res.append({
+                "student_id": user.id,
+                "name": user.name or user.username,
+                "roll_number": user.roll_number,
+                "department": user.department,
+                "enrollment_count": e.enrollment_count,
+                "requested_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+            })
+    return res
+
 @app.post("/admin/reset-face-limit/{student_id}")
 def reset_face_limit(student_id: int, db: Session = Depends(get_db)):
     enrollment = db.query(models.FaceEnrollment).filter(models.FaceEnrollment.student_id == student_id).first()
+    if not enrollment and str(student_id).isdigit():
+        enrollment = db.query(models.FaceEnrollment).filter(models.FaceEnrollment.student_id == int(student_id)).first()
+        
     if enrollment:
         enrollment.enrollment_count = 0
+        enrollment.reset_request_status = "Approved"
         enrollment.is_active = 1
         db.commit()
         return {"message": "Face re-enrollment limit reset successfully to 0/3"}
     return {"message": "No face enrollment record found to reset"}
+
+@app.post("/admin/reject-face-limit/{student_id}")
+def reject_face_limit(student_id: int, db: Session = Depends(get_db)):
+    enrollment = db.query(models.FaceEnrollment).filter(models.FaceEnrollment.student_id == student_id).first()
+    if enrollment:
+        enrollment.reset_request_status = "Rejected"
+        db.commit()
+        return {"message": "Face re-enrollment reset request rejected"}
+    return {"message": "No face enrollment record found"}
 
 @app.post("/admin/approve-faculty/{faculty_username_or_id}")
 def approve_faculty(faculty_username_or_id: str, db: Session = Depends(get_db)):
@@ -1736,10 +1780,9 @@ def get_student_attendance_dashboard(
 
     calendar_history = [{"date": d, "records": recs} for d, recs in calendar_map.items()]
 
-    # Face registration status
+    # Face registration status & biometric reset request
     face_enrolled = db.query(models.FaceEnrollment).filter(
-        models.FaceEnrollment.student_id == student_id,
-        models.FaceEnrollment.is_active == 1
+        models.FaceEnrollment.student_id == student_id
     ).first()
 
     return {
@@ -1749,7 +1792,9 @@ def get_student_attendance_dashboard(
         "absent_classes": absent_classes,
         "subjects": subject_list,
         "history": calendar_history,
-        "face_registered": bool(face_enrolled),
+        "face_registered": bool(face_enrolled and face_enrolled.is_active == 1),
+        "enrollment_count": face_enrolled.enrollment_count if face_enrolled else 0,
+        "reset_request_status": face_enrolled.reset_request_status if face_enrolled else "None",
         "semester": student.semester or "1-1"
     }
 

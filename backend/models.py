@@ -67,6 +67,7 @@ class FaceEnrollment(Base):
     embedding = Column(String)  # Holds JSON string of float values
     is_active = Column(Integer, default=1)
     enrollment_count = Column(Integer, default=1) # Track biometric update attempts (max 3)
+    reset_request_status = Column(String(255), default="None") # "None", "Pending", "Approved", "Rejected"
     created_at = Column(String(255))
 
 class AttendanceRecord(Base):
