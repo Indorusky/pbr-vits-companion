@@ -7,14 +7,27 @@ export const pushAccountsToCloudSync = async (accountsList: any[]) => {
     const deletedRaw = localStorage.getItem('campus_ai_deleted_accounts');
     const deletedSet = new Set<string>(deletedRaw ? JSON.parse(deletedRaw) : []);
 
-    const customOnly = accountsList.filter(a => {
+    // 1. Read existing cloud accounts first to prevent overwriting
+    const existingCloud = await pullCloudRecord('global_registered_accounts');
+    const cloudList = Array.isArray(existingCloud) ? existingCloud : [];
+
+    // 2. Merge accounts into a map by username
+    const accMap = new Map<string, any>();
+    cloudList.forEach(a => {
+      if (a.username) accMap.set(a.username.toLowerCase(), a);
+    });
+    accountsList.forEach(a => {
+      if (a.username) accMap.set(a.username.toLowerCase(), a);
+    });
+
+    const mergedList = Array.from(accMap.values()).filter(a => {
       const u = (a.username || '').toLowerCase();
       const r = (a.roll_number || '').toLowerCase();
       const n = (a.name || '').toLowerCase();
       return u !== 'admin' && u !== 'student' && u !== 'ravi' && !deletedSet.has(u) && !deletedSet.has(r) && !deletedSet.has(n);
     });
 
-    await pushCloudRecord('global_registered_accounts', customOnly);
+    await pushCloudRecord('global_registered_accounts', mergedList);
   } catch (e) {
     console.warn("Cloud sync write failed", e);
   }
@@ -431,7 +444,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const updated = [...accounts, newAcc];
     setAccounts(updated);
     localStorage.setItem('campus_ai_accounts', JSON.stringify(updated));
+
+    // Save dedicated per-user cloud key and update global cloud list
+    const cleanUname = username.trim().toLowerCase();
+    pushCloudRecord(`user_${cleanUname}`, newAcc);
     pushAccountsToCloudSync(updated);
+
     return { success: true, message: 'Registration successful!', user: newAcc };
   };
 
@@ -547,7 +565,40 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       };
     }
 
-    // Try pulling from cloud sync bucket in case account was created on another device (e.g. mobile phone)
+    // 1. Direct per-user cloud key lookup for instant cross-device verification
+    const cleanUname = username.trim().toLowerCase();
+    try {
+      const directUserRec = await pullCloudRecord(`user_${cleanUname}`);
+      if (directUserRec && directUserRec.password === pass) {
+        setAccounts(prev => {
+          if (!prev.some(a => (a.username || '').toLowerCase() === cleanUname)) {
+            const next = [...prev, directUserRec];
+            try { localStorage.setItem('campus_ai_accounts', JSON.stringify(next)); } catch {}
+            return next;
+          }
+          return prev;
+        });
+
+        return {
+          success: true,
+          user: {
+            id: directUserRec.id || Math.floor(1000 + Math.random() * 9000),
+            username: directUserRec.username,
+            role: directUserRec.role || 'student',
+            name: directUserRec.name,
+            department: directUserRec.department || 'Computer Science and Engineering (CSE)',
+            year: directUserRec.year || '1st Year',
+            semester: directUserRec.semester || '1-1',
+            email: directUserRec.email,
+            roll_number: directUserRec.roll_number || '2273A01001',
+            section: directUserRec.section || 'Section A',
+            profile_photo: directUserRec.profile_photo
+          }
+        };
+      }
+    } catch { /* ignore */ }
+
+    // 2. Try pulling from global cloud roster bucket
     const cloudAccs = await pullAccountsFromCloudSync();
     if (Array.isArray(cloudAccs) && cloudAccs.length > 0) {
       const matched = cloudAccs.find(a => (a.username || '').toLowerCase() === username.toLowerCase() && a.password === pass);
