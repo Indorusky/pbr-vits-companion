@@ -383,7 +383,7 @@ const Profile = () => {
   }
 
   return (
-    <div className="p-6 md:p-8 max-w-4xl mx-auto space-y-8 min-h-screen">
+    <div className="p-6 md:p-8 max-w-4xl mx-auto space-y-8 min-h-screen pb-32 sm:pb-12">
       <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center space-x-3 sm:space-x-4 min-w-0">
           {user?.profile_photo ? (

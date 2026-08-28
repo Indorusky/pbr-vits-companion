@@ -300,7 +300,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="p-4 sm:p-6 md:p-8 max-w-6xl mx-auto space-y-6 sm:space-y-8 min-h-screen">
+    <div className="p-4 sm:p-6 md:p-8 max-w-6xl mx-auto space-y-6 sm:space-y-8 min-h-screen pb-32 sm:pb-12">
       {/* Attendance Warning Alert Banner */}
       {subjects.some(s => s.attendance < 75) && (
         <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-xl shadow-sm flex items-start gap-3 animate-bounce-subtle">

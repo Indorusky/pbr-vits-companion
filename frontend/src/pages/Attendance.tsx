@@ -414,7 +414,7 @@ const Attendance = () => {
   };
 
   return (
-    <div className="p-6 md:p-8 max-w-6xl mx-auto space-y-8 min-h-screen">
+    <div className="p-6 md:p-8 max-w-6xl mx-auto space-y-8 min-h-screen pb-32 sm:pb-12">
       
       {/* Shortage Alerts */}
       {stats && stats.subjects.some(s => s.percentage < 75) && (
