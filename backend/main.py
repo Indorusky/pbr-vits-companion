@@ -16,7 +16,8 @@ def auto_migrate_db():
         models.User, models.Student, models.TimetableEntry,
         models.FaceEnrollment, models.AttendanceRecord,
         models.FaceAuditLog, models.SystemConfig,
-        models.Faculty, models.Mark, models.MarkModificationLog
+        models.Faculty, models.Mark, models.MarkModificationLog,
+        models.JobPosting, models.JobApplicationRecord
     ]
     
     dialect = engine.dialect.name
@@ -2733,5 +2734,192 @@ def get_subjects(department_id: Optional[str] = None, db: Session = Depends(get_
             result.append(item)
             
     return result
+
+# --- Career & Placement Endpoints ---
+
+class JobCreatePayload(BaseModel):
+    id: Optional[str] = None
+    role: str
+    company: str
+    package: str
+    eligibility: Optional[str] = None
+    min_cgpa: Optional[float] = 7.0
+    deadline: Optional[str] = None
+    job_type: Optional[str] = "Full-time"
+    location: Optional[str] = None
+    description: Optional[str] = None
+    skills: Optional[List[str]] = []
+
+class JobApplicationPayload(BaseModel):
+    id: Optional[str] = None
+    job_id: str
+    job_role: str
+    company: str
+    student_id: Optional[int] = None
+    student_name: str
+    student_roll: str
+    student_email: str
+    student_phone: Optional[str] = None
+    student_dept: Optional[str] = None
+    student_cgpa: Optional[float] = 8.5
+    resume_file_name: Optional[str] = None
+    resume_url: Optional[str] = None
+    cover_note: Optional[str] = None
+
+@app.get("/placements/jobs")
+def get_job_postings(db: Session = Depends(get_db)):
+    jobs = db.query(models.JobPosting).all()
+    res = []
+    for j in jobs:
+        skill_list = [s.strip() for s in j.skills.split(",")] if j.skills else []
+        res.append({
+            "id": j.id,
+            "role": j.role,
+            "company": j.company,
+            "package": j.package,
+            "eligibility": j.eligibility,
+            "minCgpa": float(j.min_cgpa) if j.min_cgpa else 7.0,
+            "deadline": j.deadline,
+            "type": j.job_type,
+            "location": j.location,
+            "description": j.description,
+            "skills": skill_list,
+            "postedDate": j.posted_date
+        })
+    return res
+
+@app.post("/placements/jobs")
+def create_job_posting(payload: JobCreatePayload, db: Session = Depends(get_db)):
+    job_id = payload.id or f"job_{int(datetime.datetime.utcnow().timestamp())}"
+    skills_str = ", ".join(payload.skills) if payload.skills else ""
+    posted_date = datetime.datetime.utcnow().strftime("%b %d, %Y")
+    
+    new_job = models.JobPosting(
+        id=job_id,
+        role=payload.role,
+        company=payload.company,
+        package=payload.package,
+        eligibility=payload.eligibility,
+        min_cgpa=str(payload.min_cgpa),
+        deadline=payload.deadline,
+        job_type=payload.job_type,
+        location=payload.location,
+        description=payload.description,
+        skills=skills_str,
+        posted_date=posted_date
+    )
+    db.add(new_job)
+    db.commit()
+    db.refresh(new_job)
+    return {"message": "Job drive published successfully", "job_id": job_id}
+
+@app.delete("/placements/jobs/{job_id}")
+def delete_job_posting(job_id: str, db: Session = Depends(get_db)):
+    job = db.query(models.JobPosting).filter(models.JobPosting.id == job_id).first()
+    if job:
+        db.delete(job)
+        # Also remove applications for this job
+        db.query(models.JobApplicationRecord).filter(models.JobApplicationRecord.job_id == job_id).delete()
+        db.commit()
+    return {"message": "Job drive deleted successfully"}
+
+@app.get("/placements/applications")
+def get_job_applications(student_roll: Optional[str] = None, job_id: Optional[str] = None, db: Session = Depends(get_db)):
+    query = db.query(models.JobApplicationRecord)
+    if student_roll:
+        query = query.filter(models.JobApplicationRecord.student_roll.ilike(f"%{student_roll}%"))
+    if job_id:
+        query = query.filter(models.JobApplicationRecord.job_id == job_id)
+        
+    apps = query.all()
+    res = []
+    for a in apps:
+        res.append({
+            "id": a.id,
+            "jobId": a.job_id,
+            "jobRole": a.job_role,
+            "company": a.company,
+            "studentId": a.student_id,
+            "studentName": a.student_name,
+            "studentRoll": a.student_roll,
+            "studentEmail": a.student_email,
+            "studentPhone": a.student_phone,
+            "studentDept": a.student_dept,
+            "studentCgpa": float(a.student_cgpa) if a.student_cgpa else 8.5,
+            "resumeFileName": a.resume_file_name,
+            "resumeUrl": a.resume_url,
+            "coverNote": a.cover_note,
+            "appliedAt": a.applied_at,
+            "status": a.status,
+            "interviewDate": a.interview_date,
+            "interviewNotes": a.interview_notes
+        })
+    return res
+
+@app.post("/placements/applications")
+def submit_job_application(payload: JobApplicationPayload, db: Session = Depends(get_db)):
+    app_id = payload.id or f"app_{int(datetime.datetime.utcnow().timestamp())}"
+    applied_at = datetime.datetime.utcnow().strftime("%b %d, %Y")
+    
+    # Check duplicate
+    existing = db.query(models.JobApplicationRecord).filter(
+        models.JobApplicationRecord.job_id == payload.job_id,
+        models.JobApplicationRecord.student_roll == payload.student_roll
+    ).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="You have already submitted an application for this position.")
+        
+    new_app = models.JobApplicationRecord(
+        id=app_id,
+        job_id=payload.job_id,
+        job_role=payload.job_role,
+        company=payload.company,
+        student_id=payload.student_id,
+        student_name=payload.student_name,
+        student_roll=payload.student_roll,
+        student_email=payload.student_email,
+        student_phone=payload.student_phone,
+        student_dept=payload.student_dept,
+        student_cgpa=str(payload.student_cgpa),
+        resume_file_name=payload.resume_file_name,
+        resume_url=payload.resume_url,
+        cover_note=payload.cover_note,
+        applied_at=applied_at,
+        status="Applied"
+    )
+    db.add(new_app)
+    db.commit()
+    db.refresh(new_app)
+    return {"message": "Application submitted successfully", "application_id": app_id}
+
+@app.put("/placements/applications/{app_id}/status")
+def update_application_status(
+    app_id: str,
+    status: str,
+    interview_date: Optional[str] = None,
+    interview_notes: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    app_rec = db.query(models.JobApplicationRecord).filter(models.JobApplicationRecord.id == app_id).first()
+    if not app_rec:
+        raise HTTPException(status_code=404, detail="Application not found")
+        
+    app_rec.status = status
+    if interview_date is not None:
+        app_rec.interview_date = interview_date
+    if interview_notes is not None:
+        app_rec.interview_notes = interview_notes
+        
+    db.commit()
+    return {"message": "Application status updated successfully"}
+
+@app.delete("/placements/applications/{app_id}")
+def withdraw_job_application(app_id: str, db: Session = Depends(get_db)):
+    app_rec = db.query(models.JobApplicationRecord).filter(models.JobApplicationRecord.id == app_id).first()
+    if app_rec:
+        db.delete(app_rec)
+        db.commit()
+    return {"message": "Application withdrawn successfully"}
+
 
 

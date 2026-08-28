@@ -148,4 +148,42 @@ class MarkModificationLog(Base):
     new_value = Column(Integer)
     timestamp = Column(String(255))
 
+class JobPosting(Base):
+    __tablename__ = "job_postings"
+
+    id = Column(String(255), primary_key=True, index=True)
+    role = Column(String(255), nullable=False)
+    company = Column(String(255), nullable=False)
+    package = Column(String(255), nullable=False)
+    eligibility = Column(String(255), nullable=True)
+    min_cgpa = Column(String(50), default="7.0")
+    deadline = Column(String(255), nullable=True)
+    job_type = Column(String(50), default="Full-time") # Full-time, Internship
+    location = Column(String(255), nullable=True)
+    description = Column(String(2000), nullable=True)
+    skills = Column(String(1000), nullable=True)
+    posted_date = Column(String(255), nullable=True)
+
+class JobApplicationRecord(Base):
+    __tablename__ = "job_applications"
+
+    id = Column(String(255), primary_key=True, index=True)
+    job_id = Column(String(255), index=True)
+    job_role = Column(String(255))
+    company = Column(String(255))
+    student_id = Column(Integer, nullable=True)
+    student_name = Column(String(255))
+    student_roll = Column(String(255), index=True)
+    student_email = Column(String(255))
+    student_phone = Column(String(255), nullable=True)
+    student_dept = Column(String(255), nullable=True)
+    student_cgpa = Column(String(50), nullable=True)
+    resume_file_name = Column(String(255), nullable=True)
+    resume_url = Column(String(1000), nullable=True)
+    cover_note = Column(String(2000), nullable=True)
+    applied_at = Column(String(255), nullable=True)
+    status = Column(String(100), default="Applied")
+    interview_date = Column(String(255), nullable=True)
+    interview_notes = Column(String(2000), nullable=True)
+
 

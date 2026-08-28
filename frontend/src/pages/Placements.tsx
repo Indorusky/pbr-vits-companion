@@ -24,9 +24,12 @@ import {
   Edit3, 
   CalendarCheck,
   Download,
-  AlertCircle
+  AlertCircle,
+  RefreshCw,
+  UserX
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { API_BASE_URL } from '../config';
 import { getStudentAcademicProfile } from '../utils/academicData';
 
 export interface JobOpening {
@@ -66,7 +69,7 @@ export interface JobApplication {
   interviewNotes?: string;
 }
 
-const INITIAL_JOBS: JobOpening[] = [
+const DEFAULT_JOBS: JobOpening[] = [
   {
     id: 'j1',
     role: 'Associate Software Development Engineer (ASDE)',
@@ -125,7 +128,7 @@ const INITIAL_JOBS: JobOpening[] = [
   }
 ];
 
-const INITIAL_APPLICATIONS: JobApplication[] = [
+const DEFAULT_APPLICATIONS: JobApplication[] = [
   {
     id: 'app_101',
     jobId: 'j1',
@@ -173,31 +176,17 @@ const Placements = () => {
   const isStudent = !isAdminOrFaculty;
 
   const [activeTab, setActiveTab] = useState<'openings' | 'my-applications' | 'admin-applicants'>('openings');
+  const [loading, setLoading] = useState(false);
 
   const [jobs, setJobs] = useState<JobOpening[]>(() => {
     try {
       const saved = localStorage.getItem('campus_ai_jobs');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.map((j: any, idx: number) => ({
-            id: j.id || `job_${idx}`,
-            role: j.role || 'Software Engineer',
-            company: j.company || 'Tech Partner',
-            package: j.package || 'Competitive',
-            eligibility: j.eligibility || 'CGPA >= 7.5',
-            minCgpa: typeof j.minCgpa === 'number' ? j.minCgpa : 7.5,
-            deadline: j.deadline || 'Sep 30, 2026',
-            type: j.type === 'Internship' ? 'Internship' : 'Full-time',
-            location: j.location || 'Hyderabad Campus',
-            description: j.description || 'Full-time engineering role at a leading technology firm.',
-            skills: Array.isArray(j.skills) ? j.skills : ['Python', 'Data Structures', 'Web Development'],
-            postedDate: j.postedDate || 'Aug 2026'
-          }));
-        }
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
     } catch { /* ignore */ }
-    return INITIAL_JOBS;
+    return DEFAULT_JOBS;
   });
 
   const [applications, setApplications] = useState<JobApplication[]>(() => {
@@ -205,32 +194,10 @@ const Placements = () => {
       const saved = localStorage.getItem('campus_ai_job_applications');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.map((a: any, idx: number) => ({
-            id: a.id || `app_${idx}`,
-            jobId: a.jobId || 'j1',
-            jobRole: a.jobRole || 'Software Engineer',
-            company: a.company || 'Tech Corp',
-            studentId: a.studentId || 1,
-            studentName: a.studentName || 'Student',
-            studentRoll: a.studentRoll || '2273A01001',
-            studentEmail: a.studentEmail || 'student@pbrvits.edu.in',
-            studentPhone: a.studentPhone || '+91 98765 43210',
-            studentDept: a.studentDept || 'CSE',
-            studentCgpa: typeof a.studentCgpa === 'number' ? a.studentCgpa : 8.5,
-            resumeFileName: a.resumeFileName || 'Resume.pdf',
-            resumeFileData: a.resumeFileData,
-            resumeUrl: a.resumeUrl,
-            coverNote: a.coverNote,
-            appliedAt: a.appliedAt || 'Aug 2026',
-            status: a.status || 'Applied',
-            interviewDate: a.interviewDate,
-            interviewNotes: a.interviewNotes
-          }));
-        }
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
     } catch { /* ignore */ }
-    return INITIAL_APPLICATIONS;
+    return DEFAULT_APPLICATIONS;
   });
 
   // Filters & Search
@@ -277,18 +244,92 @@ const Placements = () => {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Sync with localStorage
-  useEffect(() => {
+  // Fetch jobs and applications from backend with fallback
+  const syncData = async () => {
+    setLoading(true);
+
+    // 1. Fetch jobs
     try {
-      localStorage.setItem('campus_ai_jobs', JSON.stringify(jobs));
-    } catch {}
-  }, [jobs]);
+      const resJobs = await fetch(`${API_BASE_URL}/placements/jobs`);
+      if (resJobs.ok) {
+        const dataJobs = await resJobs.json();
+        if (Array.isArray(dataJobs) && dataJobs.length > 0) {
+          // Merge with defaults if not present
+          const existingIds = new Set(dataJobs.map(j => j.id));
+          DEFAULT_JOBS.forEach(dj => {
+            if (!existingIds.has(dj.id)) dataJobs.push(dj);
+          });
+          setJobs(dataJobs);
+          localStorage.setItem('campus_ai_jobs', JSON.stringify(dataJobs));
+        }
+      }
+    } catch (e) {
+      console.warn("Backend jobs fetch failed, using local storage", e);
+    }
+
+    // 2. Fetch applications
+    try {
+      const resApps = await fetch(`${API_BASE_URL}/placements/applications`);
+      if (resApps.ok) {
+        const dataApps = await resApps.json();
+        if (Array.isArray(dataApps) && dataApps.length > 0) {
+          setApplications(dataApps);
+          localStorage.setItem('campus_ai_job_applications', JSON.stringify(dataApps));
+        }
+      }
+    } catch (e) {
+      console.warn("Backend applications fetch failed, using local storage", e);
+    }
+
+    setLoading(false);
+  };
 
   useEffect(() => {
+    syncData();
+
+    // Listen for updates across tabs and components
+    const handleJobUpdate = () => {
+      try {
+        const saved = localStorage.getItem('campus_ai_jobs');
+        if (saved) setJobs(JSON.parse(saved));
+      } catch {}
+    };
+
+    const handleAppUpdate = () => {
+      try {
+        const saved = localStorage.getItem('campus_ai_job_applications');
+        if (saved) setApplications(JSON.parse(saved));
+      } catch {}
+    };
+
+    window.addEventListener('campus-jobs-updated', handleJobUpdate);
+    window.addEventListener('campus-applications-updated', handleAppUpdate);
+    window.addEventListener('storage', handleJobUpdate);
+    window.addEventListener('storage', handleAppUpdate);
+
+    return () => {
+      window.removeEventListener('campus-jobs-updated', handleJobUpdate);
+      window.removeEventListener('campus-applications-updated', handleAppUpdate);
+      window.removeEventListener('storage', handleJobUpdate);
+      window.removeEventListener('storage', handleAppUpdate);
+    };
+  }, []);
+
+  const saveJobsState = (newJobs: JobOpening[]) => {
+    setJobs(newJobs);
     try {
-      localStorage.setItem('campus_ai_job_applications', JSON.stringify(applications));
+      localStorage.setItem('campus_ai_jobs', JSON.stringify(newJobs));
+      window.dispatchEvent(new CustomEvent('campus-jobs-updated', { detail: newJobs }));
     } catch {}
-  }, [applications]);
+  };
+
+  const saveApplicationsState = (newApps: JobApplication[]) => {
+    setApplications(newApps);
+    try {
+      localStorage.setItem('campus_ai_job_applications', JSON.stringify(newApps));
+      window.dispatchEvent(new CustomEvent('campus-applications-updated', { detail: newApps }));
+    } catch {}
+  };
 
   // Open apply modal with pre-filled student details
   const handleOpenApplyModal = (job: JobOpening) => {
@@ -322,7 +363,7 @@ const Placements = () => {
   };
 
   // Submit Student Application
-  const handleSubmitApplication = (e: React.FormEvent) => {
+  const handleSubmitApplication = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedJobToApply || !applName.trim() || !applEmail.trim() || !applPhone.trim()) {
       alert("Please complete the required applicant fields.");
@@ -334,7 +375,6 @@ const Placements = () => {
       return;
     }
 
-    // Check if already applied
     const cleanApplRoll = (applRoll || '').toLowerCase();
     const cleanApplEmail = (applEmail || '').toLowerCase();
     const alreadyApplied = applications.some(
@@ -368,15 +408,66 @@ const Placements = () => {
       status: 'Applied'
     };
 
-    setApplications([newApp, ...applications]);
+    // Save locally
+    const updated = [newApp, ...applications];
+    saveApplicationsState(updated);
+
+    // Save to backend API
+    try {
+      await fetch(`${API_BASE_URL}/placements/applications`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: newApp.id,
+          job_id: newApp.jobId,
+          job_role: newApp.jobRole,
+          company: newApp.company,
+          student_id: newApp.studentId,
+          student_name: newApp.studentName,
+          student_roll: newApp.studentRoll,
+          student_email: newApp.studentEmail,
+          student_phone: newApp.studentPhone,
+          student_dept: newApp.studentDept,
+          student_cgpa: newApp.studentCgpa,
+          resume_file_name: newApp.resumeFileName,
+          resume_url: newApp.resumeUrl,
+          cover_note: newApp.coverNote
+        })
+      });
+    } catch (err) {
+      console.warn("Backend application submission notice:", err);
+    }
+
     setShowApplyModal(false);
     setSelectedJobToApply(null);
     alert(`🎉 Application for ${newApp.jobRole} at ${newApp.company} submitted successfully! The placement committee has received your resume.`);
     setActiveTab('my-applications');
   };
 
+  // Withdraw / Remove Student Application
+  const handleWithdrawApplication = async (appId: string, roleName: string, compName: string) => {
+    if (!window.confirm(`Are you sure you want to withdraw your application for "${roleName}" at ${compName}? You can re-apply anytime before the deadline.`)) {
+      return;
+    }
+
+    // Remove locally
+    const updated = applications.filter(a => a.id !== appId);
+    saveApplicationsState(updated);
+
+    // Remove from backend API
+    try {
+      await fetch(`${API_BASE_URL}/placements/applications/${encodeURIComponent(appId)}`, {
+        method: 'DELETE'
+      });
+    } catch (e) {
+      console.warn("Backend delete application notice:", e);
+    }
+
+    alert(`Application for "${roleName}" withdrawn successfully.`);
+  };
+
   // Admin Create / Update Job Opening
-  const handleSaveJobOpening = (e: React.FormEvent) => {
+  const handleSaveJobOpening = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!jobRole.trim() || !jobCompany.trim() || !jobPkg.trim()) {
       alert("Please fill in role, company name, and package details.");
@@ -386,7 +477,7 @@ const Placements = () => {
     const skillList = jobSkills.split(',').map(s => s.trim()).filter(Boolean);
 
     if (editingJobId) {
-      setJobs(prev => prev.map(j => j.id === editingJobId ? {
+      const updated = jobs.map(j => j.id === editingJobId ? {
         ...j,
         role: jobRole.trim(),
         company: jobCompany.trim(),
@@ -398,7 +489,8 @@ const Placements = () => {
         location: jobLocation.trim(),
         description: jobDesc.trim(),
         skills: skillList
-      } : j));
+      } : j);
+      saveJobsState(updated);
       alert(`Job listing for ${jobCompany} updated successfully!`);
     } else {
       const newJob: JobOpening = {
@@ -415,8 +507,34 @@ const Placements = () => {
         skills: skillList.length > 0 ? skillList : ['Java', 'Python', 'Web Technologies'],
         postedDate: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
       };
-      setJobs([newJob, ...jobs]);
-      alert(`🎉 New campus recruitment drive for "${newJob.company}" published!`);
+
+      const updated = [newJob, ...jobs];
+      saveJobsState(updated);
+
+      // Save to backend API
+      try {
+        await fetch(`${API_BASE_URL}/placements/jobs`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: newJob.id,
+            role: newJob.role,
+            company: newJob.company,
+            package: newJob.package,
+            eligibility: newJob.eligibility,
+            min_cgpa: newJob.minCgpa,
+            deadline: newJob.deadline,
+            job_type: newJob.type,
+            location: newJob.location,
+            description: newJob.description,
+            skills: newJob.skills
+          })
+        });
+      } catch (err) {
+        console.warn("Backend job posting notice:", err);
+      }
+
+      alert(`🎉 New campus recruitment drive for "${newJob.company}" published! Students can now see and apply for this job.`);
     }
 
     setShowAddJobModal(false);
@@ -444,22 +562,32 @@ const Placements = () => {
     setShowAddJobModal(true);
   };
 
-  const handleDeleteJob = (jobId: string, e: React.MouseEvent) => {
+  const handleDeleteJob = async (jobId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (confirm("Are you sure you want to delete this recruitment opening?")) {
-      setJobs(prev => prev.filter(j => j.id !== jobId));
-      setApplications(prev => prev.filter(a => a.jobId !== jobId));
+      const updatedJobs = jobs.filter(j => j.id !== jobId);
+      const updatedApps = applications.filter(a => a.jobId !== jobId);
+      saveJobsState(updatedJobs);
+      saveApplicationsState(updatedApps);
+
+      try {
+        await fetch(`${API_BASE_URL}/placements/jobs/${encodeURIComponent(jobId)}`, {
+          method: 'DELETE'
+        });
+      } catch (err) {
+        console.warn("Backend delete job notice:", err);
+      }
     }
   };
 
   // Admin Change Status / Schedule Interview
-  const handleUpdateApplicationStatus = (
+  const handleUpdateApplicationStatus = async (
     appId: string, 
     newStatus: JobApplication['status'],
     dateStr?: string,
     notesStr?: string
   ) => {
-    setApplications(prev => prev.map(app => {
+    const updated = applications.map(app => {
       if (app.id === appId) {
         return {
           ...app,
@@ -469,7 +597,22 @@ const Placements = () => {
         };
       }
       return app;
-    }));
+    });
+    saveApplicationsState(updated);
+
+    try {
+      await fetch(`${API_BASE_URL}/placements/applications/${encodeURIComponent(appId)}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: newStatus,
+          interview_date: dateStr,
+          interview_notes: notesStr
+        })
+      });
+    } catch (e) {
+      console.warn("Backend status update notice:", e);
+    }
   };
 
   const openScheduleInterviewModal = (app: JobApplication) => {
@@ -569,6 +712,15 @@ const Placements = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={syncData}
+            className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all"
+            title="Refresh Openings"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            <span>Sync Drives</span>
+          </button>
+
           {isAdminOrFaculty && (
             <button
               onClick={() => {
@@ -580,7 +732,7 @@ const Placements = () => {
                 setJobDeadline('');
                 setShowAddJobModal(true);
               }}
-              className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 transition-all shrink-0"
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 transition-all shrink-0"
             >
               <Plus className="w-4 h-4" />
               <span>Post New Job Opening</span>
@@ -665,13 +817,13 @@ const Placements = () => {
             {filteredJobs.map((job) => {
               const uRoll = (user?.roll_number || '').toLowerCase();
               const uEmail = (user?.email || '').toLowerCase();
-              const hasApplied = applications.some(
+              const userApp = applications.find(
                 a => a.jobId === job.id && 
                 ((a.studentRoll || '').toLowerCase() === uRoll || 
                  (a.studentEmail || '').toLowerCase() === uEmail ||
                  (a.studentRoll || '').toLowerCase() === '2273a01001')
               );
-              const userApp = applications.find(a => a.jobId === job.id && ((a.studentRoll || '').toLowerCase() === uRoll || (a.studentRoll || '').toLowerCase() === '2273a01001'));
+              const hasApplied = !!userApp;
               const isEligible = userCgpa >= (job.minCgpa || 7.0);
 
               return (
@@ -763,27 +915,29 @@ const Placements = () => {
                           </button>
                         </>
                       ) : (
-                        <button
-                          onClick={() => handleOpenApplyModal(job)}
-                          disabled={hasApplied}
-                          className={`px-4 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shadow-xs ${
-                            hasApplied
-                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 cursor-default'
-                              : 'bg-blue-600 hover:bg-blue-700 text-white'
-                          }`}
-                        >
-                          {hasApplied ? (
-                            <>
-                              <Check className="w-3.5 h-3.5" />
-                              <span>Applied</span>
-                            </>
-                          ) : (
-                            <>
-                              <Send className="w-3.5 h-3.5" />
-                              <span>Apply with Resume</span>
-                            </>
-                          )}
-                        </button>
+                        hasApplied ? (
+                          <div className="flex items-center gap-1.5">
+                            <span className="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold flex items-center gap-1">
+                              <Check className="w-3 h-3" />
+                              Applied
+                            </span>
+                            <button
+                              onClick={() => handleWithdrawApplication(userApp.id, job.role, job.company)}
+                              className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition-all"
+                              title="Withdraw Application"
+                            >
+                              Withdraw
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => handleOpenApplyModal(job)}
+                            className="px-4 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shadow-xs bg-blue-600 hover:bg-blue-700 text-white"
+                          >
+                            <Send className="w-3.5 h-3.5" />
+                            <span>Apply with Resume</span>
+                          </button>
+                        )
                       )}
                     </div>
                   </div>
@@ -817,17 +971,27 @@ const Placements = () => {
                     </p>
                   </div>
 
-                  <span className={`px-3 py-1 rounded-xl text-xs font-extrabold self-start sm:self-auto border ${
-                    app.status === 'Shortlisted for Interview' || app.status === 'Interview Scheduled'
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                      : app.status === 'Selected'
-                      ? 'bg-purple-50 text-purple-700 border-purple-200'
-                      : app.status === 'Not Shortlisted'
-                      ? 'bg-rose-50 text-rose-700 border-rose-200'
-                      : 'bg-blue-50 text-blue-700 border-blue-200'
-                  }`}>
-                    {app.status}
-                  </span>
+                  <div className="flex items-center gap-2 self-start sm:self-auto">
+                    <span className={`px-3 py-1 rounded-xl text-xs font-extrabold border ${
+                      app.status === 'Shortlisted for Interview' || app.status === 'Interview Scheduled'
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : app.status === 'Selected'
+                        ? 'bg-purple-50 text-purple-700 border-purple-200'
+                        : app.status === 'Not Shortlisted'
+                        ? 'bg-rose-50 text-rose-700 border-rose-200'
+                        : 'bg-blue-50 text-blue-700 border-blue-200'
+                    }`}>
+                      {app.status}
+                    </span>
+
+                    <button
+                      onClick={() => handleWithdrawApplication(app.id, app.jobRole, app.company)}
+                      className="px-3 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-xl transition-all flex items-center gap-1"
+                    >
+                      <UserX className="w-3.5 h-3.5" />
+                      <span>Withdraw</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Resume Attached & Details */}
