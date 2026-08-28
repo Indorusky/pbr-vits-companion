@@ -219,9 +219,9 @@ export const OFFICIAL_CSE_PDF_NOTES = [
     title: 'Data Structures & Algorithms',
     code: '23CS102',
     semester: '1-2',
-    pdfUrl: '/notes/Data_Structures_Complete_Notes.pdf',
+    pdfUrl: '/notes/Data_Structures_and_Algorithms_Complete_Notes.pdf',
     units: ['Asymptotic Analysis & Linked Lists', 'Stacks & Queues ADTs', 'Trees & Balanced BSTs', 'Graphs & Traversals', 'Searching, Sorting & Hashing'],
-    size: '152 KB'
+    size: '185 KB'
   },
   {
     title: 'Database Management Systems (DBMS)',
@@ -229,7 +229,7 @@ export const OFFICIAL_CSE_PDF_NOTES = [
     semester: '2-1',
     pdfUrl: '/notes/Database_Management_Systems_Complete_Notes.pdf',
     units: ['ER Modeling & Architecture', 'Relational Algebra & SQL', 'Functional Dependencies & Normalization', 'ACID Transactions & Concurrency (2PL)', 'Storage & B+ Tree Indexing'],
-    size: '158 KB'
+    size: '190 KB'
   },
   {
     title: 'Operating Systems',
@@ -237,7 +237,7 @@ export const OFFICIAL_CSE_PDF_NOTES = [
     semester: '2-2',
     pdfUrl: '/notes/Operating_Systems_Complete_Notes.pdf',
     units: ['Process Management & PCB', 'CPU Scheduling Algorithms', 'Synchronization & Deadlocks', 'Virtual Memory & Paging', 'File Systems & Disk Scheduling'],
-    size: '160 KB'
+    size: '192 KB'
   },
   {
     title: 'Computer Networks',
@@ -245,7 +245,7 @@ export const OFFICIAL_CSE_PDF_NOTES = [
     semester: '3-1',
     pdfUrl: '/notes/Computer_Networks_Complete_Notes.pdf',
     units: ['OSI & TCP/IP Architecture', 'Data Link Layer & MAC (CSMA/CD)', 'Network Layer & Routing Protocols', 'Transport Layer (TCP/UDP)', 'Application Layer & TLS/Security'],
-    size: '162 KB'
+    size: '188 KB'
   },
   {
     title: 'Design & Analysis of Algorithms (DAA)',
@@ -253,15 +253,15 @@ export const OFFICIAL_CSE_PDF_NOTES = [
     semester: '3-1',
     pdfUrl: '/notes/Design_Analysis_Algorithms_Complete_Notes.pdf',
     units: ['Divide & Conquer Analysis', 'Greedy Method Paradigms', 'Dynamic Programming', 'Backtracking & Branch-and-Bound', 'NP-Completeness & P vs NP'],
-    size: '155 KB'
+    size: '180 KB'
   },
   {
     title: 'Generative AI & Deep Learning',
     code: '23CS401',
     semester: '4-1',
-    pdfUrl: '/notes/Generative_AI_Deep_Learning_Complete_Notes.pdf',
+    pdfUrl: '/notes/Generative_AI_and_Deep_Learning_Complete_Notes.pdf',
     units: ['Deep Learning & Backpropagation', 'CNNs & Computer Vision', 'Sequential Models & LSTMs', 'Transformers & Self-Attention', 'LLMs, RAG & GenAI Systems'],
-    size: '165 KB'
+    size: '195 KB'
   },
   {
     title: 'Cryptography & Network Security',
@@ -269,7 +269,7 @@ export const OFFICIAL_CSE_PDF_NOTES = [
     semester: '4-1',
     pdfUrl: '/notes/Cryptography_Network_Security_Complete_Notes.pdf',
     units: ['Classical Ciphers & Number Theory', 'Symmetric Encryption (AES/DES)', 'Public-Key RSA & Diffie-Hellman', 'Digital Signatures & SHA-256', 'IPsec, TLS & Network Defenses'],
-    size: '156 KB'
+    size: '178 KB'
   },
   {
     title: 'Cloud Computing & Virtualization',
@@ -277,15 +277,15 @@ export const OFFICIAL_CSE_PDF_NOTES = [
     semester: '3-2',
     pdfUrl: '/notes/Cloud_Computing_Complete_Notes.pdf',
     units: ['NIST Cloud Architecture & Models', 'Hypervisors & Virtualization', 'Distributed Storage & CAP Theorem', 'Cloud Security & IAM Policies', 'Microservices, Docker & Kubernetes'],
-    size: '150 KB'
+    size: '175 KB'
   }
 ];
 
 const StudyMaterials = () => {
   const { user, viewMode } = useAuth();
   
-  // Navigation Modes
-  const [activeModeTab, setActiveModeTab] = useState<'curriculum' | 'uploads' | 'pdf-notes'>('curriculum');
+  // Navigation Modes (Default to Official 5-Unit Notes Library)
+  const [activeModeTab, setActiveModeTab] = useState<'pdf-notes' | 'curriculum' | 'uploads'>('pdf-notes');
   const [pdfSearch, setPdfSearch] = useState('');
   const [pdfSemFilter, setPdfSemFilter] = useState('ALL');
 
@@ -802,14 +802,16 @@ const StudyMaterials = () => {
                     />
                   </div>
 
-                  {/* Generate Button */}
+                  {/* Direct View 5-Unit Notes Button */}
                   <button
-                    onClick={() => handleGenerateNotes(activeSubject, customTopic.trim() || selectedTopic)}
-                    disabled={isGenerating || (!customTopic.trim() && !selectedTopic)}
-                    className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center justify-center gap-2"
+                    onClick={() => {
+                      setActiveModeTab('pdf-notes');
+                      setPdfSearch(activeSubject);
+                    }}
+                    className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center justify-center gap-2"
                   >
-                    <Sparkles className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
-                    <span>{isGenerating ? 'Analyzing Curriculum & Generating Notes...' : '✨ Generate Detailed Interactive AI Notes'}</span>
+                    <BookOpen className="w-4 h-4" />
+                    <span>View & Download Official 5-Unit Notes (PDF)</span>
                   </button>
                 </div>
               ) : (
@@ -882,13 +884,15 @@ const StudyMaterials = () => {
                   <p className="text-xs text-slate-700 leading-relaxed font-medium">{selectedMaterial.summary}</p>
                 </div>
 
-                {/* Generate AI Notes button based on the PDF topic */}
+                {/* View 5-Unit Notes library */}
                 <button
-                  onClick={() => handleGenerateNotes(selectedMaterial.subject, selectedMaterial.title.replace('.pdf', ''))}
-                  className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-2"
+                  onClick={() => {
+                    setActiveModeTab('pdf-notes');
+                  }}
+                  className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-2"
                 >
-                  <Sparkles className="w-4 h-4" />
-                  <span>Generate Detailed AI Study Guide & Quizzes</span>
+                  <FileText className="w-4 h-4" />
+                  <span>Browse 5-Unit Complete Course Notes Library</span>
                 </button>
               </div>
             ) : (
@@ -898,524 +902,11 @@ const StudyMaterials = () => {
             )}
             
             <div className="border-t border-slate-100 pt-4 flex items-center justify-between text-[10px] text-slate-400">
-              <span className="flex items-center gap-1"><CheckCircle className="w-3.5 h-3.5 text-emerald-500" /> Interactive Notes Generator Ready</span>
+              <span className="flex items-center gap-1"><CheckCircle className="w-3.5 h-3.5 text-emerald-500" /> Department Course Notes Verified</span>
               <span>{materials.length} Shared Documents Available</span>
             </div>
           </div>
         </div>
-      )}
-
-      {/* AI GENERATED NOTES INTERACTIVE CONTAINER */}
-      {(isGenerating || generatedNotes) && (
-        <section className="bg-white rounded-3xl border border-slate-150 shadow-md p-6 overflow-hidden">
-          {/* Loading state */}
-          {isGenerating && (
-            <div className="py-24 text-center space-y-4">
-              <div className="relative w-16 h-16 mx-auto">
-                <Brain className="w-16 h-16 text-blue-600 animate-pulse" />
-                <Sparkles className="w-6 h-6 text-purple-500 absolute -top-1 -right-1 animate-bounce" />
-              </div>
-              <div>
-                <p className="text-sm font-extrabold text-slate-800">Generating Interactive Study Space...</p>
-                <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">Gemini is structuring detailed notes, quiz MCQs, concept flashcards, and coding simulations for this topic.</p>
-              </div>
-            </div>
-          )}
-
-          {/* Notes display */}
-          {generatedNotes && !isGenerating && (
-            <div className="space-y-6">
-              {/* Header panel */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-150 pb-5 gap-3">
-                <div>
-                  <div className="flex items-center gap-2 select-none">
-                    <span className="text-[10px] font-bold text-blue-600 bg-blue-50 border border-blue-150 px-2 py-0.5 rounded uppercase">
-                      {activeSubject}
-                    </span>
-                    <span className="text-[10px] font-bold text-purple-600 bg-purple-50 border border-purple-150 px-2 py-0.5 rounded uppercase tracking-wider flex items-center gap-1">
-                      <Sparkles className="w-3 h-3 text-purple-600" /> Gemini Powered
-                    </span>
-                  </div>
-                  <h2 className="text-xl font-extrabold text-slate-900 mt-2">{customTopic.trim() || selectedTopic}</h2>
-                </div>
-                
-                {/* Download option */}
-                <button
-                  onClick={() => {
-                    const element = document.createElement("a");
-                    const file = new Blob([generatedNotes.detailed_notes], {type: 'text/plain'});
-                    element.href = URL.createObjectURL(file);
-                    element.download = `${(customTopic.trim() || selectedTopic).replace(/\s+/g, '_')}_StudyGuide.md`;
-                    document.body.appendChild(element);
-                    element.click();
-                    document.body.removeChild(element);
-                  }}
-                  className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all shadow-sm shrink-0 self-start sm:self-auto"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>Download MD</span>
-                </button>
-              </div>
-
-              {/* Navigation Tabs for Interactive Space */}
-              <div className="flex flex-wrap border-b border-slate-150 select-none">
-                <button
-                  onClick={() => setActiveNotesTab('notes')}
-                  className={`px-4 py-3 border-b-2 font-bold text-xs flex items-center gap-2 transition-all ${
-                    activeNotesTab === 'notes'
-                      ? 'border-blue-600 text-blue-600'
-                      : 'border-transparent text-slate-500 hover:text-slate-800'
-                  }`}
-                >
-                  <BookOpen className="w-4 h-4" />
-                  <span>Study Guide</span>
-                </button>
-
-                <button
-                  onClick={() => {
-                    setActiveNotesTab('flashcards');
-                    setCurrentCardIndex(0);
-                    setIsCardFlipped(false);
-                  }}
-                  className={`px-4 py-3 border-b-2 font-bold text-xs flex items-center gap-2 transition-all ${
-                    activeNotesTab === 'flashcards'
-                      ? 'border-blue-600 text-blue-600'
-                      : 'border-transparent text-slate-500 hover:text-slate-800'
-                  }`}
-                >
-                  <Brain className="w-4 h-4" />
-                  <span>Interactive Flashcards</span>
-                </button>
-
-                <button
-                  onClick={() => setActiveNotesTab('quiz')}
-                  className={`px-4 py-3 border-b-2 font-bold text-xs flex items-center gap-2 transition-all ${
-                    activeNotesTab === 'quiz'
-                      ? 'border-blue-600 text-blue-600'
-                      : 'border-transparent text-slate-500 hover:text-slate-800'
-                  }`}
-                >
-                  <HelpCircle className="w-4 h-4" />
-                  <span>Practice Quiz</span>
-                </button>
-
-                <button
-                  onClick={() => setActiveNotesTab('sandbox')}
-                  className={`px-4 py-3 border-b-2 font-bold text-xs flex items-center gap-2 transition-all ${
-                    activeNotesTab === 'sandbox'
-                      ? 'border-blue-600 text-blue-600'
-                      : 'border-transparent text-slate-500 hover:text-slate-800'
-                  }`}
-                >
-                  <Terminal className="w-4 h-4" />
-                  <span>Simulation Sandbox</span>
-                </button>
-
-                <button
-                  onClick={() => setActiveNotesTab('chat')}
-                  className={`px-4 py-3 border-b-2 font-bold text-xs flex items-center gap-2 transition-all ${
-                    activeNotesTab === 'chat'
-                      ? 'border-blue-600 text-blue-600'
-                      : 'border-transparent text-slate-500 hover:text-slate-800'
-                  }`}
-                >
-                  <Bot className="w-4 h-4" />
-                  <span>AI Study Assistant</span>
-                </button>
-              </div>
-
-              {/* RENDER CURRENT TAB */}
-              <div className="pt-2">
-                {/* 1. LECTURE NOTES STUDY GUIDE */}
-                {activeNotesTab === 'notes' && (
-                  <article 
-                    className="prose prose-slate max-w-none bg-slate-50/50 p-6 rounded-2xl border border-slate-100"
-                    dangerouslySetInnerHTML={{ __html: parseMarkdownToHtml(generatedNotes.detailed_notes) }}
-                  />
-                )}
-
-                {/* 2. INTERACTIVE FLASHCARDS */}
-                {activeNotesTab === 'flashcards' && (
-                  <div className="max-w-md mx-auto space-y-6 py-6 select-none">
-                    {/* Card stats */}
-                    <div className="flex justify-between items-center text-xs font-bold text-slate-400">
-                      <span>Card {currentCardIndex + 1} of {generatedNotes.flashcards.length}</span>
-                      <span>Score: {knownCardsCount} / {Object.keys(reviewedCards).length} memorized</span>
-                    </div>
-
-                    {/* 3D Flippable Card */}
-                    <div 
-                      onClick={() => setIsCardFlipped(!isCardFlipped)}
-                      className="w-full h-64 cursor-pointer perspective-1000 group"
-                    >
-                      <div className={`relative w-full h-full duration-500 transform-style-3d ${
-                        isCardFlipped ? 'rotate-y-180' : ''
-                      }`}>
-                        {/* Front Side */}
-                        <div className="absolute inset-0 w-full h-full bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl shadow-md p-6 flex flex-col justify-between text-white backface-hidden">
-                          <div className="flex justify-between items-center text-[10px] uppercase font-bold tracking-wider opacity-80">
-                            <span>Question / Concept</span>
-                            <Brain className="w-4 h-4" />
-                          </div>
-                          <p className="text-sm font-extrabold text-center self-center px-4 leading-relaxed">
-                            {generatedNotes.flashcards[currentCardIndex]?.front}
-                          </p>
-                          <p className="text-[10px] text-center opacity-70 font-semibold flex items-center justify-center gap-1.5">
-                            <RotateCw className="w-3.5 h-3.5" />
-                            <span>Click card to reveal definition</span>
-                          </p>
-                        </div>
-
-                        {/* Back Side */}
-                        <div className="absolute inset-0 w-full h-full bg-white border border-slate-200 rounded-2xl shadow-md p-6 flex flex-col justify-between text-slate-800 rotate-y-180 backface-hidden">
-                          <div className="flex justify-between items-center text-[10px] uppercase font-bold tracking-wider text-slate-400">
-                            <span>Explanation / Answer</span>
-                            <CheckCircle className="w-4 h-4 text-emerald-500" />
-                          </div>
-                          <p className="text-xs font-semibold text-center leading-relaxed text-slate-700 px-2 overflow-y-auto self-center">
-                            {generatedNotes.flashcards[currentCardIndex]?.back}
-                          </p>
-                          <p className="text-[10px] text-center text-slate-450 font-semibold flex items-center justify-center gap-1.5">
-                            <RotateCw className="w-3.5 h-3.5" />
-                            <span>Click card to flip back</span>
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Review actions */}
-                    <div className="flex gap-3 justify-center">
-                      <button
-                        onClick={() => {
-                          setIsCardFlipped(false);
-                          if (currentCardIndex > 0) setCurrentCardIndex(prev => prev - 1);
-                        }}
-                        disabled={currentCardIndex === 0}
-                        className="p-3 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-600 rounded-xl transition-all"
-                      >
-                        <ChevronLeft className="w-5 h-5" />
-                      </button>
-
-                      <button
-                        onClick={() => handleFlashcardReview(false)}
-                        className="px-4 py-2.5 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-xs font-bold rounded-xl transition-all"
-                      >
-                        Need Practice ❌
-                      </button>
-
-                      <button
-                        onClick={() => handleFlashcardReview(true)}
-                        className="px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 text-xs font-bold rounded-xl transition-all"
-                      >
-                        Got It! ✅
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* 3. PRACTICE QUIZ */}
-                {activeNotesTab === 'quiz' && (
-                  <div className="space-y-6 max-w-3xl mx-auto py-4 select-none">
-                    <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-                      <h3 className="text-sm font-extrabold text-slate-800">Review Quiz ({generatedNotes.quiz.length} Questions)</h3>
-                      {quizSubmitted && (
-                        <div className="px-3.5 py-1.5 bg-blue-50 border border-blue-150 rounded-xl text-xs font-extrabold text-blue-700 animate-bounce">
-                          Final Score: {quizScore} / {generatedNotes.quiz.length}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="space-y-6">
-                      {generatedNotes.quiz.map((q, qIdx) => {
-                        const isCorrect = selectedAnswers[qIdx] === q.correct_answer_index;
-                        const isWrongSelected = selectedAnswers[qIdx] !== undefined && selectedAnswers[qIdx] !== q.correct_answer_index;
-                        
-                        return (
-                          <div key={qIdx} className="bg-slate-50/50 border border-slate-100 rounded-2xl p-5 space-y-3.5">
-                            <p className="text-xs font-extrabold text-slate-800 font-sans">
-                              {qIdx + 1}. {q.question}
-                            </p>
-                            
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 font-sans">
-                              {q.options.map((opt, oIdx) => {
-                                const isOptSelected = selectedAnswers[qIdx] === oIdx;
-                                const isOptCorrect = q.correct_answer_index === oIdx;
-                                
-                                let optClass = 'border-slate-150 bg-white text-slate-700 hover:bg-slate-55';
-                                
-                                if (quizSubmitted) {
-                                  if (isOptCorrect) {
-                                    optClass = 'border-emerald-500 bg-emerald-50 text-emerald-950 font-bold';
-                                  } else if (isOptSelected && !isOptCorrect) {
-                                    optClass = 'border-rose-500 bg-rose-50 text-rose-955';
-                                  } else {
-                                    optClass = 'border-slate-100 bg-white text-slate-400 opacity-60';
-                                  }
-                                } else if (isOptSelected) {
-                                  optClass = 'border-blue-600 bg-blue-50 text-blue-900 font-bold';
-                                }
-
-                                return (
-                                  <button
-                                    key={oIdx}
-                                    onClick={() => handleQuizAnswer(qIdx, oIdx)}
-                                    disabled={quizSubmitted}
-                                    className={`p-3 rounded-xl border text-xs text-left transition-all flex items-center justify-between ${optClass}`}
-                                  >
-                                    <span>{opt}</span>
-                                    {quizSubmitted && isOptCorrect && <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0 ml-2" />}
-                                    {quizSubmitted && isOptSelected && !isOptCorrect && <X className="w-4 h-4 text-rose-600 shrink-0 ml-2" />}
-                                  </button>
-                                );
-                              })}
-                            </div>
-
-                            {/* Show Explanation post submit */}
-                            {quizSubmitted && (
-                              <div className={`p-4 rounded-xl border text-xs leading-relaxed ${
-                                isCorrect 
-                                  ? 'bg-emerald-50/40 border-emerald-100 text-emerald-900' 
-                                  : 'bg-rose-50/40 border-rose-100 text-rose-900'
-                              }`}>
-                                <p className="font-bold flex items-center gap-1.5 mb-1 text-[10px] uppercase tracking-wider">
-                                  {isCorrect ? 'Correct! 🎉' : 'Incorrect ❌'}
-                                </p>
-                                <p className="font-medium text-slate-700">{q.explanation}</p>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {!quizSubmitted ? (
-                      <button
-                        onClick={submitQuiz}
-                        disabled={Object.keys(selectedAnswers).length < generatedNotes.quiz.length}
-                        className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow"
-                      >
-                        Submit Answers
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => {
-                          setSelectedAnswers({});
-                          setQuizSubmitted(false);
-                          setQuizScore(0);
-                        }}
-                        className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all border border-slate-200"
-                      >
-                        Retake Quiz
-                      </button>
-                    )}
-                  </div>
-                )}
-
-                {/* 4. SIMULATION SANDBOX */}
-                {activeNotesTab === 'sandbox' && (
-                  <div className="max-w-4xl mx-auto space-y-6 py-4 font-sans">
-                    <div>
-                      <h3 className="text-sm font-extrabold text-slate-800">{generatedNotes.interactive_element.title}</h3>
-                      <p className="text-slate-400 text-xs mt-0.5 font-medium">{generatedNotes.interactive_element.explanation}</p>
-                    </div>
-
-                    {/* CODE INTERACTIVE RUNNER */}
-                    {generatedNotes.interactive_element.type === 'code' && (
-                      <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
-                        {/* Editor window */}
-                        <div className="md:col-span-7 bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 shadow flex flex-col justify-between min-h-[250px]">
-                          <div className="bg-slate-950 px-4 py-2 border-b border-slate-800 flex items-center justify-between text-[10px] text-slate-400 font-bold uppercase select-none">
-                            <span>Main Source Simulator</span>
-                            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
-                          </div>
-                          
-                          <pre className="p-4 overflow-x-auto text-xs font-mono text-slate-200 leading-relaxed flex-1">
-                            <code>{generatedNotes.interactive_element.code_or_formula}</code>
-                          </pre>
-
-                          <div className="p-3 bg-slate-950 border-t border-slate-800 flex justify-end">
-                            <button
-                              onClick={() => handleRunSimulation(generatedNotes.interactive_element.code_or_formula, generatedNotes.interactive_element.simulated_output)}
-                              disabled={isSimulatingCode}
-                              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow"
-                            >
-                              <Play className="w-3.5 h-3.5 fill-white" />
-                              <span>{isSimulatingCode ? 'Executing...' : 'Run Simulation'}</span>
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Terminal logs */}
-                        <div className="md:col-span-5 bg-slate-950 rounded-2xl overflow-hidden border border-slate-900 shadow flex flex-col min-h-[250px] select-none">
-                          <div className="bg-slate-900/60 px-4 py-2 border-b border-slate-900 text-[10px] text-slate-500 font-bold uppercase">
-                            <span>Terminal Output Console</span>
-                          </div>
-                          
-                          <div className="p-4 font-mono text-[11px] text-emerald-400 space-y-1.5 flex-1 overflow-y-auto bg-slate-950">
-                            {simulationLogs.length === 0 ? (
-                              <span className="text-slate-650 italic">Click "Run Simulation" to execute the script in a mock environment...</span>
-                            ) : (
-                              simulationLogs.map((log, idx) => (
-                                <p key={idx} className="whitespace-pre-line leading-relaxed">&gt; {log}</p>
-                              ))
-                            )}
-                            {isSimulatingCode && <span className="inline-block w-2 h-4 bg-emerald-400 animate-pulse ml-1 align-middle"></span>}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* MATHEMATICAL FORMULA DYNAMIC CALCULATOR */}
-                    {generatedNotes.interactive_element.type === 'formula' && (
-                      <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
-                        {/* Control Panel */}
-                        <div className="md:col-span-5 bg-slate-50 border border-slate-100 rounded-2xl p-5 space-y-5">
-                          <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                            <Sliders className="w-4 h-4 text-blue-600" />
-                            <span>Adjust Variables</span>
-                          </h4>
-
-                          {/* Amplitude A */}
-                          <div className="space-y-1.5">
-                            <div className="flex justify-between text-xs font-semibold text-slate-600">
-                              <span>Initial Amplitude (A)</span>
-                              <span className="font-bold text-blue-600">{formulaA.toFixed(1)}</span>
-                            </div>
-                            <input
-                              type="range"
-                              min="1"
-                              max="10"
-                              step="0.5"
-                              value={formulaA}
-                              onChange={(e) => setFormulaA(parseFloat(e.target.value))}
-                              className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                            />
-                          </div>
-
-                          {/* Decay Factor k */}
-                          <div className="space-y-1.5">
-                            <div className="flex justify-between text-xs font-semibold text-slate-600">
-                              <span>Decay Factor (k)</span>
-                              <span className="font-bold text-blue-600">{formulaK.toFixed(2)}</span>
-                            </div>
-                            <input
-                              type="range"
-                              min="0"
-                              max="1.0"
-                              step="0.05"
-                              value={formulaK}
-                              onChange={(e) => setFormulaK(parseFloat(e.target.value))}
-                              className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                            />
-                          </div>
-
-                          {/* Frequency w */}
-                          <div className="space-y-1.5">
-                            <div className="flex justify-between text-xs font-semibold text-slate-600">
-                              <span>Angular Frequency (w)</span>
-                              <span className="font-bold text-blue-600">{formulaW.toFixed(1)}</span>
-                            </div>
-                            <input
-                              type="range"
-                              min="0.5"
-                              max="5"
-                              step="0.1"
-                              value={formulaW}
-                              onChange={(e) => setFormulaW(parseFloat(e.target.value))}
-                              className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Interactive Graph / Visual Simulator */}
-                        <div className="md:col-span-7 bg-white border border-slate-150 rounded-2xl p-5 flex flex-col justify-between min-h-[250px]">
-                          <div className="space-y-4">
-                            <div className="bg-slate-50 border border-slate-100 p-4 rounded-xl text-center text-sm font-mono text-slate-800">
-                              {generatedNotes.interactive_element.code_or_formula}
-                            </div>
-                            
-                            {/* Calculated System Values */}
-                            <div className="grid grid-cols-2 gap-3 text-xs">
-                              <div className="bg-slate-50/50 p-3 rounded-lg border border-slate-100">
-                                <span className="text-slate-400 block font-semibold mb-0.5">Peak Value at t=0</span>
-                                <span className="font-extrabold text-slate-800 text-sm">{formulaA.toFixed(2)} units</span>
-                              </div>
-                              <div className="bg-slate-50/50 p-3 rounded-lg border border-slate-100">
-                                <span className="text-slate-400 block font-semibold mb-0.5">Oscillation Period</span>
-                                <span className="font-extrabold text-slate-800 text-sm">{(2 * Math.PI / formulaW).toFixed(2)}s</span>
-                              </div>
-                              <div className="bg-slate-50/50 p-3 rounded-lg border border-slate-100">
-                                <span className="text-slate-400 block font-semibold mb-0.5">Half-life (t_1/2 Decay)</span>
-                                <span className="font-extrabold text-slate-800 text-sm">{formulaK > 0 ? (Math.LN2 / formulaK).toFixed(2) + 's' : 'Infinite'}</span>
-                              </div>
-                              <div className="bg-slate-50/50 p-3 rounded-lg border border-slate-100">
-                                <span className="text-slate-400 block font-semibold mb-0.5">Displacement at t=2.0s</span>
-                                <span className="font-extrabold text-slate-800 text-sm">
-                                  {(formulaA * Math.exp(-formulaK * 2) * Math.cos(formulaW * 2)).toFixed(3)} units
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="text-[10px] text-slate-405 bg-slate-50/40 p-2.5 rounded-lg border border-slate-100 mt-2 font-medium">
-                            <span className="font-bold text-blue-600">Observation:</span> Increasing the decay factor (k) suppresses oscillation peaks rapidly. Increasing frequency (w) increases cycles per second.
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* 5. NOTES AI STUDY ASSISTANT */}
-                {activeNotesTab === 'chat' && (
-                  <div className="max-w-4xl mx-auto space-y-4 py-2 font-sans">
-                    {/* Chat log */}
-                    <div className="bg-slate-55 border border-slate-100 rounded-2xl p-4 h-[350px] overflow-y-auto space-y-3 flex flex-col">
-                      {chatMessages.map((msg, idx) => (
-                        <div
-                          key={idx}
-                          className={`max-w-[80%] rounded-2xl p-3.5 text-xs leading-relaxed font-medium ${
-                            msg.sender === 'user'
-                              ? 'bg-blue-600 text-white self-end rounded-tr-none'
-                              : 'bg-white text-slate-800 border border-slate-150 self-start rounded-tl-none shadow-sm whitespace-pre-line'
-                          }`}
-                        >
-                          {msg.text}
-                        </div>
-                      ))}
-                      {isChatSending && (
-                        <div className="bg-white border border-slate-150 text-slate-800 rounded-2xl rounded-tl-none p-3 text-xs self-start flex items-center gap-1 shadow-sm">
-                          <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-bounce"></span>
-                          <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-bounce delay-100"></span>
-                          <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-bounce delay-200"></span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Chat Input form */}
-                    <form onSubmit={handleSendChatMessage} className="flex gap-2">
-                      <input
-                        type="text"
-                        placeholder={`Ask anything about ${(customTopic.trim() || selectedTopic)}...`}
-                        value={chatInput}
-                        onChange={(e) => setChatInput(e.target.value)}
-                        disabled={isChatSending}
-                        className="flex-1 px-4 py-3 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium text-slate-800 placeholder-slate-400"
-                      />
-                      <button
-                        type="submit"
-                        disabled={isChatSending || !chatInput.trim()}
-                        className="px-4 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow flex items-center justify-center"
-                      >
-                        <Send className="w-4 h-4" />
-                      </button>
-                    </form>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </section>
       )}
 
       {/* 5-Unit Official Subject Notes (PDF Library) */}
