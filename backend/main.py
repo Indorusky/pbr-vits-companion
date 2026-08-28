@@ -1,12 +1,79 @@
+import os, sys, datetime, json, re, random, math
 from fastapi import FastAPI, Depends, HTTPException, status, Header
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import List, Optional
+
 import models, schemas, database
 from database import engine
 
 models.Base.metadata.create_all(bind=engine)
+
+def auto_migrate_db():
+    from sqlalchemy import text
+    all_models = [
+        models.User, models.Student, models.TimetableEntry,
+        models.FaceEnrollment, models.AttendanceRecord,
+        models.FaceAuditLog, models.SystemConfig,
+        models.Faculty, models.Mark, models.MarkModificationLog
+    ]
+    
+    dialect = engine.dialect.name
+    print(f"[DB Migration] Checking database schema on dialect: {dialect}...")
+    
+    with engine.connect() as conn:
+        for model in all_models:
+            table_name = model.__tablename__
+            
+            # Fetch existing columns
+            try:
+                if dialect == 'sqlite':
+                    res = conn.execute(text(f"PRAGMA table_info({table_name})")).fetchall()
+                    existing_cols = {row[1] for row in res}
+                else:
+                    res = conn.execute(text(
+                        f"SELECT column_name FROM information_schema.columns "
+                        f"WHERE table_name = '{table_name.lower()}'"
+                    )).fetchall()
+                    existing_cols = {row[0] for row in res}
+            except Exception as e:
+                print(f"[DB Migration] Could not read columns for {table_name}: {e}")
+                existing_cols = set()
+
+            for col in model.__table__.columns:
+                if col.name not in existing_cols:
+                    col_type = col.type.compile(engine.dialect)
+                    try:
+                        if dialect == 'postgresql':
+                            sql = f"ALTER TABLE {table_name} ADD COLUMN IF NOT EXISTS {col.name} {col_type}"
+                        else:
+                            sql = f"ALTER TABLE {table_name} ADD COLUMN {col.name} {col_type}"
+                        
+                        print(f"[DB Migration] Adding missing column: {table_name}.{col.name} ({col_type})")
+                        conn.execute(text(sql))
+                        conn.commit()
+                        existing_cols.add(col.name)
+                    except Exception as e:
+                        print(f"[DB Migration] Notice adding column {table_name}.{col.name}: {e}")
+
+        # Backfill default values for existing rows in production tables
+        backfills = [
+            "UPDATE users SET approval_status = 'Approved' WHERE approval_status IS NULL",
+            "UPDATE faculties SET approval_status = 'Approved' WHERE approval_status IS NULL",
+            "UPDATE face_enrollments SET enrollment_count = 1 WHERE enrollment_count IS NULL",
+            "UPDATE face_enrollments SET reset_request_status = 'None' WHERE reset_request_status IS NULL"
+        ]
+        for b_sql in backfills:
+            try:
+                conn.execute(text(b_sql))
+                conn.commit()
+            except Exception as e:
+                print(f"[DB Migration] Backfill notice: {e}")
+
+    print("[DB Migration] Database schema verification & migration complete.")
+
+auto_migrate_db()
 
 app = FastAPI(title="Campus Companion API")
 
@@ -26,133 +93,196 @@ def get_db():
     finally:
         db.close()
 
-def seed_timetable(db):
-    try:
-        # Skip re-seeding if faculty users already exist in the database
-        if db.query(models.User).filter(models.User.role == models.RoleEnum.faculty).first() is not None:
-            print("Database already seeded. Skipping re-seed.")
-            return
+FACULTY_MASTER_ALL = [
+    (1, "Dr. DODLA SRUJAN CHANDRA REDDY", "PhD", "Professor", "01-07-2024"),
+    (2, "Dr. GANUGULA VIJAY KUMAR", "PhD", "Professor", "01-03-2021"),
+    (3, "Dr. KUNI VENKATA SUBBAIAH", "PhD", "Professor", "05-06-2003"),
+    (4, "Dr. NUKAMREDDY SRINAD REDDY", "PhD", "Associate Professor", "02-06-2021"),
+    (5, "Dr. BONTHALA VAMSEE MOHAN", "PhD", "Professor", "01-07-2019"),
+    (6, "Dr. POLEBOINA VENKATA N RAJESWARI", "PhD", "Associate Professor", "15-06-2016"),
+    (7, "Dr. RAMIREDDY KONDAIAH", "PhD", "Professor", "01-07-2022"),
+    (8, "Dr. PATHAKAMURI SRINIVASULU", "PhD", "Associate Professor", "26-12-2007"),
+    (9, "Mr. SHAIK SHABBIR BASHA", "M.Tech", "Assistant Professor", "22-04-2003"),
+    (10, "Mr. PUTTU ESWARAIAH", "M.Tech", "Assistant Professor", "16-06-2006"),
+    (11, "Ms. THORAINELLORE MANJULA", "M.Tech", "Assistant Professor", "29-06-2007"),
+    (12, "Mr. MENTA VIJAYABHASKAR", "M.Tech", "Assistant Professor", "02-12-2008"),
+    (13, "Mrs. SIVADANAM USHA RANI", "M.Tech", "Assistant Professor", "01-11-2011"),
+    (14, "Ms. AKSHAYAM PRASMITA", "M.Tech", "Assistant Professor", "05-07-2012"),
+    (15, "Ms. KODALI BHARGAVI", "M.Tech", "Assistant Professor", "04-04-2024"),
+    (16, "Mr. PERAM KAMALAKAR", "M.Tech", "Assistant Professor", "01-12-2012"),
+    (17, "Mr. CHEEDELLA CHANDRA SEKHAR", "M.Tech", "Assistant Professor", "01-03-2013"),
+    (18, "Mis. MALISETTY TEJASWINI", "M.Tech", "Assistant Professor", "01-04-2024"),
+    (19, "Mrs. GUMMADI TIRUMALA", "M.Tech", "Assistant Professor", "04-07-2016"),
+    (20, "Mrs. KANAMATHAREDDY RESHMA REDDY", "M.Tech", "Assistant Professor", "01-07-2021"),
+    (21, "Ms. JARUGUMALLI MADHURI", "M.Tech", "Assistant Professor", "07-01-2016"),
+    (22, "Mr. GUNUPATI VENKATESWARLU", "M.Tech", "Assistant Professor", "10-06-2016"),
+    (23, "Ms. K V SUPRAJA", "M.Tech", "Assistant Professor", "02-05-2025"),
+    (24, "Ms. NUNNA SAI SINDHURA", "M.Tech", "Assistant Professor", "02-07-2018"),
+    (25, "Ms. KOPILA RAVI CHAND", "M.Tech", "Assistant Professor", "01-09-2020"),
+    (26, "Mr. PEDDIREDDY VENKATESWARA REDDY", "M.Tech", "Assistant Professor", "01-09-2021"),
+    (27, "Mr. PANDITAAJAYA KUMAR", "M.Tech", "Assistant Professor", "03-06-2021"),
+    (28, "Ms. ALANKARAM SHOBITHA LAKSHMI", "M.Tech", "Assistant Professor", "01-09-2021"),
+    (29, "Mr. ANGALAKUDURU SRINIVASA RAO", "M.Tech", "Assistant Professor", "01-08-2022"),
+    (30, "Mr. THAMMINENI DAYAKAR", "M.Tech", "Assistant Professor", "25-07-2022"),
+    (31, "Mr. RAJA BHARGAVA", "M.Tech", "Assistant Professor", "01-04-2022"),
+    (32, "Mr. GUDAMSETTY RAJESH", "M.Tech", "Assistant Professor", "01-07-2022"),
+    (33, "Mr. CH VENKATESWARLU", "M.Tech", "Assistant Professor", "01-07-2022"),
+    (34, "Mr. RONDLA PRAPULLA KUMAR", "M.Tech", "Assistant Professor", "04-09-2023"),
+    (35, "Mr. MODEM JEEVAN KUMAR", "M.Tech", "Assistant Professor", "04-09-2023"),
+    (36, "Mr. PASUPULETI MOHAN", "M.Tech", "Assistant Professor", "04-09-2023"),
+    (37, "Ms. GUNA GAYATHRI PRASEETHA K", "M.Tech", "Assistant Professor", "10-01-2024"),
+    (38, "Ms.DARBALA PAVAN KUMAR", "M.Tech", "Assistant Professor", "06-09-2021"),
+    (39, "Mr. PERAM MALLIKARJUNA", "M.Tech", "Assistant Professor", "02-08-2021"),
+    (40, "Mr. KUNI SAI SUMANTH", "M.Tech", "Assistant Professor", "01-07-2024"),
+    (41, "Ms. PONNURU VENKATA SUSHMA", "M.Tech", "Assistant Professor", "08-07-2024"),
+    (42, "Mr. CHALLA AKHIL", "M.Tech", "Assistant Professor", "05-08-2024"),
+    (43, "Ms. CHEVURI ROJA", "M.Tech", "Assistant Professor", "01-08-2024"),
+    (44, "Mr. MUNAGALA VENKATESWARLU", "M.Tech", "Assistant Professor", "02-09-2024"),
+    (45, "Mr. MANCHERLAPATI NEERJA", "M.Tech", "Assistant Professor", "01-04-2024"),
+    (46, "Mr. METTA SATHYA SAI LAKSHMAN", "M.Tech", "Assistant Professor", "06-05-2024"),
+    (47, "Mr. ADUSUMALLI PRASANNA KUMAR", "M.Tech", "Assistant Professor", "06-05-2024"),
+    (48, "Mr. KATAMREDDI MAHENDRA", "M.Tech", "Assistant Professor", "01-07-2024"),
+    (49, "Ms. KOMMURI SRAVANI", "M.Tech", "Assistant Professor", "09-10-2023"),
+    (50, "Mrs. KUPPAM SAMEERA", "M.Tech", "Assistant Professor", "03-06-2024"),
+    (51, "Ms. PASUPILETI VIMALASANYHI", "M.Tech", "Assistant Professor", "02-09-2024"),
+    (52, "Mr. SINGAMANENI MALLIKARJUNA", "M.Tech", "Assistant Professor", "02-06-2025"),
+    (53, "Mrs. NIDAMANURI V SOUNDARYA", "M.Tech", "Assistant Professor", "10-08-2024")
+]
 
-        # Clear existing timetable entries to allow clean re-seeding under the new department schema
-        db.query(models.TimetableEntry).delete()
-        db.query(models.Faculty).delete()
-        
-        # Clear user accounts for faculty to prevent stale logins, except admin
-        db.query(models.User).filter(models.User.role == models.RoleEnum.faculty).delete()
-        db.commit()
-            
-        print("Seeding 53 official faculty members...")
-        
-        faculty_master_data = [
-            ("Dr. DODLA SRUJAN CHANDRA REDDY", "PhD", "Professor", "01-07-2024"),
-            ("Dr. GANUGULA VIJAY KUMAR", "PhD", "Professor", "01-03-2021"),
-            ("Dr. KUNI VENKATA SUBBAIAH", "PhD", "Professor", "05-06-2003"),
-            ("Dr. NUKAMREDDY SRINAD REDDY", "PhD", "Associate Professor", "02-06-2021"),
-            ("Dr. BONTHALA VAMSEE MOHAN", "PhD", "Professor", "01-07-2019"),
-            ("Dr. POLEBOINA VENKATA N RAJESWARI", "PhD", "Associate Professor", "15-06-2016"),
-            ("Dr. RAMIREDDY KONDAIAH", "PhD", "Professor", "01-07-2022"),
-            ("Dr. PATHAKAMURI SRINIVASULU", "PhD", "Associate Professor", "26-12-2007"),
-            ("Mr. SHAIK SHABBIR BASHA", "M.Tech", "Assistant Professor", "22-04-2003"),
-            ("Mr. PUTTU ESWARAIAH", "M.Tech", "Assistant Professor", "16-06-2006"),
-            ("Ms. THORAINELLORE MANJULA", "M.Tech", "Assistant Professor", "29-06-2007"),
-            ("Mr. MENTA VIJAYABHASKAR", "M.Tech", "Assistant Professor", "02-12-2008"),
-            ("Mrs. SIVADANAM USHA RANI", "M.Tech", "Assistant Professor", "01-11-2011"),
-            ("Ms. AKSHAYAM PRASMITA", "M.Tech", "Assistant Professor", "05-07-2012"),
-            ("Ms. KODALI BHARGAVI", "M.Tech", "Assistant Professor", "04-04-2024"),
-            ("Mr. PERAM KAMALAKAR", "M.Tech", "Assistant Professor", "01-12-2012"),
-            ("Mr. CHEEDELLA CHANDRA SEKHAR", "M.Tech", "Assistant Professor", "01-03-2013"),
-            ("Mis. MALISETTY TEJASWINI", "M.Tech", "Assistant Professor", "01-04-2024"),
-            ("Mrs. GUMMADI TIRUMALA", "M.Tech", "Assistant Professor", "04-07-2016"),
-            ("Mrs. KANAMATHAREDDY RESHMA REDDY", "M.Tech", "Assistant Professor", "01-07-2021"),
-            ("Ms. JARUGUMALLI MADHURI", "M.Tech", "Assistant Professor", "07-01-2016"),
-            ("Mr. GUNUPATI VENKATESWARLU", "M.Tech", "Assistant Professor", "10-06-2016"),
-            ("Ms. K V SUPRAJA", "M.Tech", "Assistant Professor", "02-05-2025"),
-            ("Ms. NUNNA SAI SINDHURA", "M.Tech", "Assistant Professor", "02-07-2018"),
-            ("Ms. KOPILA RAVI CHAND", "M.Tech", "Assistant Professor", "01-09-2020"),
-            ("Mr. PEDDIREDDY VENKATESWARA REDDY", "M.Tech", "Assistant Professor", "01-09-2021"),
-            ("Mr. PANDITAAJAYA KUMAR", "M.Tech", "Assistant Professor", "03-06-2021"),
-            ("Ms. ALANKARAM SHOBITHA LAKSHMI", "M.Tech", "Assistant Professor", "01-09-2021"),
-            ("Mr. ANGALAKUDURU SRINIVASA RAO", "M.Tech", "Assistant Professor", "01-08-2022"),
-            ("Mr. THAMMINENI DAYAKAR", "M.Tech", "Assistant Professor", "25-07-2022"),
-            ("Mr. RAJA BHARGAVA", "M.Tech", "Assistant Professor", "01-04-2022"),
-            ("Mr. GUDAMSETTY RAJESH", "M.Tech", "Assistant Professor", "01-07-2022"),
-            ("Mr. CH VENKATESWARLU", "M.Tech", "Assistant Professor", "01-07-2022"),
-            ("Mr. RONDLA PRAPULLA KUMAR", "M.Tech", "Assistant Professor", "04-09-2023"),
-            ("Mr. MODEM JEEVAN KUMAR", "M.Tech", "Assistant Professor", "04-09-2023"),
-            ("Mr. PASUPULETI MOHAN", "M.Tech", "Assistant Professor", "04-09-2023"),
-            ("Ms. GUNA GAYATHRI PRASEETHA K", "M.Tech", "Assistant Professor", "10-01-2024"),
-            ("Ms.DARBALA PAVAN KUMAR", "M.Tech", "Assistant Professor", "06-09-2021"),
-            ("Mr. PERAM MALLIKARJUNA", "M.Tech", "Assistant Professor", "02-08-2021"),
-            ("Mr. KUNI SAI SUMANTH", "M.Tech", "Assistant Professor", "01-07-2024"),
-            ("Ms. PONNURU VENKATA SUSHMA", "M.Tech", "Assistant Professor", "08-07-2024"),
-            ("Mr. CHALLA AKHIL", "M.Tech", "Assistant Professor", "05-08-2024"),
-            ("Ms. CHEVURI ROJA", "M.Tech", "Assistant Professor", "01-08-2024"),
-            ("Mr. MUNAGALA VENKATESWARLU", "M.Tech", "Assistant Professor", "02-09-2024"),
-            ("Mr. MANCHERLAPATI NEERJA", "M.Tech", "Assistant Professor", "01-04-2024"),
-            ("Mr. METTA SATHYA SAI LAKSHMAN", "M.Tech", "Assistant Professor", "06-05-2024"),
-            ("Mr. ADUSUMALLI PRASANNA KUMAR", "M.Tech", "Assistant Professor", "06-05-2024"),
-            ("Mr. KATAMREDDI MAHENDRA", "M.Tech", "Assistant Professor", "01-07-2024"),
-            ("Ms. KOMMURI SRAVANI", "M.Tech", "Assistant Professor", "09-10-2023"),
-            ("Mrs. KUPPAM SAMEERA", "M.Tech", "Assistant Professor", "03-06-2024"),
-            ("Ms. PASUPILETI VIMALASANYHI", "M.Tech", "Assistant Professor", "02-09-2024"),
-            ("Mr. SINGAMANENI MALLIKARJUNA", "M.Tech", "Assistant Professor", "02-06-2025"),
-            ("Mrs. NIDAMANURI V SOUNDARYA", "M.Tech", "Assistant Professor", "10-08-2024")
-        ]
-        
-        existing_emails = set()
+INSTITUTION_NAME = "Parvathareddy Babul Reddy Visvodaya Institute of Technology & Science (Autonomous)"
+DEPT_CSE = "Computer Science and Engineering"
+
+def seed_timetable(db: Session):
+    try:
+        # Build timetable mapping for assigned departments, subjects, semesters
+        all_entries = db.query(models.TimetableEntry).all()
+        fac_timetable_map = {}
+        for entry in all_entries:
+            if not entry.faculty_username:
+                continue
+            key = entry.faculty_username.strip()
+            if key not in fac_timetable_map:
+                fac_timetable_map[key] = {
+                    "departments": set(),
+                    "subjects": set(),
+                    "semesters": set()
+                }
+            if entry.department:
+                fac_timetable_map[key]["departments"].add(entry.department)
+            if entry.subject:
+                fac_timetable_map[key]["subjects"].add(entry.subject)
+            if entry.semester:
+                fac_timetable_map[key]["semesters"].add(entry.semester)
+
+        # Ensure demo user 'faculty' is linked to Dr. DODLA SRUJAN CHANDRA REDDY
+        demo_fac = db.query(models.User).filter(models.User.username == "faculty").first()
+        if demo_fac:
+            demo_fac.name = FACULTY_MASTER_ALL[0][1]
+            demo_fac.department = DEPT_CSE
+            demo_fac.roll_number = "FAC001"
+            demo_fac.approval_status = "Approved"
+            db.commit()
+
+        # Idempotently update all 53 faculty members in users & faculties table
         faculty_pool = []
-        for idx, (name, degree, designation, doj) in enumerate(faculty_master_data):
-            f_id = f"FAC{idx+1:03d}"
+        for num, name, degree, designation, doj in FACULTY_MASTER_ALL:
+            f_id = f"FAC{num:03d}"
+            faculty_pool.append(name)
             
-            # Generate email removing titles and suffixing duplicates
+            # Teaching assignment mapping
+            tt = fac_timetable_map.get(name) or fac_timetable_map.get(f_id) or {}
+            assigned_depts = ", ".join(sorted(list(tt.get("departments", [])))) if tt else "Computer Science and Engineering (CSE)"
+            assigned_subjs = ", ".join(sorted(list(tt.get("subjects", [])))) if tt else "Core Computer Science & Engineering"
+            assigned_sems = ", ".join(sorted(list(tt.get("semesters", [])))) if tt else "1-1, 2-1, 3-1, 4-1"
+
+            # Clean name for email
             name_clean = name
             for title in ["Dr. ", "Mr. ", "Ms. ", "Mrs. ", "Mis. ", "Dr.", "Mr.", "Ms.", "Mrs.", "Mis."]:
                 if name_clean.startswith(title):
                     name_clean = name_clean[len(title):]
                     break
-            tokens = name_clean.strip().split()
-            first_token = tokens[0].lower() if tokens else "faculty"
-            
-            email = f"{first_token}@gmail.com"
-            if email in existing_emails:
-                suffix = 2
-                while f"{first_token}{suffix}@gmail.com" in existing_emails:
-                    suffix += 1
-                email = f"{first_token}{suffix}@gmail.com"
-            existing_emails.add(email)
-            
-            # Username is COMPLETE NAME
-            username = name
-            
-            # Create User login credentials
-            new_user = models.User(
-                username=username,
-                hashed_password="kane mamanotreallyhashed",
-                role=models.RoleEnum.faculty,
-                name=name,
-                email=email,
-                department="Engineering",
-                roll_number=f_id
-            )
-            db.add(new_user)
-            db.commit()
-            db.refresh(new_user)
-            
-            # Create Faculty Profile
-            new_fac = models.Faculty(
-                user_id=new_user.id,
-                faculty_id=f_id,
-                name=name,
-                university="Not Provided",
-                degree=degree,
-                designation=designation,
-                date_of_joining=doj,
-                email=email,
-                phone=f"98765432{idx+1:02d}",
-                status="Active"
-            )
-            db.add(new_fac)
-            faculty_pool.append(username)
+            first_token = name_clean.strip().split()[0].lower()
+            email = f"{first_token}{num if num > 1 else ''}@pbrvits.ac.in"
+            phone = f"+91 98765 432{num:02d}"
+
+            # Upsert User
+            user = db.query(models.User).filter(
+                (models.User.username == name) |
+                (models.User.roll_number == f_id) |
+                (models.User.name == name)
+            ).first()
+
+            if not user:
+                user = models.User(
+                    username=name,
+                    hashed_password="kane mamanotreallyhashed",
+                    role=models.RoleEnum.faculty,
+                    name=name,
+                    email=email,
+                    department=DEPT_CSE,
+                    roll_number=f_id,
+                    approval_status="Approved"
+                )
+                db.add(user)
+                db.commit()
+                db.refresh(user)
+            else:
+                user.name = name
+                user.role = models.RoleEnum.faculty
+                user.department = DEPT_CSE
+                user.roll_number = f_id
+                user.approval_status = "Approved"
+                db.commit()
+
+            # Upsert Faculty
+            fac = db.query(models.Faculty).filter(
+                (models.Faculty.faculty_id == f_id) |
+                (models.Faculty.name == name) |
+                (models.Faculty.user_id == user.id)
+            ).first()
+
+            if not fac:
+                fac = models.Faculty(
+                    user_id=user.id,
+                    faculty_id=f_id,
+                    name=name,
+                    university=INSTITUTION_NAME,
+                    degree=degree,
+                    designation=designation,
+                    date_of_joining=doj,
+                    department=DEPT_CSE,
+                    assigned_departments=assigned_depts,
+                    assigned_subjects=assigned_subjs,
+                    assigned_semesters=assigned_sems,
+                    email=email,
+                    phone=phone,
+                    status="Active",
+                    approval_status="Approved"
+                )
+                db.add(fac)
+                db.commit()
+            else:
+                fac.user_id = user.id
+                fac.faculty_id = f_id
+                fac.name = name
+                fac.university = INSTITUTION_NAME
+                fac.degree = degree
+                fac.designation = designation
+                fac.date_of_joining = doj
+                fac.department = DEPT_CSE
+                fac.assigned_departments = assigned_depts
+                fac.assigned_subjects = assigned_subjs
+                fac.assigned_semesters = assigned_sems
+                fac.email = email
+                fac.phone = phone
+                fac.status = "Active"
+                fac.approval_status = "Approved"
+                db.commit()
+
+        # Check if timetable already seeded
+        if db.query(models.TimetableEntry).count() > 0:
+            print("[*] Timetable entries exist. Faculty master data synchronized.")
+            return
             
         db.commit()
         
@@ -1253,8 +1383,19 @@ def get_timetable(
     return results
 
 @app.post("/timetable", response_model=schemas.TimetableEntryResponse)
-def create_timetable_entry(entry: schemas.TimetableEntryCreate, db: Session = Depends(get_db)):
-    check_timetable_conflicts(db, entry)
+def create_timetable_entry(entry: schemas.TimetableEntryCreate, overwrite: bool = False, db: Session = Depends(get_db)):
+    if overwrite:
+        # Remove existing conflicting slot for this department, semester, day, and period
+        db.query(models.TimetableEntry).filter(
+            models.TimetableEntry.department == entry.department,
+            models.TimetableEntry.semester == entry.semester,
+            models.TimetableEntry.day == entry.day,
+            models.TimetableEntry.period == entry.period
+        ).delete()
+        db.commit()
+    else:
+        check_timetable_conflicts(db, entry)
+    
     db_entry = models.TimetableEntry(**entry.dict())
     db.add(db_entry)
     db.commit()
@@ -1285,7 +1426,7 @@ def delete_user(identifier: str, db: Session = Depends(get_db)):
     if not user:
         # Check if student or faculty table has record
         student = db.query(models.Student).filter(
-            (models.Student.username == identifier) | (models.Student.roll_number == identifier)
+            (models.Student.roll_number == identifier) | (models.Student.name == identifier)
         ).first()
         if student:
             db.delete(student)
@@ -1296,14 +1437,14 @@ def delete_user(identifier: str, db: Session = Depends(get_db)):
     if user.role == models.RoleEnum.admin and user.username == "admin":
         raise HTTPException(status_code=400, detail="Cannot delete the root admin account.")
 
-    # Also delete student/faculty record & face enrollments
-    if user.role == models.RoleEnum.student:
-        db.query(models.Student).filter(
-            (models.Student.username == user.username) | (models.Student.roll_number == user.roll_number)
-        ).delete()
-        db.query(models.FaceEnrollment).filter(models.FaceEnrollment.student_id == user.id).delete()
-    elif user.role == models.RoleEnum.faculty:
-        db.query(models.Faculty).filter(models.Faculty.username == user.username).delete()
+    # Delete all associated child records across tables to prevent foreign key errors
+    db.query(models.FaceEnrollment).filter(models.FaceEnrollment.student_id == user.id).delete()
+    db.query(models.AttendanceRecord).filter(models.AttendanceRecord.student_id == user.id).delete()
+    db.query(models.Mark).filter(models.Mark.student_id == user.id).delete()
+    db.query(models.MarkModificationLog).filter(models.MarkModificationLog.student_id == user.id).delete()
+    db.query(models.FaceAuditLog).filter(models.FaceAuditLog.student_id == user.id).delete()
+    db.query(models.Faculty).filter((models.Faculty.user_id == user.id) | (models.Faculty.faculty_id == user.username)).delete()
+    db.query(models.Student).filter((models.Student.user_id == user.id) | (models.Student.roll_number == user.roll_number)).delete()
 
     db.delete(user)
     db.commit()
@@ -2221,15 +2362,75 @@ def promote_student(username: str, db: Session = Depends(get_db)):
     db.commit()
     return {"message": f"Student promoted from {current_sem} to {next_sem}", "current_semester": next_sem}
 
+@app.get("/users", response_model=List[schemas.UserResponse])
+def get_users(role: Optional[str] = None, db: Session = Depends(get_db)):
+    query = db.query(models.User)
+    if role:
+        query = query.filter(models.User.role == role)
+    return query.order_by(models.User.id).all()
+
 @app.get("/faculties", response_model=List[schemas.FacultyResponse])
 def get_faculties(db: Session = Depends(get_db)):
-    return db.query(models.Faculty).all()
+    return db.query(models.Faculty).order_by(models.Faculty.id).all()
 
 @app.get("/faculties/{faculty_id}", response_model=schemas.FacultyResponse)
 def get_faculty_profile(faculty_id: str, db: Session = Depends(get_db)):
-    fac = db.query(models.Faculty).filter(models.Faculty.faculty_id == faculty_id).first()
+    # Match flexibly by faculty_id, name, email
+    fac = db.query(models.Faculty).filter(
+        (models.Faculty.faculty_id == faculty_id) |
+        (models.Faculty.name == faculty_id) |
+        (models.Faculty.email == faculty_id)
+    ).first()
+
+    if not fac and faculty_id.isdigit():
+        fac = db.query(models.Faculty).filter(
+            (models.Faculty.id == int(faculty_id)) |
+            (models.Faculty.user_id == int(faculty_id))
+        ).first()
+
+    if not fac:
+        # Check associated User
+        u = db.query(models.User).filter(
+            (models.User.username == faculty_id) |
+            (models.User.name == faculty_id) |
+            (models.User.roll_number == faculty_id)
+        ).first()
+        if u:
+            fac = db.query(models.Faculty).filter(
+                (models.Faculty.user_id == u.id) |
+                (models.Faculty.faculty_id == u.roll_number) |
+                (models.Faculty.name == u.name)
+            ).first()
+
     if not fac:
         raise HTTPException(status_code=404, detail="Faculty profile not found")
+
+    # Auto-fill default University if missing
+    if not fac.university or fac.university == "Not Provided":
+        fac.university = "PBR Visvodaya Institute of Technology and Science (JNTUA)"
+
+    # Auto-fill assigned departments, subjects, semesters from timetable entries if missing
+    if not fac.assigned_subjects or not fac.assigned_departments or not fac.assigned_semesters:
+        entries = db.query(models.TimetableEntry).filter(
+            (models.TimetableEntry.faculty_username == fac.name) |
+            (models.TimetableEntry.faculty_username == fac.faculty_id)
+        ).all()
+        if entries:
+            depts = sorted(list(set(e.department for e in entries if e.department)))
+            subjs = sorted(list(set(e.subject for e in entries if e.subject)))
+            sems = sorted(list(set(e.semester for e in entries if e.semester)))
+            if depts:
+                fac.assigned_departments = ", ".join(depts)
+            if subjs:
+                fac.assigned_subjects = ", ".join(subjs[:6]) # clean top subjects
+            if sems:
+                fac.assigned_semesters = ", ".join(sems)
+            try:
+                db.commit()
+                db.refresh(fac)
+            except Exception:
+                db.rollback()
+
     return fac
 
 @app.put("/faculties/{faculty_id}", response_model=schemas.FacultyResponse)

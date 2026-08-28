@@ -145,6 +145,7 @@ class FacultyBase(BaseModel):
     degree: str
     designation: str
     date_of_joining: str
+    department: Optional[str] = "Computer Science and Engineering"
     assigned_departments: Optional[str] = None
     assigned_subjects: Optional[str] = None
     assigned_semesters: Optional[str] = None

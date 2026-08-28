@@ -96,7 +96,7 @@ function AppRoutes() {
                     {/* Student Routes */}
                     <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['student']}><Dashboard /></ProtectedRoute>} />
                     <Route path="/academic-health" element={<ProtectedRoute allowedRoles={['student']}><AcademicHealth /></ProtectedRoute>} />
-                    <Route path="/timetable" element={<ProtectedRoute allowedRoles={['student']}><Timetable /></ProtectedRoute>} />
+                    <Route path="/timetable" element={<ProtectedRoute allowedRoles={['student', 'faculty', 'admin']}><Timetable /></ProtectedRoute>} />
                     <Route path="/attendance" element={<ProtectedRoute allowedRoles={['student']}><Attendance /></ProtectedRoute>} />
                     <Route path="/marks" element={<ProtectedRoute allowedRoles={['student']}><Marks /></ProtectedRoute>} />
                     <Route path="/history" element={<ProtectedRoute allowedRoles={['student']}><AcademicHistory /></ProtectedRoute>} />

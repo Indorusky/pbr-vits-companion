@@ -77,6 +77,7 @@ const Sidebar = () => {
 
   const facultyNavItems = [
     { name: 'Dashboard', icon: Home, path: '/faculty-dashboard' },
+    { name: 'Timetable', icon: Calendar, path: '/timetable' },
     { name: 'Manage Students', icon: Users, path: '/manage-students' },
     { name: 'Assignments', icon: ClipboardList, path: '/assignments' },
     { name: 'Study Materials', icon: BookOpen, path: '/study' },
@@ -86,6 +87,7 @@ const Sidebar = () => {
 
   const adminNavItems = [
     { name: 'Dashboard', icon: Home, path: '/admin-dashboard' },
+    { name: 'Timetable', icon: Calendar, path: '/timetable' },
     { name: 'Manage Users', icon: Users, path: '/manage-users' },
     { name: 'Manage Departments', icon: Building, path: '/manage-departments' },
   ];
@@ -106,9 +108,9 @@ const Sidebar = () => {
   if (viewMode === 'faculty') {
     bottomNavItems = [
       { name: 'Home', icon: Home, path: '/faculty-dashboard' },
+      { name: 'Timetable', icon: Calendar, path: '/timetable' },
       { name: 'Students', icon: Users, path: '/manage-students' },
       { name: 'Assignments', icon: ClipboardList, path: '/assignments' },
-      { name: 'Materials', icon: BookOpen, path: '/study' },
       { name: 'Profile', icon: User, path: '/profile' },
     ];
   } else if (viewMode === 'admin') {

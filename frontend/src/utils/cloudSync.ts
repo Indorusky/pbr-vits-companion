@@ -1,36 +1,47 @@
-const NPOINT_BIN_ID = '0aef6f14dd0ddf8a7e08';
-const NPOINT_URL = `https://api.npoint.io/${NPOINT_BIN_ID}`;
+import { API_BASE_URL } from '../config';
+
+const LOCAL_STORAGE_KEY = 'campus_ai_accounts';
 
 export const saveUserToCloudDb = async (account: any): Promise<boolean> => {
   try {
     const cleanUname = (account.username || '').trim().toLowerCase();
     if (!cleanUname) return false;
 
-    let currentUsers: Record<string, any> = {};
+    // 1. Update local accounts cache
     try {
-      const getRes = await fetch(NPOINT_URL);
-      if (getRes.ok) {
-        const text = await getRes.text();
-        if (text) {
-          const parsed = JSON.parse(text);
-          if (parsed && parsed.users) {
-            currentUsers = parsed.users;
-          }
-        }
+      const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+      const accounts: any[] = saved ? JSON.parse(saved) : [];
+      const idx = accounts.findIndex(a => (a.username || '').toLowerCase() === cleanUname);
+      if (idx >= 0) {
+        accounts[idx] = { ...accounts[idx], ...account, username: cleanUname };
+      } else {
+        accounts.push({ ...account, username: cleanUname });
       }
-    } catch { /* ignore */ }
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(accounts));
+    } catch { /* ignore local error */ }
 
-    currentUsers[cleanUname] = {
-      ...account,
-      username: cleanUname
-    };
+    // 2. Sync to Backend Database API
+    try {
+      const res = await fetch(`${API_BASE_URL}/signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: cleanUname,
+          password: account.password || 'defaultPassword123',
+          role: account.role || 'student',
+          name: account.name || cleanUname,
+          email: account.email || `${cleanUname}@example.com`,
+          department: account.department || 'Computer Science and Engineering (CSE)',
+          year: account.year || '1st Year',
+          semester: account.semester || '1-1',
+          roll_number: account.roll_number,
+          profile_photo: account.profile_photo || ''
+        })
+      });
+      if (res.ok) return true;
+    } catch { /* backend offline, cached locally */ }
 
-    const postRes = await fetch(NPOINT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ users: currentUsers })
-    });
-    return postRes.ok;
+    return true;
   } catch (e) {
     console.warn("saveUserToCloudDb error", e);
     return false;
@@ -42,16 +53,28 @@ export const getUserFromCloudDb = async (username: string): Promise<any | null> 
     const cleanUname = (username || '').trim().toLowerCase();
     if (!cleanUname) return null;
 
-    const getRes = await fetch(NPOINT_URL);
-    if (getRes.ok) {
-      const text = await getRes.text();
-      if (text) {
-        const parsed = JSON.parse(text);
-        if (parsed && parsed.users && parsed.users[cleanUname]) {
-          return parsed.users[cleanUname];
+    // 1. Check local storage
+    try {
+      const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (saved) {
+        const accounts: any[] = JSON.parse(saved);
+        const match = accounts.find(a => (a.username || '').toLowerCase() === cleanUname);
+        if (match) return match;
+      }
+    } catch { /* ignore */ }
+
+    // 2. Check Backend Database API
+    try {
+      const res = await fetch(`${API_BASE_URL}/users?search=${encodeURIComponent(cleanUname)}`);
+      if (res.ok) {
+        const users = await res.json();
+        if (Array.isArray(users)) {
+          const match = users.find((u: any) => (u.username || '').toLowerCase() === cleanUname);
+          if (match) return match;
         }
       }
-    }
+    } catch { /* backend offline */ }
+
   } catch (e) {
     console.warn("getUserFromCloudDb error", e);
   }
@@ -60,15 +83,22 @@ export const getUserFromCloudDb = async (username: string): Promise<any | null> 
 
 export const getAllUsersFromCloudDb = async (): Promise<any[]> => {
   try {
-    const getRes = await fetch(NPOINT_URL);
-    if (getRes.ok) {
-      const text = await getRes.text();
-      if (text) {
-        const parsed = JSON.parse(text);
-        if (parsed && parsed.users) {
-          return Object.values(parsed.users);
+    // 1. Try Backend API
+    try {
+      const res = await fetch(`${API_BASE_URL}/users`);
+      if (res.ok) {
+        const users = await res.json();
+        if (Array.isArray(users) && users.length > 0) {
+          return users;
         }
       }
+    } catch { /* backend offline */ }
+
+    // 2. Fallback to local accounts
+    const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) return parsed;
     }
   } catch (e) {
     console.warn("getAllUsersFromCloudDb error", e);

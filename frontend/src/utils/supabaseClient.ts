@@ -1,10 +1,19 @@
 import { createClient } from '@supabase/supabase-js';
 
 // Default Supabase project endpoints for PBR VITS Student Companion
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://xyzcompany.supabase.co';
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5emNvbXBhbnkiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTYwMDAwMDAwMCwiZXhwIjoyMDAwMDAwMDAwfQ.testkey';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+export const isSupabaseConfigured = Boolean(
+  SUPABASE_URL &&
+  !SUPABASE_URL.includes('xyzcompany') &&
+  SUPABASE_ANON_KEY &&
+  !SUPABASE_ANON_KEY.includes('testkey')
+);
+
+export const supabase = isSupabaseConfigured 
+  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
 
 export interface SupabaseUser {
   id?: number | string;
@@ -22,6 +31,7 @@ export interface SupabaseUser {
 }
 
 export const supabaseRegisterUser = async (userAcc: SupabaseUser): Promise<{ success: boolean; data?: any; error?: string }> => {
+  if (!supabase) return { success: false, error: 'Supabase not configured' };
   try {
     const { data, error } = await supabase
       .from('accounts')
@@ -54,6 +64,7 @@ export const supabaseRegisterUser = async (userAcc: SupabaseUser): Promise<{ suc
 };
 
 export const supabaseValidateUser = async (username: string, pass: string): Promise<{ success: boolean; user?: SupabaseUser; error?: string }> => {
+  if (!supabase) return { success: false, error: 'Supabase not configured' };
   try {
     const cleanUname = username.trim().toLowerCase();
     const { data, error } = await supabase
@@ -76,6 +87,7 @@ export const supabaseValidateUser = async (username: string, pass: string): Prom
 };
 
 export const supabaseFetchAllUsers = async (): Promise<SupabaseUser[]> => {
+  if (!supabase) return [];
   try {
     const { data, error } = await supabase
       .from('accounts')
@@ -98,6 +110,7 @@ export const supabaseRecordAttendance = async (record: {
   status: string;
   verification_type: string;
 }): Promise<boolean> => {
+  if (!supabase) return false;
   try {
     const { error } = await supabase
       .from('attendance_records')
@@ -110,6 +123,7 @@ export const supabaseRecordAttendance = async (record: {
 };
 
 export const supabaseFetchAttendance = async (rollNumber: string): Promise<any[]> => {
+  if (!supabase) return [];
   try {
     const { data, error } = await supabase
       .from('attendance_records')

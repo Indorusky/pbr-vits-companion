@@ -177,15 +177,7 @@ const generatedFacultyAccounts = RAW_FACULTY_POOL.map((fullName, idx) => {
   const parts = cleanName.toLowerCase().split(/\s+/).filter(Boolean);
   let uname = parts.length > 1 ? `${parts[0]}.${parts[parts.length - 1]}` : parts[0];
   uname = uname.replace(/[^a-z0-9.]/g, '');
-  if (!uname || uname.length < 3) uname = `fac.${idx + 1}`;
-
-  const depts = [
-    'Computer Science and Engineering (CSE)',
-    'Artificial Intelligence & Machine Learning (AI&ML)',
-    'Electronics and Communication Engineering (ECE)',
-    'Electrical and Electronics Engineering (EEE)',
-    'Civil Engineering'
-  ];
+  const fId = `FAC${idx + 1}`.padStart(6, 'FAC00');
 
   return {
     id: 100 + idx,
@@ -193,9 +185,10 @@ const generatedFacultyAccounts = RAW_FACULTY_POOL.map((fullName, idx) => {
     password: 'faculty123',
     role: 'faculty' as Role,
     name: fullName,
-    department: depts[idx % depts.length],
+    roll_number: `FAC${String(idx + 1).padStart(3, '0')}`,
+    department: 'Computer Science and Engineering',
     email: `${uname}@pbrvits.ac.in`,
-    subjects: ['Generative AI', 'Data Structures', 'DBMS', 'Software Engineering'],
+    subjects: ['Core Computer Science & Engineering'],
     approval_status: 'Approved'
   };
 });
@@ -244,21 +237,11 @@ export const DEFAULT_ACCOUNTS = [
     username: 'faculty',
     password: 'faculty',
     role: 'faculty' as Role,
-    name: 'Dr. Clara Croft',
-    department: 'Computer Science and Engineering (CSE)',
-    email: 'clara.croft@campus.edu',
-    subjects: ['Generative AI', 'Data Structures'],
-    approval_status: 'Approved'
-  },
-  {
-    id: 6,
-    username: 'clara',
-    password: 'clara123',
-    role: 'faculty' as Role,
-    name: 'Dr. Clara Croft',
-    department: 'Computer Science and Engineering (CSE)',
-    email: 'clara.croft@campus.edu',
-    subjects: ['Generative AI', 'Data Structures'],
+    name: 'Dr. DODLA SRUJAN CHANDRA REDDY',
+    department: 'Computer Science and Engineering',
+    roll_number: 'FAC001',
+    email: 'dodla@pbrvits.ac.in',
+    subjects: ['Programming in C', 'Engineering Drawing', 'CAD Lab', 'Control Systems'],
     approval_status: 'Approved'
   },
   ...generatedFacultyAccounts
@@ -333,7 +316,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     } catch { /* ignore */ }
 
-    // 2. Pull all accounts from Supabase and Master Cloud DB to sync with other devices
+    // 2. Fetch all accounts from Backend Database and sync with local state
+    fetch(`${API_BASE_URL}/users`)
+      .then(res => res.ok ? res.json() : [])
+      .then(serverUsers => {
+        if (Array.isArray(serverUsers) && serverUsers.length > 0) {
+          setAccounts(prev => {
+            const map = new Map<string, any>();
+            prev.forEach(a => map.set((a.username || '').toLowerCase(), a));
+            serverUsers.forEach((u: any) => {
+              const key = (u.username || '').toLowerCase();
+              const existing = map.get(key) || {};
+              map.set(key, { ...existing, ...u });
+            });
+            const merged = Array.from(map.values());
+            try { localStorage.setItem('campus_ai_accounts', JSON.stringify(merged)); } catch {}
+            return merged;
+          });
+        }
+      })
+      .catch(() => { /* backend offline, continue with local accounts */ });
+
     supabaseFetchAllUsers().then(supaUsers => {
       if (Array.isArray(supaUsers) && supaUsers.length > 0) {
         setAccounts(prev => {
@@ -428,6 +431,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
       if (response.ok) {
         const data = await response.json();
+        const newAcc = {
+          id: data.id,
+          username: data.username,
+          password: pass,
+          role: data.role,
+          name: data.name,
+          email: data.email,
+          department: data.department,
+          year: data.year,
+          semester: data.semester,
+          roll_number: data.roll_number,
+          section: data.section || 'Section A',
+          profile_photo: data.profile_photo
+        };
+        setAccounts(prev => {
+          const filtered = prev.filter(a => (a.username || '').toLowerCase() !== username.toLowerCase());
+          const next = [...filtered, newAcc];
+          try { localStorage.setItem('campus_ai_accounts', JSON.stringify(next)); } catch {}
+          return next;
+        });
+        saveUserToCloudDb(newAcc);
+        supabaseRegisterUser(newAcc as any);
         return { success: true, message: 'Registration successful!', user: data };
       } else {
         const err = await response.json();
@@ -481,6 +506,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }),
       });
       if (response.ok) {
+        setAccounts(prev => {
+          const next = prev.map(a => (a.username || '').toLowerCase() === username.toLowerCase() ? { ...a, password: newPass } : a);
+          try { localStorage.setItem('campus_ai_accounts', JSON.stringify(next)); } catch {}
+          return next;
+        });
         return { success: true, message: 'Password reset successful!' };
       }
     } catch (e) {

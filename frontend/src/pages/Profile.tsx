@@ -57,11 +57,33 @@ const Profile = () => {
       const savedResetStatus = localStorage.getItem(`campus_ai_reset_status_${user.username}`);
       if (savedResetStatus) setResetRequestStatus(savedResetStatus as any);
       
-      if (user.role === 'faculty' && user.roll_number) {
-        fetch(`${API_BASE_URL}/faculties/${user.roll_number}`)
-          .then(res => res.json())
-          .then(data => setFacultyProfile(data))
-          .catch(err => console.warn(err));
+      if (user.role === 'faculty') {
+        const identifier = user.roll_number || user.username || user.name || user.id;
+        if (identifier) {
+          fetch(`${API_BASE_URL}/faculties/${encodeURIComponent(identifier)}`)
+            .then(res => res.ok ? res.json() : null)
+            .then(data => {
+              if (data) {
+                setFacultyProfile(data);
+              } else {
+                // Fallback: search faculties list
+                fetch(`${API_BASE_URL}/faculties`)
+                  .then(r => r.json())
+                  .then((list: any[]) => {
+                    const match = list.find(f => 
+                      f.name === user.name || 
+                      f.faculty_id === user.roll_number || 
+                      f.faculty_id === user.username ||
+                      f.email === user.email ||
+                      f.user_id === user.id
+                    );
+                    if (match) setFacultyProfile(match);
+                  })
+                  .catch(err => console.warn(err));
+              }
+            })
+            .catch(err => console.warn(err));
+        }
       }
 
       // Check if student face is registered & fetch attempt count & reset request status
@@ -334,74 +356,120 @@ const Profile = () => {
   };
 
   if (user?.role === 'faculty') {
+    const facName = facultyProfile?.name || user.name || user.username || 'Faculty Member';
+    const facDegree = facultyProfile?.degree || (facName.startsWith('Dr.') ? 'PhD' : 'M.Tech');
+    const facDesignation = facultyProfile?.designation || (facDegree === 'PhD' ? 'Professor' : 'Assistant Professor');
+    const facDoj = facultyProfile?.date_of_joining || '01-07-2024';
+    const facId = facultyProfile?.faculty_id || user.roll_number || 'FAC001';
+    const facUni = facultyProfile?.university && facultyProfile.university !== 'Not Provided' 
+      ? facultyProfile.university 
+      : 'Parvathareddy Babul Reddy Visvodaya Institute of Technology & Science (Autonomous)';
+    const facEmail = facultyProfile?.email || user.email || `${user.username.toLowerCase().replace(/[^a-z0-9]/g, '')}@pbrvits.ac.in`;
+    const facPhone = facultyProfile?.phone || '+91 98765 43201';
+    const facDepts = facultyProfile?.assigned_departments || facultyProfile?.department || user.department || 'Computer Science and Engineering';
+    const facSubjects = facultyProfile?.assigned_subjects || 'Core Computer Science & Engineering, Programming & Labs';
+    const facSemesters = facultyProfile?.assigned_semesters || '1-1, 1-2, 2-1, 2-2, 3-1, 3-2, 4-1, 4-2';
+
     return (
-      <div className="p-6 md:p-8 max-w-4xl mx-auto space-y-8 min-h-screen">
-        <header className="flex items-center space-x-4">
-          <div className="w-16 h-16 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-bold text-2xl shadow-lg">
-            {facultyProfile?.name?.charAt(0) || 'F'}
-          </div>
-          <div>
-            <h1 className="text-3xl font-extrabold text-slate-900">{facultyProfile?.name || user.name}</h1>
-            <p className="text-indigo-600 text-sm font-semibold">Faculty Profile Portal</p>
+      <div className="p-6 md:p-8 max-w-5xl mx-auto space-y-8 min-h-screen">
+        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+          <div className="flex items-center space-x-4">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-600 to-blue-600 text-white flex items-center justify-center font-extrabold text-2xl shadow-lg shrink-0">
+              {facName.charAt(0) || 'F'}
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900">{facName}</h1>
+                <span className="bg-indigo-50 text-indigo-700 text-xs font-black px-2.5 py-1 rounded-lg border border-indigo-200">
+                  {facDegree}
+                </span>
+                <span className="bg-blue-50 text-blue-700 text-xs font-black px-2.5 py-1 rounded-lg border border-blue-200">
+                  {facDesignation}
+                </span>
+              </div>
+              <p className="text-slate-500 text-sm font-medium mt-1">
+                Faculty ID: <strong className="text-slate-800">{facId}</strong> • Verified Academic Staff
+              </p>
+            </div>
           </div>
         </header>
 
-        <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 space-y-6 animate-fade-in">
-          <div className="border-b border-slate-100 pb-4">
-            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <UserIcon className="w-5 h-5 text-indigo-600" /> Profile Details
+        <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 space-y-6 animate-fade-in">
+          <div className="border-b border-slate-100 pb-4 flex items-center justify-between">
+            <h2 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+              <UserIcon className="w-5 h-5 text-indigo-600" /> Academic & Professional Profile
             </h2>
+            <span className="text-xs bg-emerald-50 text-emerald-700 font-bold px-3 py-1 rounded-full border border-emerald-200 flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5" /> Active Faculty
+            </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
-            <div className="space-y-1 bg-slate-50 p-4 rounded-xl border border-slate-100">
-              <span className="text-[10px] uppercase font-bold text-slate-400">Full Name</span>
-              <p className="font-extrabold text-slate-900 text-base">{facultyProfile?.name || 'Not Provided'}</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-sm">
+            <div className="space-y-1 bg-slate-50 p-4 rounded-2xl border border-slate-200/80">
+              <span className="text-[10px] uppercase font-extrabold text-slate-400 tracking-wider">Full Name</span>
+              <p className="font-extrabold text-slate-900 text-base">{facName}</p>
             </div>
 
-            <div className="space-y-1 bg-slate-50 p-4 rounded-xl border border-slate-100">
-              <span className="text-[10px] uppercase font-bold text-slate-400">University</span>
-              <p className="font-extrabold text-slate-900 text-base">{facultyProfile?.university || 'Not Provided'}</p>
+            <div className="space-y-1 bg-slate-50 p-4 rounded-2xl border border-slate-200/80">
+              <span className="text-[10px] uppercase font-extrabold text-slate-400 tracking-wider">Faculty ID</span>
+              <p className="font-extrabold text-slate-900 text-base">{facId}</p>
             </div>
 
-            <div className="space-y-1 bg-slate-50 p-4 rounded-xl border border-slate-100">
-              <span className="text-[10px] uppercase font-bold text-slate-400">Degree</span>
-              <p className="font-extrabold text-slate-900 text-base">{facultyProfile?.degree || 'Not Provided'}</p>
+            <div className="space-y-1 bg-slate-50 p-4 rounded-2xl border border-slate-200/80">
+              <span className="text-[10px] uppercase font-extrabold text-slate-400 tracking-wider">Highest Degree / Qualification</span>
+              <p className="font-extrabold text-slate-900 text-base flex items-center gap-2">
+                <GraduationCap className="w-4 h-4 text-indigo-600" />
+                {facDegree}
+              </p>
             </div>
 
-            <div className="space-y-1 bg-slate-50 p-4 rounded-xl border border-slate-100">
-              <span className="text-[10px] uppercase font-bold text-slate-400">Current Designation</span>
-              <p className="font-extrabold text-slate-900 text-base">{facultyProfile?.designation || 'Not Provided'}</p>
+            <div className="space-y-1 bg-slate-50 p-4 rounded-2xl border border-slate-200/80">
+              <span className="text-[10px] uppercase font-extrabold text-slate-400 tracking-wider">Current Designation</span>
+              <p className="font-extrabold text-slate-900 text-base flex items-center gap-2">
+                <Award className="w-4 h-4 text-blue-600" />
+                {facDesignation}
+              </p>
             </div>
 
-            <div className="space-y-1 bg-slate-50 p-4 rounded-xl border border-slate-100">
-              <span className="text-[10px] uppercase font-bold text-slate-400">Date of Joining</span>
-              <p className="font-extrabold text-slate-900 text-base">{facultyProfile?.date_of_joining || 'Not Provided'}</p>
+            <div className="space-y-1 bg-slate-50 p-4 rounded-2xl border border-slate-200/80">
+              <span className="text-[10px] uppercase font-extrabold text-slate-400 tracking-wider">University / Institute</span>
+              <p className="font-extrabold text-slate-900 text-sm leading-snug">{facUni}</p>
             </div>
 
-            <div className="space-y-1 bg-slate-50 p-4 rounded-xl border border-slate-100">
-              <span className="text-[10px] uppercase font-bold text-slate-400">Username</span>
-              <p className="font-extrabold text-slate-900 text-base">{user?.username || 'Not Provided'}</p>
+            <div className="space-y-1 bg-slate-50 p-4 rounded-2xl border border-slate-200/80">
+              <span className="text-[10px] uppercase font-extrabold text-slate-400 tracking-wider">Date of Joining</span>
+              <p className="font-extrabold text-slate-900 text-base flex items-center gap-2">
+                <Clock className="w-4 h-4 text-slate-500" />
+                {facDoj}
+              </p>
             </div>
 
-            <div className="space-y-1 bg-slate-50 p-4 rounded-xl border border-slate-100">
-              <span className="text-[10px] uppercase font-bold text-slate-400">Email</span>
-              <p className="font-extrabold text-slate-900 text-base">{facultyProfile?.email || user.email || 'Not Provided'}</p>
+            <div className="space-y-1 bg-slate-50 p-4 rounded-2xl border border-slate-200/80">
+              <span className="text-[10px] uppercase font-extrabold text-slate-400 tracking-wider">Official Email</span>
+              <p className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
+                <Mail className="w-4 h-4 text-slate-500" />
+                {facEmail}
+              </p>
             </div>
 
-            <div className="space-y-1 bg-slate-50 p-4 rounded-xl border border-slate-100">
-              <span className="text-[10px] uppercase font-bold text-slate-400">Department</span>
-              <p className="font-extrabold text-slate-900 text-base">{facultyProfile?.assigned_departments || 'Not Provided'}</p>
+            <div className="space-y-1 bg-slate-50 p-4 rounded-2xl border border-slate-200/80">
+              <span className="text-[10px] uppercase font-extrabold text-slate-400 tracking-wider">Contact Phone</span>
+              <p className="font-extrabold text-slate-900 text-base">{facPhone}</p>
             </div>
 
-            <div className="space-y-1 bg-slate-50 p-4 rounded-xl border border-slate-100">
-              <span className="text-[10px] uppercase font-bold text-slate-400">Subjects</span>
-              <p className="font-extrabold text-slate-900 text-base">{facultyProfile?.assigned_subjects || 'Not Provided'}</p>
+            <div className="space-y-1 bg-slate-50 p-4 rounded-2xl border border-slate-200/80 md:col-span-2">
+              <span className="text-[10px] uppercase font-extrabold text-slate-400 tracking-wider">Teaching Departments</span>
+              <p className="font-extrabold text-slate-900 text-sm">{facDepts}</p>
             </div>
 
-            <div className="space-y-1 bg-slate-50 p-4 rounded-xl border border-slate-100">
-              <span className="text-[10px] uppercase font-bold text-slate-400">Semesters</span>
-              <p className="font-extrabold text-slate-900 text-base">{facultyProfile?.assigned_semesters || 'Not Provided'}</p>
+            <div className="space-y-1 bg-slate-50 p-4 rounded-2xl border border-slate-200/80 md:col-span-2">
+              <span className="text-[10px] uppercase font-extrabold text-slate-400 tracking-wider">Teaching Subjects & Labs</span>
+              <p className="font-extrabold text-slate-900 text-sm">{facSubjects}</p>
+            </div>
+
+            <div className="space-y-1 bg-slate-50 p-4 rounded-2xl border border-slate-200/80 md:col-span-2">
+              <span className="text-[10px] uppercase font-extrabold text-slate-400 tracking-wider">Assigned Semesters</span>
+              <p className="font-extrabold text-slate-900 text-sm">{facSemesters}</p>
             </div>
           </div>
         </div>

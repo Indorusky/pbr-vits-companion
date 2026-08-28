@@ -114,6 +114,7 @@ class Faculty(Base):
     degree = Column(String(255))
     designation = Column(String(255))
     date_of_joining = Column(String(255))
+    department = Column(String(255), default="Computer Science and Engineering")
     assigned_departments = Column(String(1000), nullable=True)
     assigned_subjects = Column(String(1000), nullable=True)
     assigned_semesters = Column(String(1000), nullable=True)
