@@ -31,7 +31,8 @@ import {
   ThumbsDown,
   ShieldCheck,
   Sparkles,
-  Info
+  Info,
+  RotateCcw
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
@@ -195,14 +196,16 @@ const Placements = () => {
   const [activeTab, setActiveTab] = useState<'openings' | 'my-applications' | 'admin-applicants'>('openings');
   const [loading, setLoading] = useState(false);
 
-  // Main Data States
+  // Main Data States - Persist deletions permanently across refreshes
   const [jobs, setJobs] = useState<JobOpening[]>(() => {
     try {
       const saved = localStorage.getItem('campus_ai_jobs');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (saved !== null) {
+        return JSON.parse(saved);
       }
+    } catch {}
+    try {
+      localStorage.setItem('campus_ai_jobs', JSON.stringify(DEFAULT_JOBS));
     } catch {}
     return DEFAULT_JOBS;
   });
@@ -210,10 +213,12 @@ const Placements = () => {
   const [applications, setApplications] = useState<JobApplication[]>(() => {
     try {
       const saved = localStorage.getItem('campus_ai_job_applications');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (saved !== null) {
+        return JSON.parse(saved);
       }
+    } catch {}
+    try {
+      localStorage.setItem('campus_ai_job_applications', JSON.stringify(DEFAULT_APPLICATIONS));
     } catch {}
     return DEFAULT_APPLICATIONS;
   });
@@ -270,16 +275,11 @@ const Placements = () => {
   const syncData = async () => {
     setLoading(true);
 
-    // 1. Fetch Jobs from backend
     try {
       const resJobs = await fetch(`${API_BASE_URL}/placements/jobs`);
       if (resJobs.ok) {
         const dataJobs = await resJobs.json();
         if (Array.isArray(dataJobs) && dataJobs.length > 0) {
-          const existingIds = new Set(dataJobs.map(j => j.id));
-          DEFAULT_JOBS.forEach(dj => {
-            if (!existingIds.has(dj.id)) dataJobs.push(dj);
-          });
           setJobs(dataJobs);
           localStorage.setItem('campus_ai_jobs', JSON.stringify(dataJobs));
         }
@@ -288,7 +288,6 @@ const Placements = () => {
       console.warn("Backend jobs fetch warning:", e);
     }
 
-    // 2. Fetch Applications from backend
     try {
       const resApps = await fetch(`${API_BASE_URL}/placements/applications`);
       if (resApps.ok) {
@@ -308,18 +307,17 @@ const Placements = () => {
   useEffect(() => {
     syncData();
 
-    // Cross-tab and live component event listeners
     const handleJobUpdate = () => {
       try {
         const saved = localStorage.getItem('campus_ai_jobs');
-        if (saved) setJobs(JSON.parse(saved));
+        if (saved !== null) setJobs(JSON.parse(saved));
       } catch {}
     };
 
     const handleAppUpdate = () => {
       try {
         const saved = localStorage.getItem('campus_ai_job_applications');
-        if (saved) setApplications(JSON.parse(saved));
+        if (saved !== null) setApplications(JSON.parse(saved));
       } catch {}
     };
 
@@ -435,11 +433,9 @@ const Placements = () => {
       status: 'Applied'
     };
 
-    // Save locally
     const updated = [newApp, ...applications];
     saveApplicationsState(updated);
 
-    // Save to backend API
     try {
       await fetch(`${API_BASE_URL}/placements/applications`, {
         method: 'POST',
@@ -493,7 +489,6 @@ const Placements = () => {
     }
 
     const nextStatus: JobApplication['status'] = action === 'accept_interview' ? 'Interview Confirmed by Student' : 'Interview Declined by Student';
-
     const updated = applications.map(a => a.id === appId ? { ...a, status: nextStatus } : a);
     saveApplicationsState(updated);
 
@@ -621,6 +616,15 @@ const Placements = () => {
       } catch (err) {
         console.warn("Backend delete job notice:", err);
       }
+    }
+  };
+
+  // Restore sample demo drives for testing
+  const handleRestoreDemoDrives = () => {
+    if (confirm("Reset and restore all sample recruitment drives?")) {
+      saveJobsState(DEFAULT_JOBS);
+      saveApplicationsState(DEFAULT_APPLICATIONS);
+      alert("Sample recruitment drives restored successfully.");
     }
   };
 
@@ -799,7 +803,7 @@ const Placements = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={syncData}
             className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
@@ -810,24 +814,35 @@ const Placements = () => {
           </button>
 
           {isAdminOrFaculty && (
-            <button
-              onClick={() => {
-                setEditingJobId(null);
-                setJobRole('');
-                setJobCompany('');
-                setJobPkg('');
-                setJobEligibility('');
-                setJobDeadline('');
-                setJobDesc('');
-                setJobSkills('Python, Data Structures, Machine Learning');
-                setJobRounds('Round 1: Technical Screening • Round 2: Technical Interview');
-                setShowAddJobModal(true);
-              }}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 transition-all shrink-0 cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Post New Job Opening</span>
-            </button>
+            <>
+              <button
+                onClick={handleRestoreDemoDrives}
+                className="flex items-center gap-1 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                title="Restore Sample Drives"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Reset Demo Drives</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setEditingJobId(null);
+                  setJobRole('');
+                  setJobCompany('');
+                  setJobPkg('');
+                  setJobEligibility('');
+                  setJobDeadline('');
+                  setJobDesc('');
+                  setJobSkills('Python, Data Structures, Machine Learning');
+                  setJobRounds('Round 1: Technical Screening • Round 2: Technical Interview');
+                  setShowAddJobModal(true);
+                }}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 transition-all shrink-0 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Post New Job Opening</span>
+              </button>
+            </>
           )}
         </div>
       </header>
@@ -1057,7 +1072,15 @@ const Placements = () => {
             {filteredJobs.length === 0 && (
               <div className="col-span-full p-12 text-center text-slate-400 bg-white rounded-2xl border border-slate-200 font-bold space-y-2">
                 <Briefcase className="w-8 h-8 mx-auto text-slate-300" />
-                <p>No job listings match your query.</p>
+                <p>No active campus recruitment drives found.</p>
+                {isAdminOrFaculty && (
+                  <button
+                    onClick={handleRestoreDemoDrives}
+                    className="mt-2 px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-xl cursor-pointer"
+                  >
+                    Restore Demo Drives
+                  </button>
+                )}
               </div>
             )}
           </div>
