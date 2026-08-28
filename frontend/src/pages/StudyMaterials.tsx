@@ -206,11 +206,88 @@ const parseMarkdownToHtml = (md: string): string => {
   return html;
 };
 
+export const OFFICIAL_CSE_PDF_NOTES = [
+  {
+    title: 'Programming in C',
+    code: '23CS101',
+    semester: '1-1',
+    pdfUrl: '/notes/Programming_in_C_Complete_Notes.pdf',
+    units: ['Algorithms & C Basics', 'Functions & Storage Classes', 'Arrays, Strings & Pointers', 'Structures, Unions & DMA', 'File Handling & Preprocessors'],
+    size: '145 KB'
+  },
+  {
+    title: 'Data Structures & Algorithms',
+    code: '23CS102',
+    semester: '1-2',
+    pdfUrl: '/notes/Data_Structures_Complete_Notes.pdf',
+    units: ['Asymptotic Analysis & Linked Lists', 'Stacks & Queues ADTs', 'Trees & Balanced BSTs', 'Graphs & Traversals', 'Searching, Sorting & Hashing'],
+    size: '152 KB'
+  },
+  {
+    title: 'Database Management Systems (DBMS)',
+    code: '23CS201',
+    semester: '2-1',
+    pdfUrl: '/notes/Database_Management_Systems_Complete_Notes.pdf',
+    units: ['ER Modeling & Architecture', 'Relational Algebra & SQL', 'Functional Dependencies & Normalization', 'ACID Transactions & Concurrency (2PL)', 'Storage & B+ Tree Indexing'],
+    size: '158 KB'
+  },
+  {
+    title: 'Operating Systems',
+    code: '23CS202',
+    semester: '2-2',
+    pdfUrl: '/notes/Operating_Systems_Complete_Notes.pdf',
+    units: ['Process Management & PCB', 'CPU Scheduling Algorithms', 'Synchronization & Deadlocks', 'Virtual Memory & Paging', 'File Systems & Disk Scheduling'],
+    size: '160 KB'
+  },
+  {
+    title: 'Computer Networks',
+    code: '23CS301',
+    semester: '3-1',
+    pdfUrl: '/notes/Computer_Networks_Complete_Notes.pdf',
+    units: ['OSI & TCP/IP Architecture', 'Data Link Layer & MAC (CSMA/CD)', 'Network Layer & Routing Protocols', 'Transport Layer (TCP/UDP)', 'Application Layer & TLS/Security'],
+    size: '162 KB'
+  },
+  {
+    title: 'Design & Analysis of Algorithms (DAA)',
+    code: '23CS302',
+    semester: '3-1',
+    pdfUrl: '/notes/Design_Analysis_Algorithms_Complete_Notes.pdf',
+    units: ['Divide & Conquer Analysis', 'Greedy Method Paradigms', 'Dynamic Programming', 'Backtracking & Branch-and-Bound', 'NP-Completeness & P vs NP'],
+    size: '155 KB'
+  },
+  {
+    title: 'Generative AI & Deep Learning',
+    code: '23CS401',
+    semester: '4-1',
+    pdfUrl: '/notes/Generative_AI_Deep_Learning_Complete_Notes.pdf',
+    units: ['Deep Learning & Backpropagation', 'CNNs & Computer Vision', 'Sequential Models & LSTMs', 'Transformers & Self-Attention', 'LLMs, RAG & GenAI Systems'],
+    size: '165 KB'
+  },
+  {
+    title: 'Cryptography & Network Security',
+    code: '23CS402',
+    semester: '4-1',
+    pdfUrl: '/notes/Cryptography_Network_Security_Complete_Notes.pdf',
+    units: ['Classical Ciphers & Number Theory', 'Symmetric Encryption (AES/DES)', 'Public-Key RSA & Diffie-Hellman', 'Digital Signatures & SHA-256', 'IPsec, TLS & Network Defenses'],
+    size: '156 KB'
+  },
+  {
+    title: 'Cloud Computing & Virtualization',
+    code: '23CS403',
+    semester: '3-2',
+    pdfUrl: '/notes/Cloud_Computing_Complete_Notes.pdf',
+    units: ['NIST Cloud Architecture & Models', 'Hypervisors & Virtualization', 'Distributed Storage & CAP Theorem', 'Cloud Security & IAM Policies', 'Microservices, Docker & Kubernetes'],
+    size: '150 KB'
+  }
+];
+
 const StudyMaterials = () => {
   const { user, viewMode } = useAuth();
   
   // Navigation Modes
-  const [activeModeTab, setActiveModeTab] = useState<'curriculum' | 'uploads'>('curriculum');
+  const [activeModeTab, setActiveModeTab] = useState<'curriculum' | 'uploads' | 'pdf-notes'>('curriculum');
+  const [pdfSearch, setPdfSearch] = useState('');
+  const [pdfSemFilter, setPdfSemFilter] = useState('ALL');
 
   // Filters State (default to student settings)
   const defaultDept = getNormalizedDepartment(user?.department || 'Computer Science');
@@ -548,6 +625,17 @@ const StudyMaterials = () => {
           >
             <GraduationCap className="w-4 h-4" />
             <span>Course Curriculum</span>
+          </button>
+          <button
+            onClick={() => setActiveModeTab('pdf-notes')}
+            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
+              activeModeTab === 'pdf-notes'
+                ? 'bg-white text-emerald-600 shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <FileText className="w-4 h-4 text-emerald-600" />
+            <span>5-Unit Notes Library (PDF)</span>
           </button>
           <button
             onClick={() => setActiveModeTab('uploads')}
@@ -1327,6 +1415,104 @@ const StudyMaterials = () => {
               </div>
             </div>
           )}
+        </section>
+      )}
+
+      {/* 5-Unit Official Subject Notes (PDF Library) */}
+      {activeModeTab === 'pdf-notes' && (
+        <section className="space-y-6">
+          {/* Search & Semester Filters */}
+          <div className="bg-white rounded-2xl p-5 border border-slate-150 shadow-sm flex flex-col md:flex-row md:items-center gap-4 justify-between">
+            <div className="flex-1">
+              <input
+                type="text"
+                placeholder="Search subject title, course code (e.g. 23CS401, Operating Systems)..."
+                value={pdfSearch}
+                onChange={(e) => setPdfSearch(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-slate-400"
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {['ALL', '1-1', '1-2', '2-1', '2-2', '3-1', '3-2', '4-1'].map(sem => (
+                <button
+                  key={sem}
+                  onClick={() => setPdfSemFilter(sem)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all ${
+                    pdfSemFilter === sem
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                  }`}
+                >
+                  {sem === 'ALL' ? 'All Semesters' : `Sem ${sem}`}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {OFFICIAL_CSE_PDF_NOTES
+              .filter(item => {
+                const matchesSearch = item.title.toLowerCase().includes(pdfSearch.toLowerCase()) || item.code.toLowerCase().includes(pdfSearch.toLowerCase());
+                const matchesSem = pdfSemFilter === 'ALL' || item.semester === pdfSemFilter;
+                return matchesSearch && matchesSem;
+              })
+              .map((item) => (
+                <div key={item.code} className="bg-white rounded-2xl border border-slate-150 p-6 shadow-sm flex flex-col justify-between hover:shadow-md hover:border-blue-200 transition-all group">
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-[10px] font-black uppercase tracking-wider">
+                        {item.code} • Sem {item.semester}
+                      </span>
+                      <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-md text-[10px] font-bold">
+                        5 Units Complete
+                      </span>
+                    </div>
+
+                    <h3 className="font-extrabold text-base text-slate-900 group-hover:text-blue-600 transition-colors leading-snug">
+                      {item.title}
+                    </h3>
+
+                    {/* Unit list preview */}
+                    <div className="space-y-1.5 pt-2">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Unit Breakdown:</p>
+                      <ul className="space-y-1 text-xs text-slate-600">
+                        {item.units.map((u, uIdx) => (
+                          <li key={uIdx} className="flex items-center gap-1.5 truncate">
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0"></span>
+                            <span className="truncate font-medium">Unit {uIdx + 1}: {u}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+
+                  <div className="pt-5 border-t border-slate-100 flex items-center justify-between gap-2 mt-4">
+                    <span className="text-[11px] font-bold text-slate-400">
+                      Size: {item.size}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <a
+                        href={item.pdfUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all"
+                      >
+                        View
+                      </a>
+                      <a
+                        href={item.pdfUrl}
+                        download
+                        className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-extrabold shadow-sm flex items-center gap-1.5 transition-all hover:scale-105"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        Download PDF
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              ))}
+          </div>
         </section>
       )}
 
