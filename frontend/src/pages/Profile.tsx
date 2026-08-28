@@ -234,57 +234,57 @@ const Profile = () => {
 
                 setAugmentedVariantsCount(variants.length);
 
-                // Send variants payload & profile photo to backend
+                // Save locally first for 100% offline & remote device FRS matching resilience
                 const payload = JSON.stringify(variants);
-                const res = await fetch(`${API_BASE_URL}/register-face`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    student_id: user?.id,
-                    embedding: payload,
-                    profile_photo: photoSnapUrl
-                  })
-                });
-
-                if (res.ok) {
-                  const data = await res.json();
-                  if (data.enrollment_count !== undefined) setAttemptsCount(data.enrollment_count);
-                  else setAttemptsCount(prev => prev + 1);
-
-                  // Dynamically update user in AuthContext so profile avatar updates immediately
-                  if (user) {
-                    login({
-                      ...user,
-                      profile_photo: photoSnapUrl
-                    });
-                  }
-
-                  setFaceRegistered(true);
-                  setFaceStep('success');
-                } else {
-                  const errData = await res.json();
-                  if (res.status === 403) {
-                    setAttemptsCount(3);
-                    alert(`⚠️ ${errData.detail || 'Re-enrollment limit reached.'}`);
-                    setFaceStep('error');
-                    setFaceStatusText(errData.detail || 'Re-enrollment limit reached.');
-                    return;
-                  }
+                try {
+                  localStorage.setItem(`campus_ai_face_enrollment_${user?.username || 'student'}`, payload);
+                  localStorage.setItem(`campus_ai_profile_photo_${user?.username || 'student'}`, photoSnapUrl);
                   
-                  // Local fallback update
-                  setAttemptsCount(prev => prev + 1);
+                  const nextAttempts = Math.min(3, attemptsCount + 1);
+                  setAttemptsCount(nextAttempts);
+                  localStorage.setItem(`campus_ai_attempts_${user?.username || 'student'}`, String(nextAttempts));
+
                   if (user) {
                     login({
                       ...user,
                       profile_photo: photoSnapUrl
                     });
                   }
-                  setFaceRegistered(true);
-                  setFaceStep('success');
+                } catch { /* ignore */ }
+
+                // Send variants payload & profile photo to backend
+                try {
+                  const res = await fetch(`${API_BASE_URL}/register-face`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      student_id: user?.id,
+                      embedding: payload,
+                      profile_photo: photoSnapUrl
+                    })
+                  });
+
+                  if (res.ok) {
+                    const data = await res.json();
+                    if (data.enrollment_count !== undefined) setAttemptsCount(data.enrollment_count);
+                  } else {
+                    const errData = await res.json();
+                    if (res.status === 403) {
+                      setAttemptsCount(3);
+                      alert(`⚠️ ${errData.detail || 'Re-enrollment limit reached.'}`);
+                      setFaceStep('error');
+                      setFaceStatusText(errData.detail || 'Re-enrollment limit reached.');
+                      return;
+                    }
+                  }
+                } catch (e) {
+                  console.warn("Backend register-face failed, local storage fallback active", e);
                 }
+
+                setFaceRegistered(true);
+                setFaceStep('success');
               } catch (err) {
                 console.warn(err);
-                setAttemptsCount(prev => prev + 1);
                 setFaceRegistered(true);
                 setFaceStep('success');
               }
