@@ -26,6 +26,8 @@ import ManageUsers from './pages/ManageUsers';
 import ManageDepartments from './pages/ManageDepartments';
 import AcademicHistory from './pages/AcademicHistory';
 import AcademicHealth from './pages/AcademicHealth';
+import FacultyChat from './pages/FacultyChat';
+import StudentMessages from './pages/StudentMessages';
 
 const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode, allowedRoles?: string[] }) => {
   const { isAuthenticated, user } = useAuth();
@@ -105,14 +107,16 @@ function AppRoutes() {
                       <Route path="/study" element={<StudyMaterials />} />
                       <Route path="/events" element={<ProtectedRoute allowedRoles={['student']}><Events /></ProtectedRoute>} />
                       <Route path="/placements" element={<ProtectedRoute allowedRoles={['student', 'faculty', 'admin']}><Placements /></ProtectedRoute>} />
+                      <Route path="/faculty-chat" element={<ProtectedRoute allowedRoles={['student', 'admin']}><FacultyChat /></ProtectedRoute>} />
                       <Route path="/chat" element={<ProtectedRoute allowedRoles={['student']}><Chatbot /></ProtectedRoute>} />
                       <Route path="/quizzes" element={<Quizzes />} />
                       <Route path="/notifications" element={<ProtectedRoute allowedRoles={['student']}><Notifications /></ProtectedRoute>} />
                       <Route path="/announcements" element={<Announcements />} />
 
                       {/* Faculty Routes */}
-                      <Route path="/faculty-dashboard" element={<ProtectedRoute allowedRoles={['faculty']}><FacultyDashboard /></ProtectedRoute>} />
-                      <Route path="/manage-students" element={<ProtectedRoute allowedRoles={['faculty']}><ManageStudents /></ProtectedRoute>} />
+                      <Route path="/faculty-dashboard" element={<ProtectedRoute allowedRoles={['faculty', 'admin']}><FacultyDashboard /></ProtectedRoute>} />
+                      <Route path="/student-messages" element={<ProtectedRoute allowedRoles={['faculty', 'admin']}><StudentMessages /></ProtectedRoute>} />
+                      <Route path="/manage-students" element={<ProtectedRoute allowedRoles={['faculty', 'admin']}><ManageStudents /></ProtectedRoute>} />
                       
                       {/* Admin Routes */}
                       <Route path="/admin-dashboard" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />

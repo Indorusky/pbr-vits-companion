@@ -260,5 +260,37 @@ class QuizSubmission(Base):
     percentage = Column(Integer, default=0)
     submitted_at = Column(String(255))
 
+class FacultyStudentConversation(Base):
+    __tablename__ = "faculty_student_conversations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    faculty_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    department = Column(String(255), index=True, nullable=True)
+    created_at = Column(String(255), nullable=False)
+    updated_at = Column(String(255), nullable=False)
+    last_message_at = Column(String(255), nullable=True)
+    last_message_preview = Column(String(1000), nullable=True)
+    unread_by_student = Column(Integer, default=0)
+    unread_by_faculty = Column(Integer, default=0)
+
+    student = relationship("User", foreign_keys=[student_id])
+    faculty = relationship("User", foreign_keys=[faculty_id])
+
+class FacultyStudentMessage(Base):
+    __tablename__ = "faculty_student_messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    conversation_id = Column(Integer, ForeignKey("faculty_student_conversations.id"), index=True, nullable=False)
+    sender_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    sender_role = Column(String(50), nullable=False)
+    message = Column(String(4000), nullable=False)
+    created_at = Column(String(255), index=True, nullable=False)
+    is_read = Column(Integer, default=0)
+
+    conversation = relationship("FacultyStudentConversation", foreign_keys=[conversation_id])
+    sender = relationship("User", foreign_keys=[sender_id])
+
+
 
 

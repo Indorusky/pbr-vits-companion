@@ -329,5 +329,80 @@ class QuizSubmissionResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class FacultyChatConversationCreate(BaseModel):
+    faculty_id: int
+
+class FacultyChatMessageCreate(BaseModel):
+    message: str
+
+class FacultyListItem(BaseModel):
+    id: int
+    username: str
+    name: str
+    department: Optional[str] = None
+    designation: Optional[str] = None
+    email: Optional[str] = None
+    profile_photo: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+class StudentInfoSummary(BaseModel):
+    id: int
+    name: str
+    username: str
+    roll_number: Optional[str] = None
+    department: Optional[str] = None
+    year: Optional[str] = None
+    semester: Optional[str] = None
+    section: Optional[str] = None
+    profile_photo: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+class FacultyInfoSummary(BaseModel):
+    id: int
+    name: str
+    username: str
+    department: Optional[str] = None
+    designation: Optional[str] = None
+    email: Optional[str] = None
+    profile_photo: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+class FacultyChatMessageOut(BaseModel):
+    id: int
+    conversation_id: int
+    sender_id: int
+    sender_name: str
+    sender_role: str
+    message: str
+    created_at: str
+    is_read: bool
+
+    class Config:
+        from_attributes = True
+
+class FacultyChatConversationOut(BaseModel):
+    id: int
+    student_id: int
+    faculty_id: int
+    department: Optional[str] = None
+    created_at: str
+    updated_at: str
+    last_message_at: Optional[str] = None
+    last_message_preview: Optional[str] = None
+    unread_by_student: int
+    unread_by_faculty: int
+    student: Optional[StudentInfoSummary] = None
+    faculty: Optional[FacultyInfoSummary] = None
+
+    class Config:
+        from_attributes = True
+
+
 
 

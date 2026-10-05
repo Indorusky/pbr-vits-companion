@@ -19,7 +19,8 @@ def auto_migrate_db():
         models.Faculty, models.Mark, models.MarkModificationLog,
         models.JobPosting, models.JobApplicationRecord,
         models.Assignment, models.AssignmentSubmission,
-        models.Announcement, models.Quiz, models.QuizSubmission
+        models.Announcement, models.Quiz, models.QuizSubmission,
+        models.FacultyStudentConversation, models.FacultyStudentMessage
     ]
     
     dialect = engine.dialect.name
@@ -3541,6 +3542,383 @@ def get_quiz_results(
         ).all()
     else:
         return db.query(models.QuizSubmission).filter(models.QuizSubmission.quiz_id == id).all()
+
+# =========================================================
+# FACULTY-STUDENT DIRECT CHAT ENDPOINTS
+# =========================================================
+
+def format_conversation_out(conv: models.FacultyStudentConversation, db: Session) -> schemas.FacultyChatConversationOut:
+    stud_user = db.query(models.User).filter(models.User.id == conv.student_id).first()
+    fac_user = db.query(models.User).filter(models.User.id == conv.faculty_id).first()
+
+    stud_info = None
+    if stud_user:
+        stud_info = schemas.StudentInfoSummary(
+            id=stud_user.id,
+            name=stud_user.name or stud_user.username,
+            username=stud_user.username,
+            roll_number=stud_user.roll_number or "2373A01001",
+            department=stud_user.department or "Computer Science and Engineering (CSE)",
+            year=stud_user.year or "3rd Year",
+            semester=stud_user.semester or "3-1",
+            section=stud_user.section or "Section A",
+            profile_photo=stud_user.profile_photo
+        )
+
+    fac_info = None
+    if fac_user:
+        fac_rec = db.query(models.Faculty).filter(models.Faculty.user_id == fac_user.id).first()
+        designation = fac_rec.designation if fac_rec else "Faculty Member"
+        fac_info = schemas.FacultyInfoSummary(
+            id=fac_user.id,
+            name=fac_user.name or fac_user.username,
+            username=fac_user.username,
+            department=fac_user.department or "Computer Science and Engineering (CSE)",
+            designation=designation,
+            email=fac_user.email,
+            profile_photo=fac_user.profile_photo
+        )
+
+    return schemas.FacultyChatConversationOut(
+        id=conv.id,
+        student_id=conv.student_id,
+        faculty_id=conv.faculty_id,
+        department=conv.department,
+        created_at=conv.created_at,
+        updated_at=conv.updated_at,
+        last_message_at=conv.last_message_at,
+        last_message_preview=conv.last_message_preview,
+        unread_by_student=conv.unread_by_student or 0,
+        unread_by_faculty=conv.unread_by_faculty or 0,
+        student=stud_info,
+        faculty=fac_info
+    )
+
+@app.get("/faculty-chat/departments", response_model=List[str])
+def get_faculty_chat_departments(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    user_role = current_user.role.value if hasattr(current_user.role, 'value') else str(current_user.role)
+
+    default_depts = [
+        "Computer Science and Engineering (CSE)",
+        "Electronics and Communication Engineering (ECE)",
+        "Electrical and Electronics Engineering (EEE)",
+        "Civil Engineering",
+        "CSE AI",
+        "CSE AIML"
+    ]
+
+    if user_role == "student" or user_role == "admin":
+        fac_depts = db.query(models.Faculty.department).distinct().all()
+        user_fac_depts = db.query(models.User.department).filter(models.User.role == models.RoleEnum.faculty).distinct().all()
+        
+        dept_set = set(default_depts)
+        for d in fac_depts + user_fac_depts:
+            if d and d[0]:
+                dept_set.add(d[0])
+        return sorted(list(dept_set))
+    elif user_role == "faculty":
+        conv_depts = db.query(models.FacultyStudentConversation.department).filter(
+            models.FacultyStudentConversation.faculty_id == current_user.id
+        ).distinct().all()
+
+        dept_set = set()
+        for d in conv_depts:
+            if d and d[0]:
+                dept_set.add(d[0])
+        
+        if current_user.department:
+            dept_set.add(current_user.department)
+        
+        if not dept_set:
+            dept_set = set(default_depts)
+        return sorted(list(dept_set))
+    return default_depts
+
+@app.get("/faculty-chat/faculty", response_model=List[schemas.FacultyListItem])
+def get_faculty_list_for_chat(
+    department: Optional[str] = None,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    query = db.query(models.User).filter(models.User.role == models.RoleEnum.faculty)
+
+    if department and department.strip() and department != "All Departments" and department != "All":
+        dept_term = department.strip()
+        query = query.filter(
+            (models.User.department.ilike(f"%{dept_term}%")) |
+            (models.User.department == dept_term)
+        )
+
+    faculty_users = query.all()
+
+    fac_records = db.query(models.Faculty).all()
+    fac_map = {}
+    for f in fac_records:
+        if f.user_id:
+            fac_map[f.user_id] = f
+        if f.name:
+            fac_map[f.name.lower()] = f
+
+    result = []
+    for u in faculty_users:
+        designation = "Faculty Member"
+        if u.id in fac_map:
+            designation = fac_map[u.id].designation or designation
+        elif u.name and u.name.lower() in fac_map:
+            designation = fac_map[u.name.lower()].designation or designation
+
+        result.append(schemas.FacultyListItem(
+            id=u.id,
+            username=u.username,
+            name=u.name or u.username,
+            department=u.department or "Computer Science and Engineering (CSE)",
+            designation=designation,
+            email=u.email,
+            profile_photo=u.profile_photo
+        ))
+    return result
+
+@app.post("/faculty-chat/conversations", response_model=schemas.FacultyChatConversationOut)
+def create_or_get_conversation(
+    req: schemas.FacultyChatConversationCreate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    user_role = current_user.role.value if hasattr(current_user.role, 'value') else str(current_user.role)
+
+    if user_role == "student" or user_role == "admin":
+        student_id = current_user.id
+        faculty_id = req.faculty_id
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Faculty members view and reply to existing student conversations."
+        )
+
+    fac_user = db.query(models.User).filter(
+        models.User.id == faculty_id,
+        models.User.role.in_([models.RoleEnum.faculty, models.RoleEnum.admin])
+    ).first()
+    if not fac_user:
+        raise HTTPException(status_code=404, detail="Faculty member not found.")
+
+    existing = db.query(models.FacultyStudentConversation).filter(
+        models.FacultyStudentConversation.student_id == student_id,
+        models.FacultyStudentConversation.faculty_id == faculty_id
+    ).first()
+
+    now_str = datetime.datetime.now().isoformat()
+
+    if existing:
+        conv = existing
+    else:
+        conv = models.FacultyStudentConversation(
+            student_id=student_id,
+            faculty_id=faculty_id,
+            department=current_user.department or fac_user.department or "Computer Science and Engineering (CSE)",
+            created_at=now_str,
+            updated_at=now_str,
+            unread_by_student=0,
+            unread_by_faculty=0
+        )
+        db.add(conv)
+        db.commit()
+        db.refresh(conv)
+
+    return format_conversation_out(conv, db)
+
+@app.get("/faculty-chat/conversations", response_model=List[schemas.FacultyChatConversationOut])
+def get_conversations(
+    department: Optional[str] = None,
+    search: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    user_role = current_user.role.value if hasattr(current_user.role, 'value') else str(current_user.role)
+
+    query = db.query(models.FacultyStudentConversation)
+
+    if user_role == "student":
+        query = query.filter(models.FacultyStudentConversation.student_id == current_user.id)
+    elif user_role == "faculty":
+        query = query.filter(models.FacultyStudentConversation.faculty_id == current_user.id)
+        
+        if department and department.strip() and department != "All Departments" and department != "All":
+            dept_term = department.strip()
+            query = query.join(models.User, models.FacultyStudentConversation.student_id == models.User.id)\
+                         .filter((models.User.department.ilike(f"%{dept_term}%")) | (models.FacultyStudentConversation.department.ilike(f"%{dept_term}%")))
+
+        if search and search.strip():
+            sterm = f"%{search.strip()}%"
+            query = query.join(models.User, models.FacultyStudentConversation.student_id == models.User.id)\
+                         .filter((models.User.name.ilike(sterm)) | (models.User.roll_number.ilike(sterm)) | (models.User.username.ilike(sterm)))
+    elif user_role == "admin":
+        pass
+    else:
+        return []
+
+    query = query.order_by(models.FacultyStudentConversation.updated_at.desc())
+    convs = query.offset(offset).limit(limit).all()
+
+    return [format_conversation_out(c, db) for c in convs]
+
+@app.get("/faculty-chat/conversations/{conversation_id}", response_model=schemas.FacultyChatConversationOut)
+def get_conversation_by_id(
+    conversation_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    conv = db.query(models.FacultyStudentConversation).filter(
+        models.FacultyStudentConversation.id == conversation_id
+    ).first()
+    if not conv:
+        raise HTTPException(status_code=404, detail="Conversation not found.")
+
+    user_role = current_user.role.value if hasattr(current_user.role, 'value') else str(current_user.role)
+
+    if user_role != "admin" and current_user.id != conv.student_id and current_user.id != conv.faculty_id:
+        raise HTTPException(status_code=403, detail="Access denied to this conversation.")
+
+    return format_conversation_out(conv, db)
+
+@app.get("/faculty-chat/conversations/{conversation_id}/messages", response_model=List[schemas.FacultyChatMessageOut])
+def get_conversation_messages(
+    conversation_id: int,
+    limit: int = 100,
+    offset: int = 0,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    conv = db.query(models.FacultyStudentConversation).filter(
+        models.FacultyStudentConversation.id == conversation_id
+    ).first()
+    if not conv:
+        raise HTTPException(status_code=404, detail="Conversation not found.")
+
+    user_role = current_user.role.value if hasattr(current_user.role, 'value') else str(current_user.role)
+
+    if user_role != "admin" and current_user.id != conv.student_id and current_user.id != conv.faculty_id:
+        raise HTTPException(status_code=403, detail="Access denied to this conversation's messages.")
+
+    messages = db.query(models.FacultyStudentMessage).filter(
+        models.FacultyStudentMessage.conversation_id == conversation_id
+    ).order_by(models.FacultyStudentMessage.id.asc()).offset(offset).limit(limit).all()
+
+    sender_ids = {m.sender_id for m in messages}
+    senders = {u.id: (u.name or u.username) for u in db.query(models.User).filter(models.User.id.in_(sender_ids)).all()} if sender_ids else {}
+
+    return [
+        schemas.FacultyChatMessageOut(
+            id=m.id,
+            conversation_id=m.conversation_id,
+            sender_id=m.sender_id,
+            sender_name=senders.get(m.sender_id, "User"),
+            sender_role=m.sender_role,
+            message=m.message,
+            created_at=m.created_at,
+            is_read=bool(m.is_read)
+        )
+        for m in messages
+    ]
+
+@app.post("/faculty-chat/conversations/{conversation_id}/messages", response_model=schemas.FacultyChatMessageOut)
+def send_conversation_message(
+    conversation_id: int,
+    req: schemas.FacultyChatMessageCreate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    conv = db.query(models.FacultyStudentConversation).filter(
+        models.FacultyStudentConversation.id == conversation_id
+    ).first()
+    if not conv:
+        raise HTTPException(status_code=404, detail="Conversation not found.")
+
+    user_role = current_user.role.value if hasattr(current_user.role, 'value') else str(current_user.role)
+
+    if user_role != "admin" and current_user.id != conv.student_id and current_user.id != conv.faculty_id:
+        raise HTTPException(status_code=403, detail="Access denied. Cannot send message to this conversation.")
+
+    raw_msg = req.message
+    if not raw_msg or not raw_msg.strip():
+        raise HTTPException(status_code=400, detail="Message content cannot be empty or whitespace only.")
+    
+    clean_msg = raw_msg.strip()
+    if len(clean_msg) > 4000:
+        raise HTTPException(status_code=400, detail="Message exceeds maximum length of 4000 characters.")
+
+    now_str = datetime.datetime.now().isoformat()
+
+    msg = models.FacultyStudentMessage(
+        conversation_id=conversation_id,
+        sender_id=current_user.id,
+        sender_role=user_role,
+        message=clean_msg,
+        created_at=now_str,
+        is_read=0
+    )
+    db.add(msg)
+
+    preview = clean_msg[:90] + ("..." if len(clean_msg) > 90 else "")
+    conv.last_message_at = now_str
+    conv.last_message_preview = preview
+    conv.updated_at = now_str
+
+    if current_user.id == conv.student_id:
+        conv.unread_by_faculty = (conv.unread_by_faculty or 0) + 1
+    elif current_user.id == conv.faculty_id:
+        conv.unread_by_student = (conv.unread_by_student or 0) + 1
+
+    db.commit()
+    db.refresh(msg)
+
+    return schemas.FacultyChatMessageOut(
+        id=msg.id,
+        conversation_id=msg.conversation_id,
+        sender_id=msg.sender_id,
+        sender_name=current_user.name or current_user.username,
+        sender_role=msg.sender_role,
+        message=msg.message,
+        created_at=msg.created_at,
+        is_read=False
+    )
+
+@app.patch("/faculty-chat/conversations/{conversation_id}/read")
+def mark_conversation_read(
+    conversation_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    conv = db.query(models.FacultyStudentConversation).filter(
+        models.FacultyStudentConversation.id == conversation_id
+    ).first()
+    if not conv:
+        raise HTTPException(status_code=404, detail="Conversation not found.")
+
+    user_role = current_user.role.value if hasattr(current_user.role, 'value') else str(current_user.role)
+
+    if user_role != "admin" and current_user.id != conv.student_id and current_user.id != conv.faculty_id:
+        raise HTTPException(status_code=403, detail="Access denied.")
+
+    if current_user.id == conv.student_id:
+        conv.unread_by_student = 0
+    elif current_user.id == conv.faculty_id:
+        conv.unread_by_faculty = 0
+
+    db.query(models.FacultyStudentMessage).filter(
+        models.FacultyStudentMessage.conversation_id == conversation_id,
+        models.FacultyStudentMessage.sender_id != current_user.id,
+        models.FacultyStudentMessage.is_read == 0
+    ).update({"is_read": 1}, synchronize_session=False)
+
+    db.commit()
+    return {"success": True, "conversation_id": conversation_id}
+
 
 
 

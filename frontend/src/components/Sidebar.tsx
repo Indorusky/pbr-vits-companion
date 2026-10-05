@@ -70,6 +70,7 @@ const Sidebar = () => {
     { name: 'Announcements', icon: Megaphone, path: '/announcements' },
     { name: 'Events', icon: Sparkles, path: '/events' },
     { name: 'Placements & Jobs', icon: FileText, path: '/placements' },
+    { name: 'Faculty Chat', icon: MessageSquare, path: '/faculty-chat' },
     { name: 'AI Chatbot', icon: MessageSquare, path: '/chat' },
     { name: 'Interactive Quizzes', icon: HelpCircle, path: '/quizzes' },
     { name: 'Notifications', icon: Bell, path: '/notifications' },
@@ -77,6 +78,7 @@ const Sidebar = () => {
 
   const facultyNavItems = [
     { name: 'Dashboard', icon: Home, path: '/faculty-dashboard' },
+    { name: 'Student Messages', icon: MessageSquare, path: '/student-messages' },
     { name: 'Timetable', icon: Calendar, path: '/timetable' },
     { name: 'Manage Students', icon: Users, path: '/manage-students' },
     { name: 'Career & Placements', icon: FileText, path: '/placements' },
