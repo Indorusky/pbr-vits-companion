@@ -3,7 +3,7 @@ uvicorn
 sqlalchemy
 pydantic
 pymysql
-psycopg2-binary
+psycopg[binary]
 python-dotenv
 gunicorn
 pyjwt

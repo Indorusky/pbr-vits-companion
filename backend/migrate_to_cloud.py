@@ -19,7 +19,11 @@ def migrate():
         sys.exit(1)
 
     if target_url.startswith("postgres://"):
-        target_url = target_url.replace("postgres://", "postgresql://", 1)
+        target_url = target_url.replace("postgres://", "postgresql+psycopg://", 1)
+    elif target_url.startswith("postgresql://"):
+        target_url = target_url.replace("postgresql://", "postgresql+psycopg://", 1)
+    elif target_url.startswith("postgresql+psycopg2://"):
+        target_url = target_url.replace("postgresql+psycopg2://", "postgresql+psycopg://", 1)
 
     backend_dir = os.path.dirname(os.path.abspath(__file__))
     sqlite_path = os.path.join(backend_dir, "campus_companion.db")
