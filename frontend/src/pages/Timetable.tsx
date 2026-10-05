@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { API_BASE_URL } from '../config';
+import { API_BASE_URL, cachedFetch, invalidateApiCache } from '../config';
 import {
   Calendar,
   Clock,
@@ -123,12 +123,13 @@ const Timetable = () => {
 
       url += `?${params.toString()}`;
 
-      const response = await fetch(url, {
+      // Fetch timetable with 5-minute in-memory cache
+      const response = await cachedFetch(url, {
         headers: {
           'x-requester-username': user?.username || '',
           'x-requester-role': user?.role || ''
         }
-      });
+      }, 300000);
 
       if (response.ok) {
         const data = await response.json();
@@ -211,6 +212,7 @@ const Timetable = () => {
       });
 
       if (response.ok) {
+        invalidateApiCache('/timetable');
         setNotification({
           type: 'success',
           message: `Successfully scheduled "${payload.subject}" for ${payload.day} Period ${payload.period} (${payload.department} - ${payload.semester})!`
@@ -247,6 +249,7 @@ const Timetable = () => {
       });
 
       if (res.ok) {
+        invalidateApiCache('/timetable');
         setNotification({ type: 'success', message: `Period ${periodNum} (${subjectName}) removed.` });
         fetchTimetable();
       } else {

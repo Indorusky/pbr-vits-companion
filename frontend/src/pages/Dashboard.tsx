@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { API_BASE_URL } from '../config';
+import { API_BASE_URL, cachedFetch } from '../config';
 
 import { 
   Book, 
@@ -199,8 +199,8 @@ const Dashboard = () => {
       'x-requester-role': user.role || 'student'
     };
     
-    // Fetch attendance statistics
-    fetch(`${API_BASE_URL}/attendance/student/${user.id}`, { headers })
+    // Fetch attendance statistics (cached for 60 seconds)
+    cachedFetch(`${API_BASE_URL}/attendance/student/${user.id}`, { headers }, 60000)
       .then(res => {
         if (!res.ok) throw new Error('API Error');
         return res.json();
@@ -211,8 +211,8 @@ const Dashboard = () => {
           setAttendance(realOverallAtt);
         }
         
-        // Fetch marks
-        fetch(`${API_BASE_URL}/marks?student_id=${user.id}&semester=${studentSem}`, { headers })
+        // Fetch marks (cached for 60 seconds)
+        cachedFetch(`${API_BASE_URL}/marks?student_id=${user.id}&semester=${studentSem}`, { headers }, 60000)
           .then(res => {
             if (!res.ok) throw new Error('API Error');
             return res.json();

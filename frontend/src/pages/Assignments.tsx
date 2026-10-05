@@ -114,6 +114,8 @@ const INITIAL_ASSIGNMENTS: Assignment[] = [
   }
 ];
 
+import { API_BASE_URL, getAuthHeaders } from '../config';
+
 const Assignments = () => {
   const { user, viewMode } = useAuth();
   const isFacultyOrAdmin = viewMode === 'faculty' || viewMode === 'admin';
@@ -141,6 +143,39 @@ const Assignments = () => {
     } catch { /* ignore */ }
     return INITIAL_ASSIGNMENTS;
   });
+
+  const fetchAssignments = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/assignments`, {
+        headers: getAuthHeaders()
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          const mapped: Assignment[] = data.map((d: any) => ({
+            id: String(d.id),
+            title: d.title,
+            department: d.department,
+            semester: d.semester,
+            subject: d.subject,
+            createdBy: d.created_by,
+            dueDate: d.due_date,
+            description: d.description,
+            points: d.points || 100,
+            submissions: d.submissions || {}
+          }));
+          setAssignments(mapped);
+          localStorage.setItem('campus_ai_assignments_v2', JSON.stringify(mapped));
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to fetch backend assignments", e);
+    }
+  };
+
+  useEffect(() => {
+    fetchAssignments();
+  }, []);
 
   // Save to localStorage
   useEffect(() => {
@@ -178,7 +213,7 @@ const Assignments = () => {
   }, [newDept, newSem]);
 
   // Handler: Create Assignment
-  const handleCreateAssignment = (e: React.FormEvent) => {
+  const handleCreateAssignment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim() || !newDesc.trim() || !newDueDate) return;
 
@@ -195,6 +230,25 @@ const Assignments = () => {
       submissions: {}
     };
 
+    try {
+      await fetch(`${API_BASE_URL}/assignments`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          title: newAss.title,
+          department: newAss.department,
+          semester: newAss.semester,
+          subject: newAss.subject,
+          due_date: newAss.dueDate,
+          description: newAss.description,
+          points: newAss.points
+        })
+      });
+      fetchAssignments();
+    } catch (err) {
+      console.warn("Backend assignment create error", err);
+    }
+
     setAssignments([newAss, ...assignments]);
     setNewTitle('');
     setNewDesc('');
@@ -204,7 +258,7 @@ const Assignments = () => {
   };
 
   // Handler: Student Submit Assignment
-  const handleStudentSubmit = (e: React.FormEvent) => {
+  const handleStudentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeSubmitAss || !submittedFileName.trim()) return;
 
@@ -217,6 +271,20 @@ const Assignments = () => {
       comments: studentComments.trim(),
       status: 'Submitted'
     };
+
+    try {
+      await fetch(`${API_BASE_URL}/assignments/${activeSubmitAss.id}/submit`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          submitted_file: newSubmission.submittedFile,
+          comments: newSubmission.comments
+        })
+      });
+      fetchAssignments();
+    } catch (err) {
+      console.warn("Backend assignment submit error", err);
+    }
 
     setAssignments(prev => prev.map(ass => {
       if (ass.id === activeSubmitAss.id) {

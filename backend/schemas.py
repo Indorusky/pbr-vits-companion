@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional, List, Any, Dict
 from models import RoleEnum
 
 class UserCreate(BaseModel):
@@ -194,5 +194,140 @@ class MarkModificationLogResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+# Assignments
+class AssignmentBase(BaseModel):
+    title: str
+    description: Optional[str] = None
+    subject: str
+    department: str
+    semester: str
+    faculty_username: Optional[str] = None
+    faculty_name: Optional[str] = None
+    deadline: Optional[str] = None
+    due_date: Optional[str] = None
+    total_points: Optional[int] = 100
+    points: Optional[int] = None
+    attachment_url: Optional[str] = None
+
+class AssignmentCreate(AssignmentBase):
+    pass
+
+class AssignmentResponse(BaseModel):
+    id: int
+    title: str
+    description: Optional[str] = None
+    subject: str
+    department: str
+    semester: str
+    faculty_username: Optional[str] = None
+    faculty_name: Optional[str] = None
+    deadline: Optional[str] = None
+    total_points: Optional[int] = 100
+    attachment_url: Optional[str] = None
+    created_at: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+class AssignmentSubmissionCreate(BaseModel):
+    assignment_id: Optional[int] = None
+    submission_text: Optional[str] = None
+    file_url: Optional[str] = None
+    file_name: Optional[str] = None
+    submitted_file: Optional[str] = None
+    comments: Optional[str] = None
+
+class AssignmentSubmissionResponse(BaseModel):
+    id: int
+    assignment_id: int
+    student_id: int
+    student_name: str
+    student_roll: str
+    submission_text: Optional[str] = None
+    file_url: Optional[str] = None
+    file_name: Optional[str] = None
+    submitted_at: str
+    marks_awarded: Optional[int] = None
+    feedback: Optional[str] = None
+    status: str
+
+    class Config:
+        from_attributes = True
+
+# Announcements
+class AnnouncementBase(BaseModel):
+    title: str
+    content: str
+    category: Optional[str] = "General"
+    priority: Optional[str] = "Normal"
+    important: Optional[bool] = False
+    author_role: Optional[str] = "Faculty"
+    author_name: Optional[str] = "Academic Admin"
+    target_dept: Optional[str] = "All"
+    target_sem: Optional[str] = "All"
+
+class AnnouncementCreate(AnnouncementBase):
+    pass
+
+class AnnouncementResponse(AnnouncementBase):
+    id: int
+    created_at: str
+
+    class Config:
+        from_attributes = True
+
+# Quizzes
+class QuizBase(BaseModel):
+    title: str
+    subject: str
+    department: str
+    semester: str
+    year: Optional[str] = None
+    faculty_username: Optional[str] = None
+    duration: Optional[str] = None
+    duration_minutes: Optional[int] = 15
+    total_marks: Optional[int] = 10
+    questions: Optional[List[Any]] = None
+    questions_json: Optional[str] = None
+
+class QuizCreate(QuizBase):
+    pass
+
+class QuizResponse(BaseModel):
+    id: int
+    title: str
+    subject: str
+    department: str
+    semester: str
+    faculty_username: Optional[str] = None
+    duration_minutes: Optional[int] = 15
+    total_marks: Optional[int] = 10
+    questions_json: str
+    created_at: str
+
+    class Config:
+        from_attributes = True
+
+class QuizSubmissionCreate(BaseModel):
+    quiz_id: Optional[int] = None
+    answers: Optional[Dict[str, Any]] = None
+    answers_json: Optional[str] = None
+
+class QuizSubmissionResponse(BaseModel):
+    id: int
+    quiz_id: int
+    student_id: int
+    student_name: str
+    student_roll: str
+    answers_json: str
+    score: int
+    total_questions: int
+    percentage: int
+    submitted_at: str
+
+    class Config:
+        from_attributes = True
+
 
 

@@ -186,4 +186,79 @@ class JobApplicationRecord(Base):
     interview_date = Column(String(255), nullable=True)
     interview_notes = Column(String(2000), nullable=True)
 
+class Assignment(Base):
+    __tablename__ = "assignments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(255), nullable=False)
+    description = Column(String(2000), nullable=True)
+    subject = Column(String(255), nullable=False)
+    department = Column(String(255), nullable=False)
+    semester = Column(String(255), nullable=False)
+    faculty_username = Column(String(255), nullable=True)
+    faculty_name = Column(String(255), nullable=True)
+    deadline = Column(String(255), nullable=False)
+    total_points = Column(Integer, default=100)
+    attachment_url = Column(String(1000), nullable=True)
+    created_at = Column(String(255), nullable=True)
+
+class AssignmentSubmission(Base):
+    __tablename__ = "assignment_submissions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    assignment_id = Column(Integer, ForeignKey("assignments.id"))
+    student_id = Column(Integer, ForeignKey("users.id"))
+    student_name = Column(String(255))
+    student_roll = Column(String(255))
+    submission_text = Column(String(4000), nullable=True)
+    file_url = Column(String(1000), nullable=True)
+    file_name = Column(String(255), nullable=True)
+    submitted_at = Column(String(255))
+    marks_awarded = Column(Integer, nullable=True)
+    feedback = Column(String(1000), nullable=True)
+    status = Column(String(50), default="Submitted")
+
+class Announcement(Base):
+    __tablename__ = "announcements"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(255), nullable=False)
+    content = Column(String(4000), nullable=False)
+    category = Column(String(100), default="General")
+    priority = Column(String(50), default="Normal")
+    author_role = Column(String(50), default="Faculty")
+    author_name = Column(String(255), default="Academic Admin")
+    target_dept = Column(String(255), default="All")
+    target_sem = Column(String(255), default="All")
+    created_at = Column(String(255))
+
+class Quiz(Base):
+    __tablename__ = "quizzes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(255), nullable=False)
+    subject = Column(String(255), nullable=False)
+    department = Column(String(255), nullable=False)
+    semester = Column(String(255), nullable=False)
+    faculty_username = Column(String(255), nullable=True)
+    duration_minutes = Column(Integer, default=15)
+    total_marks = Column(Integer, default=10)
+    questions_json = Column(String(20000), nullable=False) # JSON list of questions
+    created_at = Column(String(255))
+
+class QuizSubmission(Base):
+    __tablename__ = "quiz_submissions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    quiz_id = Column(Integer, ForeignKey("quizzes.id"))
+    student_id = Column(Integer, ForeignKey("users.id"))
+    student_name = Column(String(255))
+    student_roll = Column(String(255))
+    answers_json = Column(String(4000), nullable=False)
+    score = Column(Integer, default=0)
+    total_questions = Column(Integer, default=0)
+    percentage = Column(Integer, default=0)
+    submitted_at = Column(String(255))
+
+
 

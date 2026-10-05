@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { User as UserIcon, Mail, GraduationCap, Award, BookOpen, Save, Camera, Video, CheckCircle2, ShieldCheck, Sun, Moon, Sparkles, X, RefreshCw, Layers, Send, Clock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { API_BASE_URL } from '../config';
+import { API_BASE_URL, cachedFetch } from '../config';
 import { loadFaceApiModels, getFaceEmbedding } from '../utils/faceRecognition';
 
 const Profile = () => {
@@ -60,40 +60,25 @@ const Profile = () => {
       if (user.role === 'faculty') {
         const identifier = user.roll_number || user.username || user.name || user.id;
         if (identifier) {
-          fetch(`${API_BASE_URL}/faculties/${encodeURIComponent(identifier)}`)
+          cachedFetch(`${API_BASE_URL}/faculties/${encodeURIComponent(identifier)}`, {}, 180000)
             .then(res => res.ok ? res.json() : null)
             .then(data => {
               if (data) {
                 setFacultyProfile(data);
-              } else {
-                // Fallback: search faculties list
-                fetch(`${API_BASE_URL}/faculties`)
-                  .then(r => r.json())
-                  .then((list: any[]) => {
-                    const match = list.find(f => 
-                      f.name === user.name || 
-                      f.faculty_id === user.roll_number || 
-                      f.faculty_id === user.username ||
-                      f.email === user.email ||
-                      f.user_id === user.id
-                    );
-                    if (match) setFacultyProfile(match);
-                  })
-                  .catch(err => console.warn(err));
               }
             })
             .catch(err => console.warn(err));
         }
       }
 
-      // Check if student face is registered & fetch attempt count & reset request status
+      // Check if student face is registered & fetch attempt count & reset request status (60s cache)
       if (user.id) {
-        fetch(`${API_BASE_URL}/attendance/student/${user.id}`, {
+        cachedFetch(`${API_BASE_URL}/attendance/student/${user.id}`, {
           headers: {
             'x-requester-username': user.username,
             'x-requester-role': user.role || 'student'
           }
-        })
+        }, 60000)
           .then(res => res.json())
           .then(data => {
             if (data.face_registered) setFaceRegistered(true);

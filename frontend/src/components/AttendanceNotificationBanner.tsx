@@ -41,90 +41,105 @@ export default function AttendanceNotificationBanner() {
     }
   };
 
-  const checkAttendanceWindow = async () => {
+  // Cache today's timetable locally in component memory to eliminate repeated network fetches
+  const [cachedSchedule, setCachedSchedule] = useState<any[]>([]);
+
+  // 1. Fetch today's schedule ONCE when student logs in or semester/department changes
+  useEffect(() => {
     if (!user || user.role !== 'student') {
+      setCachedSchedule([]);
+      setActiveAlert(null);
+      return;
+    }
+
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const todayDayName = dayNames[new Date().getDay()];
+    if (todayDayName === 'Sunday' || todayDayName === 'Saturday') {
+      setCachedSchedule([]);
+      return;
+    }
+
+    const normDept = getNormalizedDepartment(user.department || 'Computer Science');
+    const sem = user.semester || '3-1';
+
+    // Fetch once with 5-minute TTL cache
+    fetch(`${API_BASE_URL}/timetable?department=${encodeURIComponent(normDept)}&semester=${encodeURIComponent(sem)}&day=${todayDayName}`, {
+      headers: {
+        'x-requester-username': user.username,
+        'x-requester-role': 'student'
+      }
+    })
+      .then(res => res.ok ? res.json() : [])
+      .then(entries => {
+        if (Array.isArray(entries)) {
+          setCachedSchedule(entries);
+        }
+      })
+      .catch(() => { /* ignore network error, fallback handled */ });
+  }, [user?.department, user?.semester, user?.username, user?.role]);
+
+  // 2. Pure local client-side evaluation of attendance windows against current clock (Zero Network Egress)
+  const evaluateActiveWindowLocally = () => {
+    if (!user || user.role !== 'student' || cachedSchedule.length === 0) {
       setActiveAlert(null);
       return;
     }
 
     const now = new Date();
-    const currentHHMM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const todayDayName = dayNames[now.getDay()];
     const todayDateStr = now.toISOString().split('T')[0];
+    const currentTotalMin = now.getHours() * 60 + now.getMinutes();
 
-    // If weekend, skip automatic checks
-    if (todayDayName === 'Sunday' || todayDayName === 'Saturday') return;
+    for (const entry of cachedSchedule) {
+      try {
+        const sMin = parseTimeToMinutes(entry.start_time);
+        const eMin = parseTimeToMinutes(entry.end_time);
+        const wStartMin = sMin - 15;
+        const wEndMin = (eMin || sMin + 60) + 15;
 
-    try {
-      const normDept = getNormalizedDepartment(user.department || 'Computer Science');
-      const sem = user.semester || '3-1';
+        if (currentTotalMin >= wStartMin && currentTotalMin <= wEndMin) {
+          const dismissKey = `${todayDateStr}_period_${entry.period}`;
+          if (!dismissedPeriods[dismissKey]) {
+            const windowEndStr = formatMinutesToHHMM(wEndMin);
+            const notice: ActiveSessionNotice = {
+              period: entry.period,
+              subject: entry.subject,
+              room: entry.room || 'LH-101',
+              startTime: entry.start_time || '09:00',
+              endTime: entry.end_time || '10:30',
+              windowEnd: windowEndStr
+            };
 
-      const res = await fetch(`${API_BASE_URL}/timetable?department=${encodeURIComponent(normDept)}&semester=${encodeURIComponent(sem)}&day=${todayDayName}`, {
-        headers: {
-          'x-requester-username': user.username,
-          'x-requester-role': 'student'
-        }
-      });
+            setActiveAlert(notice);
 
-      if (res.ok) {
-        const entries = await res.json();
-        if (Array.isArray(entries) && entries.length > 0) {
-          const currentTotalMin = now.getHours() * 60 + now.getMinutes();
+            // Trigger haptic vibration on mobile
+            if ('vibrate' in navigator) {
+              try { navigator.vibrate([300, 150, 300]); } catch { /* ignore */ }
+            }
 
-          for (const entry of entries) {
-            try {
-              const sMin = parseTimeToMinutes(entry.start_time);
-              const eMin = parseTimeToMinutes(entry.end_time);
-              const wStartMin = sMin - 15;
-              const wEndMin = (eMin || sMin + 60) + 15;
+            // Trigger Web Push Notification if permission granted
+            if ('Notification' in window && Notification.permission === 'granted') {
+              try {
+                new Notification(`Attendance Window OPEN: Period ${entry.period}`, {
+                  body: `${entry.subject} (${entry.room || 'LH-101'}) attendance is open until ${windowEndStr}. Tap to mark presence!`,
+                  icon: '/favicon.ico',
+                  tag: `att_period_${entry.period}`
+                });
+              } catch { /* ignore */ }
+            }
 
-              if (currentTotalMin >= wStartMin && currentTotalMin <= wEndMin) {
-                const dismissKey = `${todayDateStr}_period_${entry.period}`;
-                if (!dismissedPeriods[dismissKey]) {
-                  const windowEndStr = formatMinutesToHHMM(wEndMin);
-                  const notice: ActiveSessionNotice = {
-                    period: entry.period,
-                    subject: entry.subject,
-                    room: entry.room || 'LH-101',
-                    startTime: entry.start_time || '09:00',
-                    endTime: entry.end_time || '10:30',
-                    windowEnd: windowEndStr
-                  };
-
-                  setActiveAlert(notice);
-
-                  // Trigger haptic vibration on mobile
-                  if ('vibrate' in navigator) {
-                    try { navigator.vibrate([300, 150, 300]); } catch { /* ignore */ }
-                  }
-
-                  // Trigger Web Push Notification if permission granted
-                  if ('Notification' in window && Notification.permission === 'granted') {
-                    try {
-                      new Notification(`Attendance Window OPEN: Period ${entry.period}`, {
-                        body: `${entry.subject} (${entry.room || 'LH-101'}) attendance is open until ${windowEndStr}. Tap to mark presence!`,
-                        icon: '/favicon.ico',
-                        tag: `att_period_${entry.period}`
-                      });
-                    } catch { /* ignore */ }
-                  }
-
-                  return;
-                }
-              }
-            } catch { /* ignore parsing errors */ }
+            return;
           }
         }
-      }
-    } catch { /* ignore network error */ }
+      } catch { /* ignore parsing errors */ }
+    }
   };
 
   useEffect(() => {
-    checkAttendanceWindow();
-    const interval = setInterval(checkAttendanceWindow, 12000); // Check every 12 seconds
+    evaluateActiveWindowLocally();
+    // Check purely local system clock every 30 seconds - NO database or network calls
+    const interval = setInterval(evaluateActiveWindowLocally, 30000);
     return () => clearInterval(interval);
-  }, [user]);
+  }, [cachedSchedule, dismissedPeriods, user]);
 
   if (!activeAlert || user?.role !== 'student') {
     return null;

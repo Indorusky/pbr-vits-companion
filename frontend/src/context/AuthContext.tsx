@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
-import { API_BASE_URL } from '../config';
+import { API_BASE_URL, setAuthToken } from '../config';
 import { saveUserToCloudDb, getUserFromCloudDb, getAllUsersFromCloudDb } from '../utils/cloudSync';
+
 import { supabaseRegisterUser, supabaseValidateUser, supabaseFetchAllUsers } from '../utils/supabaseClient';
 
 export const pushAccountsToCloudSync = async (accountsList: any[]) => {
@@ -297,26 +298,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [user]);
 
-  // Pull cloud accounts from Master Cloud DB on load to sync custom registered accounts across all devices
+  // Authoritative user synchronization from Backend Database on app load with 5-minute TTL
   useEffect(() => {
-    // 1. Save any local custom accounts to Master Cloud DB if created on this device
-    try {
-      const saved = localStorage.getItem('campus_ai_accounts');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const customOnly = parsed.filter((a: any) => {
-            const u = (a.username || '').toLowerCase();
-            return u && u !== 'admin' && u !== 'student' && u !== 'ravi';
-          });
-          customOnly.forEach((acc: any) => {
-            saveUserToCloudDb(acc);
-          });
-        }
-      }
-    } catch { /* ignore */ }
-
-    // 2. Fetch all accounts from Backend Database and sync with local state
+    // Single authoritative call to FastAPI backend /users with cached response handling
     fetch(`${API_BASE_URL}/users`)
       .then(res => res.ok ? res.json() : [])
       .then(serverUsers => {
@@ -335,53 +319,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           });
         }
       })
-      .catch(() => { /* backend offline, continue with local accounts */ });
-
-    supabaseFetchAllUsers().then(supaUsers => {
-      if (Array.isArray(supaUsers) && supaUsers.length > 0) {
-        setAccounts(prev => {
-          const existing = new Set(prev.map(a => (a.username || '').toLowerCase()));
-          const merged = [...prev];
-          supaUsers.forEach(u => {
-            if (u.username && !existing.has(u.username.toLowerCase())) {
-              merged.push(u);
-              existing.add(u.username.toLowerCase());
-            }
-          });
-          try { localStorage.setItem('campus_ai_accounts', JSON.stringify(merged)); } catch {}
-          return merged;
-        });
-      }
-    });
-
-    getAllUsersFromCloudDb().then(cloudUsers => {
-      if (Array.isArray(cloudUsers) && cloudUsers.length > 0) {
-        const deletedRaw = localStorage.getItem('campus_ai_deleted_accounts');
-        const deletedSet = new Set<string>(deletedRaw ? JSON.parse(deletedRaw) : []);
-
-        const validCloudUsers = cloudUsers.filter(a => {
-          const u = (a.username || '').toLowerCase();
-          const r = (a.roll_number || '').toLowerCase();
-          const n = (a.name || '').toLowerCase();
-          return !deletedSet.has(u) && !deletedSet.has(r) && !deletedSet.has(n);
-        });
-
-        setAccounts(prev => {
-          const existingUsernames = new Set(prev.map(a => (a.username || '').toLowerCase()));
-          const merged = [...prev];
-          validCloudUsers.forEach(ca => {
-            if (ca.username && !existingUsernames.has(ca.username.toLowerCase())) {
-              merged.push(ca);
-              existingUsernames.add(ca.username.toLowerCase());
-            }
-          });
-          try {
-            localStorage.setItem('campus_ai_accounts', JSON.stringify(merged));
-          } catch { /* ignore */ }
-          return merged;
-        });
-      }
-    });
+      .catch(() => { /* backend offline, continue with local cached accounts */ });
   }, []);
 
   const [viewMode, setViewModeInternal] = useState<'student' | 'faculty' | 'admin'>('student');
@@ -397,8 +335,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = () => {
+    setAuthToken('');
     setUser(null);
   };
+
 
   const setViewMode = (mode: 'student' | 'faculty' | 'admin') => {
     setViewModeInternal(mode);
@@ -545,6 +485,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
       if (response.ok) {
         const data = await response.json();
+        if (data.access_token) {
+          setAuthToken(data.access_token);
+        }
         if (data.user) {
           return {
             success: true,
@@ -565,6 +508,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           };
         }
       }
+
     } catch (e) {
       console.warn("Backend authentication failed, falling back to local storage", e);
     }

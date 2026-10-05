@@ -16,8 +16,9 @@ import {
   Info
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { getStudentAcademicProfile, type StudentAcademicProfile, type SemesterAcademicRecord } from '../utils/academicData';
+import { getStudentAcademicProfile, saveStudentAcademicProfile, type StudentAcademicProfile, type SemesterAcademicRecord } from '../utils/academicData';
 import { SUBJECTS_DATABASE, getNormalizedDepartment } from '../utils/subjectsData';
+import { API_BASE_URL, getAuthHeaders } from '../config';
 
 interface ComponentMark {
   name: string;
@@ -46,6 +47,39 @@ const Marks = () => {
     const loaded = getStudentAcademicProfile(user);
     setProfile(loaded);
     setSelectedSemester(user?.semester || '4-1');
+
+    // Also try to fetch backend marks if student ID is present
+    if (user?.id) {
+      fetch(`${API_BASE_URL}/marks?student_id=${user.id}`, {
+        headers: getAuthHeaders()
+      }).then(async res => {
+        if (res.ok) {
+          const liveMarks = await res.json();
+          if (Array.isArray(liveMarks) && liveMarks.length > 0) {
+            // Merge live marks into current semester subjects
+            const updatedProfile = { ...loaded };
+            const currSemRec = updatedProfile.semesters.find(s => s.semester === (user.semester || '4-1'));
+            if (currSemRec) {
+              liveMarks.forEach((m: any) => {
+                const subMatch = currSemRec.subjects.find(s => s.subject.toLowerCase() === m.subject.toLowerCase());
+                if (subMatch) {
+                  if (m.assessment_type === 'Midterm 1') subMatch.internal = m.marks;
+                  if (m.assessment_type === 'Quiz 1') subMatch.quiz = m.marks;
+                  if (m.assessment_type === 'Assignments') subMatch.assignment = m.marks;
+                  if (m.assessment_type === 'Final Exam') {
+                    subMatch.finalExam = m.marks;
+                    subMatch.isFinalExamCompleted = true;
+                  }
+                  subMatch.total = subMatch.internal + subMatch.quiz + subMatch.assignment + subMatch.finalExam;
+                }
+              });
+              saveStudentAcademicProfile(updatedProfile);
+              setProfile(updatedProfile);
+            }
+          }
+        }
+      }).catch(e => console.warn("Backend marks sync notice", e));
+    }
 
     const handleProfileUpdate = (e: any) => {
       if (e.detail) {

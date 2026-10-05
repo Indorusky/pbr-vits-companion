@@ -6,3 +6,7 @@ pymysql
 psycopg2-binary
 python-dotenv
 gunicorn
+pyjwt
+passlib
+bcrypt
+httpx

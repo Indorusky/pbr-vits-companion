@@ -38,6 +38,8 @@ const DEFAULT_NOTICES: Notice[] = [
   }
 ];
 
+import { API_BASE_URL, getAuthHeaders } from '../config';
+
 const Announcements = () => {
   const { user, viewMode } = useAuth();
   const [notices, setNotices] = useState<Notice[]>(() => {
@@ -56,11 +58,40 @@ const Announcements = () => {
   const [newContent, setNewContent] = useState('');
   const [newImportant, setNewImportant] = useState(false);
 
+  const fetchNotices = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/announcements`, {
+        headers: getAuthHeaders()
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          const mapped: Notice[] = data.map((d: any) => ({
+            id: String(d.id),
+            title: d.title,
+            content: d.content,
+            date: d.created_at ? new Date(d.created_at).toLocaleDateString() : 'Recent',
+            important: Boolean(d.important),
+            postedBy: d.posted_by
+          }));
+          setNotices(mapped);
+          localStorage.setItem('campus_ai_notices', JSON.stringify(mapped));
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to fetch announcements from backend", e);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotices();
+  }, []);
+
   useEffect(() => {
     localStorage.setItem('campus_ai_notices', JSON.stringify(notices));
   }, [notices]);
 
-  const handlePostNotice = (e: React.FormEvent) => {
+  const handlePostNotice = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim() || !newContent.trim()) return;
 
@@ -72,6 +103,21 @@ const Announcements = () => {
       important: newImportant,
       postedBy: user?.name || 'Faculty Member'
     };
+
+    try {
+      await fetch(`${API_BASE_URL}/announcements`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          title: notice.title,
+          content: notice.content,
+          important: notice.important
+        })
+      });
+      fetchNotices();
+    } catch (err) {
+      console.warn("Error posting announcement to backend", err);
+    }
 
     setNotices([notice, ...notices]);
     setNewTitle('');

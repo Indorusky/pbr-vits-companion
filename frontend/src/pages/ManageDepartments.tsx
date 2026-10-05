@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { API_BASE_URL } from '../config';
+import { API_BASE_URL, cachedFetch } from '../config';
 import { Building, Plus, X, Trash2, Search, Edit3, Check, Filter } from 'lucide-react';
 
 interface Department {
@@ -241,11 +241,11 @@ const ManageDepartments = () => {
     localStorage.setItem('campus_ai_subjects', JSON.stringify(subjects));
   }, [subjects]);
 
-  // Fetch subjects & faculty dynamically from backend
+  // Fetch subjects & faculty dynamically from backend with 3-minute in-memory cache
   useEffect(() => {
     const fetchSubjects = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/subjects`);
+        const response = await cachedFetch(`${API_BASE_URL}/subjects`, {}, 180000);
         if (response.ok) {
           const data = await response.json();
           if (data && data.length > 0) {
@@ -262,7 +262,7 @@ const ManageDepartments = () => {
   useEffect(() => {
     const fetchFaculties = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/users?role=faculty`);
+        const response = await cachedFetch(`${API_BASE_URL}/users?role=faculty`, {}, 180000);
         if (response.ok) {
           const data = await response.json();
           if (data && data.length > 0) {

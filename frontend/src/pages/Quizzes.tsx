@@ -263,6 +263,8 @@ const DEFAULT_QUIZZES: Quiz[] = [
   }
 ];
 
+import { API_BASE_URL, getAuthHeaders } from '../config';
+
 const Quizzes = () => {
   const { user, viewMode } = useAuth();
   const isFacultyOrAdmin = viewMode === 'faculty' || viewMode === 'admin';
@@ -297,6 +299,40 @@ const Quizzes = () => {
     }
     return DEFAULT_QUIZZES;
   });
+
+  const fetchQuizzes = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/quizzes`, {
+        headers: getAuthHeaders()
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          const mapped: Quiz[] = data.map((d: any) => ({
+            id: d.id,
+            subject: d.subject,
+            title: d.title,
+            duration: d.duration || '5 Minutes',
+            year: d.year,
+            semester: d.semester,
+            department: d.department,
+            isDefault: false,
+            questions: d.questions || []
+          }));
+          const titles = new Set(mapped.map(m => m.title));
+          const merged = [...mapped, ...DEFAULT_QUIZZES.filter(dq => !titles.has(dq.title))];
+          setQuizzes(merged);
+          localStorage.setItem('campus_ai_quizzes', JSON.stringify(merged));
+        }
+      }
+    } catch (e) {
+      console.warn("Backend quiz fetch fallback to local", e);
+    }
+  };
+
+  useEffect(() => {
+    fetchQuizzes();
+  }, []);
 
   const [selectedQuiz, setSelectedQuiz] = useState<Quiz | null>(null);
   
@@ -367,12 +403,23 @@ const Quizzes = () => {
     }));
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (!selectedQuiz) return;
     if (currentQuestionIdx < selectedQuiz.questions.length - 1) {
       setCurrentQuestionIdx(prev => prev + 1);
     } else {
       setIsQuizFinished(true);
+      if ((selectedQuiz as any).id) {
+        try {
+          await fetch(`${API_BASE_URL}/quizzes/${(selectedQuiz as any).id}/submit`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ answers: selectedAnswers })
+          });
+        } catch (e) {
+          console.warn("Backend quiz submit error", e);
+        }
+      }
     }
   };
 
@@ -394,12 +441,27 @@ const Quizzes = () => {
     return 'Shortage detected. Review the 5-unit textbook notes to reinforce concepts.';
   };
 
-  const handleAddQuizSubmit = (e: React.FormEvent) => {
+  const handleAddQuizSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim() || !q1Text.trim() || !q2Text.trim()) {
       alert("Please enter a challenge title and at least 2 questions.");
       return;
     }
+
+    const quizQuestions = [
+      {
+        id: 1,
+        text: q1Text.trim(),
+        options: [q1O1.trim() || 'Option A', q1O2.trim() || 'Option B'],
+        correctIdx: q1Correct
+      },
+      {
+        id: 2,
+        text: q2Text.trim(),
+        options: [q2O1.trim() || 'Option A', q2O2.trim() || 'Option B'],
+        correctIdx: q2Correct
+      }
+    ];
 
     const quiz: Quiz = {
       subject: newSubject,
@@ -408,21 +470,27 @@ const Quizzes = () => {
       year: newYear,
       semester: newSemester,
       department: newDepartment,
-      questions: [
-        {
-          id: 1,
-          text: q1Text.trim(),
-          options: [q1O1.trim() || 'Option A', q1O2.trim() || 'Option B'],
-          correctIdx: q1Correct
-        },
-        {
-          id: 2,
-          text: q2Text.trim(),
-          options: [q2O1.trim() || 'Option A', q2O2.trim() || 'Option B'],
-          correctIdx: q2Correct
-        }
-      ]
+      questions: quizQuestions
     };
+
+    try {
+      await fetch(`${API_BASE_URL}/quizzes`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          title: quiz.title,
+          department: quiz.department,
+          semester: quiz.semester,
+          year: quiz.year,
+          subject: quiz.subject,
+          duration: quiz.duration,
+          questions: quizQuestions
+        })
+      });
+      fetchQuizzes();
+    } catch (err) {
+      console.warn("Backend quiz create error", err);
+    }
 
     setQuizzes([quiz, ...quizzes]);
     
