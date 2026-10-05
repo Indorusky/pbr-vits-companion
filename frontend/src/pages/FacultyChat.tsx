@@ -283,35 +283,40 @@ const FacultyChat: React.FC = () => {
     }
   };
 
-  const formatTimeAgo = (isoStr?: string) => {
-    if (!isoStr) return '';
+  const parseIsoDate = (isoStr?: string) => {
+    if (!isoStr) return null;
     try {
-      const d = new Date(isoStr);
-      if (isNaN(d.getTime())) return isoStr;
-      const now = new Date();
-      const diffMs = now.getTime() - d.getTime();
-      const diffMins = Math.floor(diffMs / 60000);
-      if (diffMins < 1) return 'Just now';
-      if (diffMins < 60) return `${diffMins}m ago`;
-      const diffHours = Math.floor(diffMins / 60);
-      if (diffHours < 24) return `${diffHours}h ago`;
-      const diffDays = Math.floor(diffHours / 24);
-      if (diffDays === 1) return 'Yesterday';
-      return `${diffDays}d ago`;
+      let str = isoStr;
+      if (!str.endsWith('Z') && !str.includes('+') && !str.includes('-')) {
+        str = str + 'Z';
+      }
+      const d = new Date(str);
+      return isNaN(d.getTime()) ? null : d;
     } catch {
-      return isoStr;
+      return null;
     }
   };
 
+  const formatTimeAgo = (isoStr?: string) => {
+    const d = parseIsoDate(isoStr);
+    if (!d) return isoStr || '';
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    if (diffMs < 0) return 'Just now';
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays === 1) return 'Yesterday';
+    return `${diffDays}d ago`;
+  };
+
   const formatMsgTime = (isoStr?: string) => {
-    if (!isoStr) return '';
-    try {
-      const d = new Date(isoStr);
-      if (isNaN(d.getTime())) return '';
-      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    } catch {
-      return '';
-    }
+    const d = parseIsoDate(isoStr);
+    if (!d) return '';
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   return (

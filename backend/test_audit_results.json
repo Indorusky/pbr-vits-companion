@@ -1,0 +1,573 @@
+{
+  "auth": {
+    "student_signup": {
+      "status_code": 400,
+      "response": "{\"detail\":\"Username already registered\"}"
+    },
+    "duplicate_signup": {
+      "status_code": 400,
+      "response": {
+        "detail": "Username already registered"
+      }
+    },
+    "faculty_signup": {
+      "status_code": 400,
+      "response": "{\"detail\":\"Username already registered\"}"
+    },
+    "faculty_login_pending": {
+      "status_code": 200,
+      "response": {
+        "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJxYV9mYWN1bHR5XzAxIiwiaWQiOjU3LCJyb2xlIjoiZmFjdWx0eSIsImV4cCI6MTc5MTgzMjU5Mn0.BY0rHXvEeNMYP2TAM9DPG2V6Zt6qikwd0Roo83hOf28",
+        "token_type": "bearer",
+        "user": {
+          "id": 57,
+          "username": "qa_faculty_01",
+          "role": "faculty",
+          "name": "QA Faculty One",
+          "email": "qa_faculty_01@pbrvits.ac.in",
+          "roll_number": null,
+          "department": "Computer Science and Engineering (CSE)",
+          "year": "Faculty",
+          "semester": "3-1",
+          "section": "Section A",
+          "subjects": null,
+          "profile_photo": null,
+          "approval_status": "Approved"
+        }
+      }
+    },
+    "student_login": {
+      "status_code": 200,
+      "response": {
+        "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJxYV9zdHVkZW50XzAxIiwiaWQiOjU4LCJyb2xlIjoic3R1ZGVudCIsImV4cCI6MTc5MTgzMjU5Mn0.WVTrNzMgEqMf4PIEMY9rp9PIA5sI8gfwiLZtyej-6m0",
+        "token_type": "bearer",
+        "user": {
+          "id": 58,
+          "username": "qa_student_01",
+          "role": "student",
+          "name": "QA Student One",
+          "email": "qa_student_01@pbrvits.ac.in",
+          "roll_number": "2373A01001",
+          "department": "Computer Science and Engineering (CSE)",
+          "year": "3rd Year",
+          "semester": "3-1",
+          "section": "Section A",
+          "subjects": null,
+          "profile_photo": null,
+          "approval_status": "Approved"
+        }
+      }
+    },
+    "wrong_password": {
+      "status_code": 400,
+      "response": {
+        "detail": "Incorrect username or password"
+      }
+    },
+    "nonexistent_user": {
+      "status_code": 400,
+      "response": {
+        "detail": "Incorrect username or password"
+      }
+    }
+  },
+  "security": {
+    "unauth_admin_pending_faculties": {
+      "status_code": 401,
+      "response": "{\"detail\":\"Authentication credentials were not provided. Please provide a valid Bearer token.\"}"
+    },
+    "unauth_get_users": {
+      "status_code": 401,
+      "count": 0
+    },
+    "unauth_delete_user": {
+      "status_code": 401,
+      "response": "{\"detail\":\"Authentication credentials were not provided. Please provide a valid Bearer token.\"}"
+    },
+    "marks_header_spoof": {
+      "status_code": 401,
+      "response": "{\"detail\":\"Authentication credentials were not provided. Please provide a valid Bearer token.\"}"
+    }
+  },
+  "math_attendance": [
+    {
+      "attended": 0,
+      "total": 10,
+      "target": 75,
+      "api_status": 200,
+      "api_needed": 30,
+      "expected_needed": 30,
+      "match": true
+    },
+    {
+      "attended": 5,
+      "total": 10,
+      "target": 75,
+      "api_status": 200,
+      "api_needed": 10,
+      "expected_needed": 10,
+      "match": true
+    },
+    {
+      "attended": 7,
+      "total": 10,
+      "target": 75,
+      "api_status": 200,
+      "api_needed": 2,
+      "expected_needed": 2,
+      "match": true
+    },
+    {
+      "attended": 8,
+      "total": 10,
+      "target": 75,
+      "api_status": 200,
+      "api_needed": 0,
+      "expected_needed": 0,
+      "match": true
+    },
+    {
+      "attended": 10,
+      "total": 10,
+      "target": 75,
+      "api_status": 200,
+      "api_needed": 0,
+      "expected_needed": 0,
+      "match": true
+    },
+    {
+      "attended": 50,
+      "total": 100,
+      "target": 75,
+      "api_status": 200,
+      "api_needed": 100,
+      "expected_needed": 100,
+      "match": true
+    },
+    {
+      "attended": 65,
+      "total": 100,
+      "target": 75,
+      "api_status": 200,
+      "api_needed": 40,
+      "expected_needed": 40,
+      "match": true
+    },
+    {
+      "attended": 70,
+      "total": 100,
+      "target": 75,
+      "api_status": 200,
+      "api_needed": 20,
+      "expected_needed": 20,
+      "match": true
+    },
+    {
+      "attended": 74,
+      "total": 100,
+      "target": 75,
+      "api_status": 200,
+      "api_needed": 4,
+      "expected_needed": 4,
+      "match": true
+    },
+    {
+      "attended": 75,
+      "total": 100,
+      "target": 75,
+      "api_status": 200,
+      "api_needed": 0,
+      "expected_needed": 0,
+      "match": true
+    },
+    {
+      "attended": 80,
+      "total": 100,
+      "target": 75,
+      "api_status": 200,
+      "api_needed": 0,
+      "expected_needed": 0,
+      "match": true
+    },
+    {
+      "attended": 90,
+      "total": 100,
+      "target": 75,
+      "api_status": 200,
+      "api_needed": 0,
+      "expected_needed": 0,
+      "match": true
+    },
+    {
+      "attended": 100,
+      "total": 100,
+      "target": 75,
+      "api_status": 200,
+      "api_needed": 0,
+      "expected_needed": 0,
+      "match": true
+    },
+    {
+      "attended": 50,
+      "total": 100,
+      "target": 80,
+      "api_status": 200,
+      "api_needed": 151,
+      "expected_needed": 151,
+      "match": true
+    },
+    {
+      "attended": 50,
+      "total": 100,
+      "target": 85,
+      "api_status": 200,
+      "api_needed": 234,
+      "expected_needed": 234,
+      "match": true
+    },
+    {
+      "attended": 50,
+      "total": 100,
+      "target": 90,
+      "api_status": 200,
+      "api_needed": 401,
+      "expected_needed": 401,
+      "match": true
+    },
+    {
+      "attended": 50,
+      "total": 100,
+      "target": 100,
+      "api_status": 200,
+      "api_needed": -1,
+      "expected_needed": "Infinity / Impossible",
+      "match": false
+    },
+    {
+      "attended": 0,
+      "total": 0,
+      "target": 75,
+      "api_status": 200,
+      "api_needed": 0,
+      "expected_needed": 0,
+      "match": true
+    }
+  ],
+  "math_health_score": {},
+  "student_endpoints": {},
+  "faculty_endpoints": {},
+  "admin_endpoints": {},
+  "ai_endpoints": {
+    "chat": [
+      {
+        "query": "What is my attendance status i...",
+        "status_code": 200,
+        "response": {
+          "response": "To maintain strong academic standing at PBR VITS, aim to keep your attendance above 75% across all theory and laboratory subjects. Use the Attendance Target Calculator on the attendance tab to forecast needed classes."
+        }
+      },
+      {
+        "query": "When is the midterm exam sched...",
+        "status_code": 200,
+        "response": {
+          "response": "Midterm and Semester End Examination schedules are organized per department under the Timetable and Academic History modules. Refer to your current semester timetable for exact time slots."
+        }
+      },
+      {
+        "query": "Explain Dijkstra's Algorithm i...",
+        "status_code": 200,
+        "response": {
+          "response": "I am your PBR VITS AI Academic Companion. I analyzed your query: 'Explain Dijkstra's Algorithm in Computer Science'. How else can I assist with your coursework, study schedules, or revision notes?"
+        }
+      },
+      {
+        "query": "",
+        "status_code": 200,
+        "response": {
+          "response": "Please ask a question about your academic subjects, exams, attendance, or study tips."
+        }
+      },
+      {
+        "query": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...",
+        "status_code": 200,
+        "response": {
+          "response": "I am your PBR VITS AI Academic Companion. I analyzed your query: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'. How else can I assist with your coursework, study schedules, or revision notes?"
+        }
+      }
+    ],
+    "generate_notes": {
+      "status_code": 200,
+      "has_detailed_notes": true,
+      "response_keys": [
+        "detailed_notes",
+        "flashcards",
+        "quiz",
+        "interactive_element"
+      ]
+    },
+    "chat_about_notes": {
+      "status_code": 200,
+      "response": {
+        "response": "I parsed your question: 'What are the 4 necessary conditions for deadlock?' regarding 'Deadlock' (Subject: Operating Systems). To study this successfully, focus on understanding the key definitions, practice problems, and the interactive simulator provided in the notes tabs."
+      }
+    }
+  },
+  "cross_role": {
+    "student_attendance": {
+      "status_code": 200,
+      "data": {
+        "overall_percentage": 0.0,
+        "total_classes": 24,
+        "present_classes": 0,
+        "absent_classes": 24,
+        "subjects": [
+          {
+            "subject": "Compiler Design",
+            "total": 5,
+            "attended": 0,
+            "absent": 5,
+            "percentage": 0.0
+          },
+          {
+            "subject": "Web Technologies",
+            "total": 5,
+            "attended": 0,
+            "absent": 5,
+            "percentage": 0.0
+          },
+          {
+            "subject": "Artificial Intelligence",
+            "total": 5,
+            "attended": 0,
+            "absent": 5,
+            "percentage": 0.0
+          },
+          {
+            "subject": "Cyber Security",
+            "total": 5,
+            "attended": 0,
+            "absent": 5,
+            "percentage": 0.0
+          },
+          {
+            "subject": "Web Lab",
+            "total": 4,
+            "attended": 0,
+            "absent": 4,
+            "percentage": 0.0
+          }
+        ],
+        "history": [
+          {
+            "date": "2026-10-05",
+            "records": [
+              {
+                "period": 1,
+                "subject": "Compiler Design",
+                "status": "Absent",
+                "verification_method": "SYSTEM",
+                "confidence_score": "0.0"
+              },
+              {
+                "period": 2,
+                "subject": "Web Technologies",
+                "status": "Absent",
+                "verification_method": "SYSTEM",
+                "confidence_score": "0.0"
+              },
+              {
+                "period": 3,
+                "subject": "Artificial Intelligence",
+                "status": "Absent",
+                "verification_method": "SYSTEM",
+                "confidence_score": "0.0"
+              },
+              {
+                "period": 4,
+                "subject": "Cyber Security",
+                "status": "Absent",
+                "verification_method": "SYSTEM",
+                "confidence_score": "0.0"
+              }
+            ]
+          },
+          {
+            "date": "2026-10-02",
+            "records": [
+              {
+                "period": 1,
+                "subject": "Web Lab",
+                "status": "Absent",
+                "verification_method": "SYSTEM",
+                "confidence_score": "0.0"
+              },
+              {
+                "period": 2,
+                "subject": "Compiler Design",
+                "status": "Absent",
+                "verification_method": "SYSTEM",
+                "confidence_score": "0.0"
+              },
+              {
+                "period": 3,
+                "subject": "Web Technologies",
+                "status": "Absent",
+                "verification_method": "SYSTEM",
+                "confidence_score": "0.0"
+              },
+              {
+                "period": 4,
+                "subject": "Artificial Intelligence",
+                "status": "Absent",
+                "verification_method": "SYSTEM",
+                "confidence_score": "0.0"
+              }
+            ]
+          },
+          {
+            "date": "2026-10-01",
+            "records": [
+              {
+                "period": 1,
+                "subject": "Cyber Security",
+                "status": "Absent",
+                "verification_method": "SYSTEM",
+                "confidence_score": "0.0"
+              },
+              {
+                "period": 2,
+                "subject": "Web Lab",
+                "status": "Absent",
+                "verification_method": "SYSTEM",
+                "confidence_score": "0.0"
+              },
+              {
+                "period": 3,
+                "subject": "Compiler Design",
+                "status": "Absent",
+                "verification_method": "SYSTEM",
+                "confidence_score": "0.0"
+              },
+              {
+                "period": 4,
+                "subject": "Web Technologies",
+                "status": "Absent",
+                "verification_method": "SYSTEM",
+                "confidence_score": "0.0"
+              }
+            ]
+          },
+          {
+            "date": "2026-09-30",
+            "records": [
+              {
+                "period": 1,
+                "subject": "Artificial Intelligence",
+                "status": "Absent",
+                "verification_method": "SYSTEM",
+                "confidence_score": "0.0"
+              },
+              {
+                "period": 2,
+                "subject": "Cyber Security",
+                "status": "Absent",
+                "verification_method": "SYSTEM",
+                "confidence_score": "0.0"
+              },
+              {
+                "period": 3,
+                "subject": "Web Lab",
+                "status": "Absent",
+                "verification_method": "SYSTEM",
+                "confidence_score": "0.0"
+              },
+              {
+                "period": 4,
+                "subject": "Compiler Design",
+                "status": "Absent",
+                "verification_method": "SYSTEM",
+                "confidence_score": "0.0"
+              }
+            ]
+          },
+          {
+            "date": "2026-09-29",
+            "records": [
+              {
+                "period": 1,
+                "subject": "Web Technologies",
+                "status": "Absent",
+                "verification_method": "SYSTEM",
+                "confidence_score": "0.0"
+              },
+              {
+                "period": 2,
+                "subject": "Artificial Intelligence",
+                "status": "Absent",
+                "verification_method": "SYSTEM",
+                "confidence_score": "0.0"
+              },
+              {
+                "period": 3,
+                "subject": "Cyber Security",
+                "status": "Absent",
+                "verification_method": "SYSTEM",
+                "confidence_score": "0.0"
+              },
+              {
+                "period": 4,
+                "subject": "Web Lab",
+                "status": "Absent",
+                "verification_method": "SYSTEM",
+                "confidence_score": "0.0"
+              }
+            ]
+          },
+          {
+            "date": "2026-09-28",
+            "records": [
+              {
+                "period": 1,
+                "subject": "Compiler Design",
+                "status": "Absent",
+                "verification_method": "SYSTEM",
+                "confidence_score": "0.0"
+              },
+              {
+                "period": 2,
+                "subject": "Web Technologies",
+                "status": "Absent",
+                "verification_method": "SYSTEM",
+                "confidence_score": "0.0"
+              },
+              {
+                "period": 3,
+                "subject": "Artificial Intelligence",
+                "status": "Absent",
+                "verification_method": "SYSTEM",
+                "confidence_score": "0.0"
+              },
+              {
+                "period": 4,
+                "subject": "Cyber Security",
+                "status": "Absent",
+                "verification_method": "SYSTEM",
+                "confidence_score": "0.0"
+              }
+            ]
+          }
+        ],
+        "face_registered": false,
+        "enrollment_count": 0,
+        "reset_request_status": "None",
+        "semester": "3-1"
+      }
+    },
+    "student_marks": {
+      "status_code": 401,
+      "data": "{\"detail\":\"Authentication credentials were not provided. Please provide a valid Bearer token.\"}"
+    }
+  },
+  "database": {},
+  "edge_cases": {}
+}
