@@ -1,155 +1,232 @@
-import { useState, useEffect } from 'react';
-import { 
-  BarChart3, 
-  Calculator, 
-  Award, 
-  GraduationCap, 
-  CheckCircle, 
-  Percent, 
-  BookOpen, 
-  ChevronRight, 
+import { useState, useEffect } from "react";
+import {
+  BarChart3,
+  Calculator,
+  Award,
+  GraduationCap,
+  CheckCircle2,
+  Percent,
+  BookOpen,
+  ChevronRight,
   AlertTriangle,
   TrendingUp,
   Layers,
   Sparkles,
   Clock,
-  Info
-} from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
-import { getStudentAcademicProfile, saveStudentAcademicProfile, type StudentAcademicProfile, type SemesterAcademicRecord } from '../utils/academicData';
-import { SUBJECTS_DATABASE, getNormalizedDepartment } from '../utils/subjectsData';
-import { API_BASE_URL, getAuthHeaders } from '../config';
+  Info,
+  Beaker,
+  FileSpreadsheet,
+  Check,
+  AlertCircle,
+} from "lucide-react";
+import { useAuth } from "../context/AuthContext";
+import {
+  getStudentAcademicProfile,
+  type StudentAcademicProfile,
+} from "../utils/academicData";
+import { API_BASE_URL, getAuthHeaders } from "../config";
 
 interface ComponentMark {
-  name: string;
-  score: number;
-  maxScore: number;
-  weightage: number;
+  exam_id: number;
+  exam_type: string;
+  marks: number;
+  max_marks: number;
+  is_published: number;
+  published_at?: string;
 }
 
-interface CourseMarks {
+interface StudentSubjectResultReport {
   subject: string;
-  code: string;
-  grade: string;
-  isOngoing: boolean;
-  components: ComponentMark[];
+  subject_code?: string;
+  subject_type: "THEORY" | "LAB";
+  department: string;
+  semester: string;
+  components: Record<string, ComponentMark>;
+  mid1_marks?: number;
+  mid2_marks?: number;
+  internal_marks?: number;
+  semester_marks?: number;
+  lab_internal?: number;
+  lab_external?: number;
+  final_marks?: number;
+  grade?: string;
+  grade_points?: number;
+  status: string;
 }
+
+interface GradeScaleItem {
+  grade: string;
+  min_marks: number;
+  max_marks: number;
+  grade_points: number;
+  description: string;
+}
+
+const DEFAULT_GRADE_SCALE: GradeScaleItem[] = [
+  {
+    grade: "S",
+    min_marks: 90,
+    max_marks: 100,
+    grade_points: 10,
+    description: "Outstanding Performance",
+  },
+  {
+    grade: "A",
+    min_marks: 80,
+    max_marks: 89.99,
+    grade_points: 9,
+    description: "Excellent Performance",
+  },
+  {
+    grade: "B",
+    min_marks: 70,
+    max_marks: 79.99,
+    grade_points: 8,
+    description: "Very Good Performance",
+  },
+  {
+    grade: "C",
+    min_marks: 60,
+    max_marks: 69.99,
+    grade_points: 7,
+    description: "Good Performance",
+  },
+  {
+    grade: "D",
+    min_marks: 50,
+    max_marks: 59.99,
+    grade_points: 6,
+    description: "Satisfactory Performance",
+  },
+  {
+    grade: "F",
+    min_marks: 0,
+    max_marks: 49.99,
+    grade_points: 0,
+    description: "Fail / Reappear",
+  },
+];
 
 const Marks = () => {
   const { user } = useAuth();
-  
-  const [profile, setProfile] = useState<StudentAcademicProfile>(() => getStudentAcademicProfile(user));
-  const [activeViewTab, setActiveViewTab] = useState<'current' | 'transcript'>('current');
-  const [selectedSemester, setSelectedSemester] = useState<string>(user?.semester || '4-1');
 
-  // Load and subscribe to academic profile updates
-  useEffect(() => {
-    const loaded = getStudentAcademicProfile(user);
-    setProfile(loaded);
-    setSelectedSemester(user?.semester || '4-1');
+  const [profile] = useState<StudentAcademicProfile>(() =>
+    getStudentAcademicProfile(user),
+  );
+  const [selectedSemester, setSelectedSemester] = useState<string>(
+    user?.semester || "3-1",
+  );
+  const [activeTab, setActiveTab] = useState<
+    "overview" | "theory" | "lab" | "grade_scale"
+  >("overview");
 
-    // Also try to fetch backend marks if student ID is present
-    if (user?.id) {
-      fetch(`${API_BASE_URL}/marks?student_id=${user.id}`, {
-        headers: getAuthHeaders()
-      }).then(async res => {
-        if (res.ok) {
-          const liveMarks = await res.json();
-          if (Array.isArray(liveMarks) && liveMarks.length > 0) {
-            // Merge live marks into current semester subjects
-            const updatedProfile = { ...loaded };
-            const currSemRec = updatedProfile.semesters.find(s => s.semester === (user.semester || '4-1'));
-            if (currSemRec) {
-              liveMarks.forEach((m: any) => {
-                const subMatch = currSemRec.subjects.find(s => s.subject.toLowerCase() === m.subject.toLowerCase());
-                if (subMatch) {
-                  if (m.assessment_type === 'Midterm 1') subMatch.internal = m.marks;
-                  if (m.assessment_type === 'Quiz 1') subMatch.quiz = m.marks;
-                  if (m.assessment_type === 'Assignments') subMatch.assignment = m.marks;
-                  if (m.assessment_type === 'Final Exam') {
-                    subMatch.finalExam = m.marks;
-                    subMatch.isFinalExamCompleted = true;
-                  }
-                  subMatch.total = subMatch.internal + subMatch.quiz + subMatch.assignment + subMatch.finalExam;
-                }
-              });
-              saveStudentAcademicProfile(updatedProfile);
-              setProfile(updatedProfile);
-            }
-          }
-        }
-      }).catch(e => console.warn("Backend marks sync notice", e));
-    }
+  // Real backend marks state
+  const [liveResults, setLiveResults] = useState<StudentSubjectResultReport[]>(
+    [],
+  );
+  const [loading, setLoading] = useState<boolean>(true);
+  const [gradeScale, setGradeScale] =
+    useState<GradeScaleItem[]>(DEFAULT_GRADE_SCALE);
 
-    const handleProfileUpdate = (e: any) => {
-      if (e.detail) {
-        setProfile(e.detail);
+  const semestersList = [
+    "1-1",
+    "1-2",
+    "2-1",
+    "2-2",
+    "3-1",
+    "3-2",
+    "4-1",
+    "4-2",
+  ];
+
+  // Fetch official published marks from backend
+  const fetchStudentMarks = async (sem: string) => {
+    setLoading(true);
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/student/examinations?semester=${encodeURIComponent(sem)}`,
+        {
+          headers: getAuthHeaders(),
+        },
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setLiveResults(Array.isArray(data) ? data : []);
+      } else {
+        setLiveResults([]);
       }
-    };
-    window.addEventListener('academic-profile-updated', handleProfileUpdate);
-    return () => window.removeEventListener('academic-profile-updated', handleProfileUpdate);
-  }, [user]);
-
-  // Current semester course data
-  const studentDept = getNormalizedDepartment(user?.department || 'Computer Science and Engineering (CSE)');
-  const currentSemesterRecord = profile.semesters.find(s => s.semester === selectedSemester) || profile.semesters[profile.semesters.length - 1];
-  const isSelectedSemOngoing = currentSemesterRecord?.isCurrentOngoing ?? (selectedSemester === (user?.semester || '4-1'));
-
-  const currentCourses: CourseMarks[] = currentSemesterRecord?.subjects.map(s => ({
-    subject: s.subject,
-    code: s.code,
-    grade: s.isFinalExamCompleted ? s.grade : 'CIE Active',
-    isOngoing: !s.isFinalExamCompleted,
-    components: [
-      { name: 'Midterm 1', score: s.internal, maxScore: 30, weightage: 30 },
-      { name: 'Quiz 1', score: s.quiz, maxScore: 10, weightage: 10 },
-      { name: 'Assignments & Lab', score: s.assignment, maxScore: 20, weightage: 20 },
-      { 
-        name: s.isFinalExamCompleted ? 'Final Exam (Official)' : 'Final Exam (Target Forecast)', 
-        score: s.isFinalExamCompleted ? s.finalExam : 36, 
-        maxScore: 40, 
-        weightage: 40 
-      }
-    ]
-  })) || [];
-
-  const [selectedCourse, setSelectedCourse] = useState<CourseMarks | null>(null);
-
-  // Initialize selected course
-  useEffect(() => {
-    if (currentCourses.length > 0) {
-      setSelectedCourse(currentCourses[0]);
-      setMidtermScore(currentCourses[0].components[0].score);
-      setQuizScore(currentCourses[0].components[1].score);
-      setLabScore(currentCourses[0].components[2].score);
-      setFinalTarget(currentCourses[0].components[3].score);
+    } catch (err) {
+      console.warn("Failed to load official examination marks:", err);
+      setLiveResults([]);
+    } finally {
+      setLoading(false);
     }
-  }, [selectedSemester, profile]);
-
-  // Grade Estimator sandbox
-  const [midtermScore, setMidtermScore] = useState<number>(25);
-  const [quizScore, setQuizScore] = useState<number>(9);
-  const [labScore, setLabScore] = useState<number>(18);
-  const [finalTarget, setFinalTarget] = useState<number>(36);
-
-  const totalCalculated = midtermScore + quizScore + labScore + finalTarget;
-
-  const getEstimatedGrade = (score: number) => {
-    if (score >= 90) return 'O (Outstanding • 10 GP)';
-    if (score >= 82) return 'A+ (Excellent • 9 GP)';
-    if (score >= 74) return 'A (Very Good • 8 GP)';
-    if (score >= 65) return 'B+ (Good • 7 GP)';
-    if (score >= 55) return 'B (Above Average • 6 GP)';
-    if (score >= 45) return 'C (Pass • 5 GP)';
-    return 'F (Fail • 0 GP)';
   };
 
-  const handleSelectCourse = (course: CourseMarks) => {
-    setSelectedCourse(course);
-    setMidtermScore(course.components[0].score);
-    setQuizScore(course.components[1].score);
-    setLabScore(course.components[2].score);
-    setFinalTarget(course.components[3].score);
+  // Fetch grading scale
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/examinations/grade-config`, {
+      headers: getAuthHeaders(),
+    })
+      .then((res) => (res.ok ? res.json() : DEFAULT_GRADE_SCALE))
+      .then((data) => setGradeScale(data))
+      .catch(() => setGradeScale(DEFAULT_GRADE_SCALE));
+  }, []);
+
+  useEffect(() => {
+    fetchStudentMarks(selectedSemester);
+  }, [selectedSemester]);
+
+  const theoryResults = liveResults.filter((r) => r.subject_type === "THEORY");
+  const labResults = liveResults.filter((r) => r.subject_type === "LAB");
+
+  // Stats
+  const publishedSubjectsCount = liveResults.filter(
+    (r) => r.status === "Published",
+  ).length;
+  const pendingSubjectsCount = liveResults.length - publishedSubjectsCount;
+
+  const getGradeBadge = (grade?: string) => {
+    if (!grade)
+      return <span className="text-slate-400 font-bold text-xs">—</span>;
+    switch (grade) {
+      case "S":
+        return (
+          <span className="px-2.5 py-1 text-xs font-black rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-300">
+            Grade S
+          </span>
+        );
+      case "A":
+        return (
+          <span className="px-2.5 py-1 text-xs font-black rounded-lg bg-blue-100 text-blue-800 border border-blue-300">
+            Grade A
+          </span>
+        );
+      case "B":
+        return (
+          <span className="px-2.5 py-1 text-xs font-black rounded-lg bg-indigo-100 text-indigo-800 border border-indigo-300">
+            Grade B
+          </span>
+        );
+      case "C":
+        return (
+          <span className="px-2.5 py-1 text-xs font-black rounded-lg bg-amber-100 text-amber-800 border border-amber-300">
+            Grade C
+          </span>
+        );
+      case "D":
+        return (
+          <span className="px-2.5 py-1 text-xs font-black rounded-lg bg-orange-100 text-orange-800 border border-orange-300">
+            Grade D
+          </span>
+        );
+      default:
+        return (
+          <span className="px-2.5 py-1 text-xs font-black rounded-lg bg-red-100 text-red-800 border border-red-300">
+            Grade F
+          </span>
+        );
+    }
   };
 
   return (
@@ -160,404 +237,792 @@ const Marks = () => {
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-blue-600 animate-pulse"></span>
             <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-600">
-              Academic Performance & University Gradebook
+              Official University Examination Portal
             </span>
           </div>
           <h1 className="text-xl sm:text-2xl font-black text-slate-900 mt-1 flex items-center gap-2">
             <BarChart3 className="w-6 h-6 text-blue-600" />
-            Internal Marks & GPA Estimator
+            Examinations & Academic Gradebook
           </h1>
           <p className="text-slate-500 text-xs font-medium mt-0.5">
-            Published university semester transcripts, continuous internal evaluation, and GPA forecasting.
+            Verified Mid-1, Mid-2 (80:20 weighted), Semester End, and Practical
+            Lab examination transcripts.
           </p>
         </div>
 
-        {/* View Switcher */}
-        <div className="flex bg-slate-100 p-1 rounded-xl gap-1 shrink-0">
-          <button
-            onClick={() => setActiveViewTab('current')}
-            className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
-              activeViewTab === 'current'
-                ? 'bg-white text-blue-600 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
+        {/* Semester Selector */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-bold text-slate-500 whitespace-nowrap">
+            Semester:
+          </span>
+          <select
+            value={selectedSemester}
+            onChange={(e) => setSelectedSemester(e.target.value)}
+            className="bg-slate-50 text-slate-800 font-bold text-xs border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
           >
-            {isSelectedSemOngoing ? 'Ongoing Semester (4-1)' : `Semester ${selectedSemester}`}
-          </button>
-          <button
-            onClick={() => setActiveViewTab('transcript')}
-            className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
-              activeViewTab === 'transcript'
-                ? 'bg-white text-blue-600 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            All Semesters Transcript ({profile.semesters.length})
-          </button>
+            {semestersList.map((s) => (
+              <option key={s} value={s}>
+                Semester {s}
+              </option>
+            ))}
+          </select>
         </div>
       </header>
 
       {/* KPI Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Cumulative Published CGPA */}
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs">
           <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-[11px] font-extrabold uppercase tracking-wider">Official CGPA</span>
+            <span className="text-[11px] font-extrabold uppercase tracking-wider">
+              Cumulative CGPA
+            </span>
             <GraduationCap className="w-4 h-4 text-blue-600" />
           </div>
           <h3 className="text-xl sm:text-2xl font-black text-slate-900">
-            {profile.cgpa.toFixed(2)} <span className="text-xs text-slate-400 font-bold">/ 10.0</span>
+            {profile.cgpa.toFixed(2)}{" "}
+            <span className="text-xs text-slate-400 font-bold">/ 10.0</span>
           </h3>
           <p className="text-[11px] text-blue-600 font-bold mt-0.5">
-            Completed: Sem 1-1 to 3-2 ({profile.totalCreditsCompleted} Credits)
+            Overall University Performance
           </p>
         </div>
 
-        {/* Equivalent Percentage */}
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs">
           <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-[11px] font-extrabold uppercase tracking-wider">Aggregate %</span>
-            <Percent className="w-4 h-4 text-emerald-600" />
+            <span className="text-[11px] font-extrabold uppercase tracking-wider">
+              Published Results
+            </span>
+            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
           </div>
-          <h3 className="text-xl sm:text-2xl font-black text-slate-900">
-            {profile.overallPercentage.toFixed(1)}%
+          <h3 className="text-xl sm:text-2xl font-black text-emerald-600">
+            {publishedSubjectsCount}{" "}
+            <span className="text-xs text-slate-400 font-bold">Subjects</span>
           </h3>
-          <p className="text-[11px] text-slate-500 font-medium mt-0.5">Formula: (CGPA - 0.75) × 10</p>
+          <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+            Official Grades Released
+          </p>
         </div>
 
-        {/* Current Semester Status */}
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs">
           <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-[11px] font-extrabold uppercase tracking-wider">Sem {user?.semester || '4-1'} Status</span>
+            <span className="text-[11px] font-extrabold uppercase tracking-wider">
+              Pending Evaluation
+            </span>
             <Clock className="w-4 h-4 text-amber-500" />
           </div>
-          <h3 className="text-sm sm:text-base font-black text-amber-600 mt-1">
-            Ongoing Term
+          <h3 className="text-xl sm:text-2xl font-black text-amber-600">
+            {pendingSubjectsCount}{" "}
+            <span className="text-xs text-slate-400 font-bold">Subjects</span>
           </h3>
-          <p className="text-[11px] text-slate-500 font-medium mt-0.5">Final Exams Awaited</p>
+          <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+            Exams In-Progress or Unreleased
+          </p>
         </div>
 
-        {/* Academic Standing */}
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs">
           <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-[11px] font-extrabold uppercase tracking-wider">Standing</span>
-            <Award className="w-4 h-4 text-purple-600" />
+            <span className="text-[11px] font-extrabold uppercase tracking-wider">
+              Internal Formula
+            </span>
+            <Calculator className="w-4 h-4 text-purple-600" />
           </div>
-          <h3 className="text-xs sm:text-sm font-black text-purple-700 truncate mt-1">
-            {profile.academicStanding}
+          <h3 className="text-base sm:text-lg font-black text-purple-700">
+            80% High + 20% Low
           </h3>
-          <p className="text-[11px] text-emerald-600 font-bold mt-1">Eligible for Campus Placements</p>
+          <p className="text-[11px] text-purple-600 font-bold mt-0.5">
+            Internal Component (30M)
+          </p>
         </div>
       </div>
 
-      {/* 1. All Semesters Full Academic Transcript */}
-      {activeViewTab === 'transcript' && (
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden space-y-4 p-5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-4">
-            <div>
-              <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
-                <Layers className="w-5 h-5 text-blue-600" />
-                University Semester-Wise Academic Transcript
-              </h3>
-              <p className="text-xs text-slate-500 font-medium mt-0.5">
-                Official grading history for completed terms (1-1 to 3-2) and continuous evaluation for current term ({user?.semester || '4-1'})
-              </p>
-            </div>
-            <span className="text-xs font-black bg-blue-50 text-blue-700 px-3 py-1 rounded-xl border border-blue-200 self-start sm:self-auto">
-              Official CGPA: {profile.cgpa.toFixed(2)} ({profile.overallPercentage.toFixed(1)}%)
+      {/* Navigation Tabs */}
+      <div className="flex bg-white p-1.5 rounded-2xl border border-slate-200/80 shadow-xs gap-1.5 overflow-x-auto">
+        <button
+          onClick={() => setActiveTab("overview")}
+          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition-all whitespace-nowrap ${
+            activeTab === "overview"
+              ? "bg-blue-600 text-white shadow-xs"
+              : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+          }`}
+        >
+          <FileSpreadsheet className="w-4 h-4" />
+          Consolidated Overview
+        </button>
+        <button
+          onClick={() => setActiveTab("theory")}
+          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition-all whitespace-nowrap ${
+            activeTab === "theory"
+              ? "bg-blue-600 text-white shadow-xs"
+              : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+          }`}
+        >
+          <BookOpen className="w-4 h-4" />
+          Theory Subjects ({theoryResults.length})
+        </button>
+        <button
+          onClick={() => setActiveTab("lab")}
+          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition-all whitespace-nowrap ${
+            activeTab === "lab"
+              ? "bg-blue-600 text-white shadow-xs"
+              : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+          }`}
+        >
+          <Beaker className="w-4 h-4" />
+          Laboratory Subjects ({labResults.length})
+        </button>
+        <button
+          onClick={() => setActiveTab("grade_scale")}
+          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition-all whitespace-nowrap ${
+            activeTab === "grade_scale"
+              ? "bg-blue-600 text-white shadow-xs"
+              : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+          }`}
+        >
+          <Award className="w-4 h-4" />
+          University Grading Scale
+        </button>
+      </div>
+
+      {/* 80:20 Academic Formula Explainer Notice */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/80 rounded-2xl p-4.5 text-xs text-blue-900 shadow-xs flex items-start gap-3">
+        <div className="p-2 rounded-xl bg-blue-600 text-white shrink-0 mt-0.5">
+          <Info className="w-4 h-4" />
+        </div>
+        <div className="space-y-1">
+          <div className="font-extrabold text-blue-950 flex items-center gap-2">
+            <span>
+              PBR VITS Continuous Internal Evaluation (CIE) Calculation Rules:
             </span>
           </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="bg-slate-50 text-slate-400 uppercase tracking-wider font-bold border-b border-slate-200">
-                  <th className="p-3.5 font-bold">Academic Term</th>
-                  <th className="p-3.5 font-bold">Academic Year</th>
-                  <th className="p-3.5 font-bold">Credits</th>
-                  <th className="p-3.5 font-bold">SGPA</th>
-                  <th className="p-3.5 font-bold">Percentage</th>
-                  <th className="p-3.5 font-bold">University Status</th>
-                  <th className="p-3.5 font-bold text-center">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-slate-700">
-                {profile.semesters.map((sem) => (
-                  <tr key={sem.semester} className={`hover:bg-slate-50/70 transition-colors ${sem.isCurrentOngoing ? 'bg-amber-50/30' : ''}`}>
-                    <td className="p-3.5 font-extrabold text-slate-900 flex items-center gap-2">
-                      <span className={`w-2 h-2 rounded-full ${sem.isCurrentOngoing ? 'bg-amber-500 animate-pulse' : 'bg-blue-600'}`}></span>
-                      Semester {sem.semester}
-                      {sem.isCurrentOngoing && (
-                        <span className="text-[9px] bg-amber-100 text-amber-800 font-black px-1.5 py-0.5 rounded ml-1">
-                          CURRENT
-                        </span>
-                      )}
-                    </td>
-                    <td className="p-3.5 font-semibold text-slate-600">{sem.year}</td>
-                    <td className="p-3.5 font-bold text-slate-800">{sem.credits} Credits</td>
-                    <td className="p-3.5 font-black text-slate-900 text-sm">
-                      {sem.isCurrentOngoing ? (
-                        <span className="text-amber-700 text-xs">~{sem.sgpa.toFixed(2)} (CIE)</span>
-                      ) : (
-                        sem.sgpa.toFixed(2)
-                      )}
-                    </td>
-                    <td className="p-3.5 font-bold text-blue-600">
-                      {sem.isCurrentOngoing ? (
-                        <span className="text-amber-700 text-xs">~{sem.percentage.toFixed(1)}%</span>
-                      ) : (
-                        `${sem.percentage.toFixed(1)}%`
-                      )}
-                    </td>
-                    <td className="p-3.5">
-                      {sem.isCurrentOngoing ? (
-                        <span className="px-2.5 py-0.5 rounded-md font-bold text-[10px] bg-amber-50 text-amber-700 border border-amber-200">
-                          In Progress (Exam Awaited)
-                        </span>
-                      ) : (
-                        <span className={`px-2.5 py-0.5 rounded-md font-bold text-[10px] ${
-                          sem.status === 'Distinction'
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                            : sem.status === 'First Class'
-                            ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                            : sem.status === 'Fail'
-                            ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                            : 'bg-slate-100 text-slate-700'
-                        }`}>
-                          {sem.status}
-                        </span>
-                      )}
-                    </td>
-                    <td className="p-3.5 text-center">
-                      <button
-                        onClick={() => {
-                          setSelectedSemester(sem.semester);
-                          setActiveViewTab('current');
-                        }}
-                        className="px-3 py-1 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-700 rounded-lg text-xs font-bold transition-all"
-                      >
-                        {sem.isCurrentOngoing ? 'Inspect CIE Marks' : 'View Grade Card'}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <p className="text-slate-600 font-medium leading-relaxed">
+            • <strong>Theory:</strong> Internal Marks (out of 30) ={" "}
+            <code className="bg-white px-1.5 py-0.5 rounded border border-blue-200 font-bold text-blue-700">
+              (Higher Mid / 30 × 24) + (Lower Mid / 30 × 6)
+            </code>
+            . Higher scoring mid receives 80% weightage; lower scoring mid
+            receives 20% weightage. Final marks = Internal (30) + Semester End
+            Exam (70) = 100 Marks.
+          </p>
+          <p className="text-slate-600 font-medium leading-relaxed">
+            • <strong>Laboratories:</strong> Continuous Lab Internal (Max 30) +
+            University External Lab Exam (Max 70) = Final 100 Marks.
+          </p>
+          <p className="text-blue-800 font-bold text-[11px] mt-1">
+            🔒 Official Integrity: Only university-published examination results
+            appear on this gradebook. Draft examination marks are withheld until
+            faculty publication.
+          </p>
         </div>
-      )}
+      </div>
 
-      {/* 2. Current Semester Course Breakdown & GPA Simulator */}
-      {activeViewTab === 'current' && (
-        <div className="space-y-6">
-          {/* Ongoing Notification Banner */}
-          {isSelectedSemOngoing && (
-            <div className="bg-amber-50 border border-amber-200/80 p-4 rounded-2xl flex items-start gap-3 text-amber-900">
-              <Info className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-              <div>
-                <h4 className="text-xs font-extrabold uppercase tracking-wider text-amber-800">
-                  Semester {selectedSemester} is Currently Ongoing
-                </h4>
-                <p className="text-xs font-medium text-amber-700 mt-0.5 leading-relaxed">
-                  Final university theory & practical examinations for Semester {selectedSemester} are not yet conducted. The marks shown below reflect your continuous internal evaluation (Midterms, Quizzes & Lab Assignments). Use the <b>Interactive Grade Forecaster</b> on the right to simulate your upcoming final exam target score!
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Semester Selector Bar */}
-          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-blue-600" />
-              <span className="text-xs font-bold text-slate-700">Select Academic Semester:</span>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {profile.semesters.map(s => (
-                <button
-                  key={s.semester}
-                  onClick={() => setSelectedSemester(s.semester)}
-                  className={`px-3 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-                    selectedSemester === s.semester
-                      ? 'bg-blue-600 text-white shadow-xs'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  <span>Sem {s.semester}</span>
-                  <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${
-                    selectedSemester === s.semester 
-                      ? 'bg-blue-700 text-white' 
-                      : (s.isCurrentOngoing ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-700')
-                  }`}>
-                    {s.isCurrentOngoing ? 'Ongoing' : `SGPA ${s.sgpa.toFixed(2)}`}
+      {loading ? (
+        <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center shadow-xs">
+          <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+          <h4 className="text-sm font-bold text-slate-800">
+            Loading Official Examination Records...
+          </h4>
+          <p className="text-xs text-slate-500 mt-1">
+            Fetching published marks for Semester {selectedSemester}
+          </p>
+        </div>
+      ) : liveResults.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center shadow-xs">
+          <AlertCircle className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+          <h4 className="text-base font-bold text-slate-800">
+            No Examination Records Found
+          </h4>
+          <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">
+            No subjects or examinations are currently scheduled or published for
+            Semester {selectedSemester}.
+          </p>
+        </div>
+      ) : (
+        <>
+          {/* TAB 1: CONSOLIDATED OVERVIEW */}
+          {activeTab === "overview" && (
+            <div className="space-y-6">
+              {/* Theory Subjects Overview Table */}
+              <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+                <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="w-5 h-5 text-blue-600" />
+                    <h3 className="text-sm sm:text-base font-extrabold text-slate-900">
+                      Theory Examinations Overview (Sem {selectedSemester})
+                    </h3>
+                  </div>
+                  <span className="text-[11px] font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg">
+                    Total Theory: {theoryResults.length}
                   </span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left: Courses Grid & Selected Course Details */}
-            <div className="lg:col-span-2 space-y-6">
-              {/* Courses selection cards */}
-              <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-extrabold text-slate-900">
-                    Semester {selectedSemester} Courses ({currentCourses.length} Subjects)
-                  </h3>
-                  <span className="text-xs font-bold text-blue-600">Click subject to inspect breakdown</span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                  {currentCourses.map((course) => (
-                    <div
-                      key={course.code}
-                      onClick={() => handleSelectCourse(course)}
-                      className={`p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between h-28 ${
-                        selectedCourse?.code === course.code
-                          ? 'border-blue-500 bg-blue-50/50 shadow-xs ring-1 ring-blue-400'
-                          : 'border-slate-200 hover:border-slate-300 bg-slate-50/50'
-                      }`}
-                    >
-                      <div className="flex justify-between items-start">
-                        <span className="text-[10px] font-mono font-bold text-slate-500">{course.code}</span>
-                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
-                          course.isOngoing
-                            ? 'text-amber-800 bg-amber-100'
-                            : 'text-blue-700 bg-blue-100/70'
-                        }`}>
-                          {course.grade}
-                        </span>
-                      </div>
-                      <div>
-                        <h4 className="font-extrabold text-slate-800 text-xs truncate leading-snug">{course.subject}</h4>
-                        <p className="text-[10px] text-slate-400 mt-0.5 font-medium">
-                          {course.isOngoing ? 'Internal CIE Active' : 'Official Results Published'}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-500 uppercase tracking-wider font-extrabold text-[10px]">
+                        <th className="py-3 px-4">Subject</th>
+                        <th className="py-3 px-3 text-center">Mid-1 (30M)</th>
+                        <th className="py-3 px-3 text-center">Mid-2 (30M)</th>
+                        <th className="py-3 px-3 text-center bg-blue-50/50 text-blue-900">
+                          Internal (30M)
+                        </th>
+                        <th className="py-3 px-3 text-center">
+                          Semester (70M)
+                        </th>
+                        <th className="py-3 px-3 text-center font-black">
+                          Final (100M)
+                        </th>
+                        <th className="py-3 px-4 text-center">Grade</th>
+                        <th className="py-3 px-4 text-center">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {theoryResults.map((sub, idx) => (
+                        <tr
+                          key={idx}
+                          className="hover:bg-slate-50/60 transition-colors"
+                        >
+                          <td className="py-3.5 px-4">
+                            <div className="font-extrabold text-slate-900">
+                              {sub.subject}
+                            </div>
+                            <div className="text-[11px] font-medium text-slate-400 mt-0.5">
+                              {sub.subject_code || "THEORY"}
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-3 text-center font-bold">
+                            {sub.mid1_marks !== undefined &&
+                            sub.mid1_marks !== null ? (
+                              <span className="text-slate-800">
+                                {sub.mid1_marks}{" "}
+                                <span className="text-[10px] text-slate-400">
+                                  /30
+                                </span>
+                              </span>
+                            ) : (
+                              <span className="text-slate-400 font-medium italic text-[11px]">
+                                Not published
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-3 text-center font-bold">
+                            {sub.mid2_marks !== undefined &&
+                            sub.mid2_marks !== null ? (
+                              <span className="text-slate-800">
+                                {sub.mid2_marks}{" "}
+                                <span className="text-[10px] text-slate-400">
+                                  /30
+                                </span>
+                              </span>
+                            ) : (
+                              <span className="text-slate-400 font-medium italic text-[11px]">
+                                Not published
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-3 text-center bg-blue-50/30">
+                            {sub.internal_marks !== undefined &&
+                            sub.internal_marks !== null ? (
+                              <span className="font-black text-blue-700">
+                                {sub.internal_marks}{" "}
+                                <span className="text-[10px] text-blue-400">
+                                  /30
+                                </span>
+                              </span>
+                            ) : (
+                              <span className="text-slate-400 font-medium italic text-[11px]">
+                                Pending
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-3 text-center font-bold">
+                            {sub.semester_marks !== undefined &&
+                            sub.semester_marks !== null ? (
+                              <span className="text-slate-800">
+                                {sub.semester_marks}{" "}
+                                <span className="text-[10px] text-slate-400">
+                                  /70
+                                </span>
+                              </span>
+                            ) : (
+                              <span className="text-slate-400 font-medium italic text-[11px]">
+                                Not published
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-3 text-center">
+                            {sub.final_marks !== undefined &&
+                            sub.final_marks !== null ? (
+                              <span className="font-black text-slate-900 text-sm">
+                                {sub.final_marks}{" "}
+                                <span className="text-[10px] text-slate-400">
+                                  /100
+                                </span>
+                              </span>
+                            ) : (
+                              <span className="text-slate-400 font-medium italic text-[11px]">
+                                Pending
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-4 text-center">
+                            {getGradeBadge(sub.grade)}
+                          </td>
+                          <td className="py-3.5 px-4 text-center">
+                            <span
+                              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
+                                sub.status === "Published"
+                                  ? "bg-emerald-100 text-emerald-800"
+                                  : sub.status === "Partially Published"
+                                    ? "bg-amber-100 text-amber-800"
+                                    : "bg-slate-100 text-slate-600"
+                              }`}
+                            >
+                              {sub.status === "Published" && (
+                                <Check className="w-3 h-3" />
+                              )}
+                              {sub.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
 
-              {/* Component breakdown */}
-              {selectedCourse && (
+              {/* Lab Subjects Overview Table */}
+              {labResults.length > 0 && (
                 <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
-                  <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                    <div>
-                      <span className="text-[10px] font-extrabold text-blue-600 uppercase tracking-wider block">{selectedCourse.code}</span>
-                      <h3 className="text-sm font-black text-slate-900">{selectedCourse.subject}</h3>
+                  <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Beaker className="w-5 h-5 text-purple-600" />
+                      <h3 className="text-sm sm:text-base font-extrabold text-slate-900">
+                        Practical Laboratory Examinations (Sem{" "}
+                        {selectedSemester})
+                      </h3>
                     </div>
-                    <span className={`text-xs font-extrabold px-3 py-1 rounded-xl border ${
-                      selectedCourse.isOngoing
-                        ? 'bg-amber-50 text-amber-700 border-amber-200'
-                        : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                    }`}>
-                      {selectedCourse.isOngoing ? 'Continuous Internal Evaluation' : `Grade: ${selectedCourse.grade}`}
+                    <span className="text-[11px] font-bold text-purple-600 bg-purple-50 px-2.5 py-1 rounded-lg">
+                      Total Labs: {labResults.length}
                     </span>
                   </div>
 
-                  <div className="p-5 space-y-4">
-                    {selectedCourse.components.map((c, idx) => {
-                      const pct = c.maxScore > 0 ? (c.score / c.maxScore) * 100 : 0;
-                      return (
-                        <div key={idx} className="space-y-1">
-                          <div className="flex justify-between text-xs font-bold text-slate-700">
-                            <span>{c.name} ({c.weightage}% Weightage)</span>
-                            <span>
-                              {c.score} / {c.maxScore} <span className="text-slate-400">({pct.toFixed(0)}%)</span>
-                            </span>
-                          </div>
-                          <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                            <div
-                              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                              style={{ width: `${pct}%` }}
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-500 uppercase tracking-wider font-extrabold text-[10px]">
+                          <th className="py-3 px-4">Laboratory Course</th>
+                          <th className="py-3 px-3 text-center bg-purple-50/50 text-purple-900">
+                            Lab Internal (30M)
+                          </th>
+                          <th className="py-3 px-3 text-center">
+                            Lab External (70M)
+                          </th>
+                          <th className="py-3 px-3 text-center font-black">
+                            Final Marks (100M)
+                          </th>
+                          <th className="py-3 px-4 text-center">Grade</th>
+                          <th className="py-3 px-4 text-center">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {labResults.map((sub, idx) => (
+                          <tr
+                            key={idx}
+                            className="hover:bg-slate-50/60 transition-colors"
+                          >
+                            <td className="py-3.5 px-4">
+                              <div className="font-extrabold text-slate-900">
+                                {sub.subject}
+                              </div>
+                              <div className="text-[11px] font-medium text-purple-500 mt-0.5">
+                                {sub.subject_code || "PRACTICAL LAB"}
+                              </div>
+                            </td>
+                            <td className="py-3.5 px-3 text-center bg-purple-50/30">
+                              {sub.lab_internal !== undefined &&
+                              sub.lab_internal !== null ? (
+                                <span className="font-black text-purple-700">
+                                  {sub.lab_internal}{" "}
+                                  <span className="text-[10px] text-purple-400">
+                                    /30
+                                  </span>
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 font-medium italic text-[11px]">
+                                  Not published
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3.5 px-3 text-center font-bold">
+                              {sub.lab_external !== undefined &&
+                              sub.lab_external !== null ? (
+                                <span className="text-slate-800">
+                                  {sub.lab_external}{" "}
+                                  <span className="text-[10px] text-slate-400">
+                                    /70
+                                  </span>
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 font-medium italic text-[11px]">
+                                  Not published
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3.5 px-3 text-center">
+                              {sub.final_marks !== undefined &&
+                              sub.final_marks !== null ? (
+                                <span className="font-black text-slate-900 text-sm">
+                                  {sub.final_marks}{" "}
+                                  <span className="text-[10px] text-slate-400">
+                                    /100
+                                  </span>
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 font-medium italic text-[11px]">
+                                  Pending
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3.5 px-4 text-center">
+                              {getGradeBadge(sub.grade)}
+                            </td>
+                            <td className="py-3.5 px-4 text-center">
+                              <span
+                                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
+                                  sub.status === "Published"
+                                    ? "bg-emerald-100 text-emerald-800"
+                                    : sub.status === "Partially Published"
+                                      ? "bg-amber-100 text-amber-800"
+                                      : "bg-slate-100 text-slate-600"
+                                }`}
+                              >
+                                {sub.status === "Published" && (
+                                  <Check className="w-3 h-3" />
+                                )}
+                                {sub.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               )}
             </div>
+          )}
 
-            {/* Right: Sandbox GPA Forecaster */}
-            <div className="space-y-6">
-              <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-5 space-y-4">
-                <div>
-                  <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
-                    <Calculator className="w-5 h-5 text-blue-600" />
-                    Interactive Grade Forecaster
-                  </h3>
-                  <p className="text-xs text-slate-400 mt-0.5 font-medium">
-                    Adjust target scores to estimate your final subject grade and GP.
-                  </p>
-                </div>
-
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-xs font-bold text-slate-700 block mb-1">Midterm Exam (Max 30)</label>
-                    <input
-                      type="number"
-                      max={30}
-                      min={0}
-                      value={midtermScore}
-                      onChange={(e) => setMidtermScore(Math.min(30, Math.max(0, parseInt(e.target.value) || 0)))}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-bold text-slate-700 block mb-1">Quizzes & Tests (Max 10)</label>
-                    <input
-                      type="number"
-                      max={10}
-                      min={0}
-                      value={quizScore}
-                      onChange={(e) => setQuizScore(Math.min(10, Math.max(0, parseInt(e.target.value) || 0)))}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-bold text-slate-700 block mb-1">Labs / Assignments (Max 20)</label>
-                    <input
-                      type="number"
-                      max={20}
-                      min={0}
-                      value={labScore}
-                      onChange={(e) => setLabScore(Math.min(20, Math.max(0, parseInt(e.target.value) || 0)))}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-bold text-slate-700 block mb-1">Final Exam Target (Max 40)</label>
-                    <input
-                      type="number"
-                      max={40}
-                      min={0}
-                      value={finalTarget}
-                      onChange={(e) => setFinalTarget(Math.min(40, Math.max(0, parseInt(e.target.value) || 0)))}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div className="p-4 bg-purple-50/70 rounded-xl border border-purple-200 space-y-2">
-                    <div className="flex justify-between items-center text-xs font-bold text-purple-800">
-                      <span>Simulated Total Score:</span>
-                      <span className="text-base font-black text-purple-900">{totalCalculated} / 100</span>
+          {/* TAB 2: DETAILED THEORY CARDS */}
+          {activeTab === "theory" && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {theoryResults.map((sub, idx) => (
+                <div
+                  key={idx}
+                  className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs hover:border-blue-300 transition-all space-y-4"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-blue-50 text-blue-700">
+                        {sub.subject_code || "THEORY"}
+                      </span>
+                      <h3 className="text-base font-black text-slate-900 mt-1">
+                        {sub.subject}
+                      </h3>
+                      <p className="text-xs text-slate-400 font-medium">
+                        Department: {sub.department}
+                      </p>
                     </div>
-                    <div className="flex justify-between items-center text-xs font-bold text-purple-800">
-                      <span>Forecasted Grade:</span>
-                      <span className="text-xs font-extrabold text-purple-950">{getEstimatedGrade(totalCalculated)}</span>
+                    <div>{getGradeBadge(sub.grade)}</div>
+                  </div>
+
+                  {/* Components Grid */}
+                  <div className="grid grid-cols-2 gap-2.5 bg-slate-50/80 p-3.5 rounded-xl border border-slate-150">
+                    <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                      <div className="text-[10px] font-extrabold text-slate-400 uppercase">
+                        Mid Examination 1
+                      </div>
+                      <div className="text-base font-black text-slate-900 mt-0.5">
+                        {sub.mid1_marks !== undefined &&
+                        sub.mid1_marks !== null ? (
+                          <>
+                            {sub.mid1_marks}{" "}
+                            <span className="text-xs text-slate-400 font-normal">
+                              /30
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-xs text-slate-400 font-medium">
+                            Marks not yet published
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                      <div className="text-[10px] font-extrabold text-slate-400 uppercase">
+                        Mid Examination 2
+                      </div>
+                      <div className="text-base font-black text-slate-900 mt-0.5">
+                        {sub.mid2_marks !== undefined &&
+                        sub.mid2_marks !== null ? (
+                          <>
+                            {sub.mid2_marks}{" "}
+                            <span className="text-xs text-slate-400 font-normal">
+                              /30
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-xs text-slate-400 font-medium">
+                            Marks not yet published
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="bg-blue-50/80 p-2.5 rounded-lg border border-blue-200 col-span-2">
+                      <div className="flex items-center justify-between">
+                        <div className="text-[10px] font-extrabold text-blue-700 uppercase">
+                          Calculated Internal (80% High + 20% Low)
+                        </div>
+                        <span className="text-[9px] bg-blue-200/80 text-blue-900 px-1.5 py-0.2 rounded font-black">
+                          Max 30
+                        </span>
+                      </div>
+                      <div className="text-lg font-black text-blue-900 mt-0.5">
+                        {sub.internal_marks !== undefined &&
+                        sub.internal_marks !== null ? (
+                          <>
+                            {sub.internal_marks}{" "}
+                            <span className="text-xs text-blue-500 font-normal">
+                              / 30.0
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-xs text-blue-500 font-medium">
+                            Pending Mid Evaluations
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="bg-white p-2.5 rounded-lg border border-slate-200 col-span-2">
+                      <div className="text-[10px] font-extrabold text-slate-400 uppercase">
+                        Semester University Exam
+                      </div>
+                      <div className="text-base font-black text-slate-900 mt-0.5">
+                        {sub.semester_marks !== undefined &&
+                        sub.semester_marks !== null ? (
+                          <>
+                            {sub.semester_marks}{" "}
+                            <span className="text-xs text-slate-400 font-normal">
+                              / 70
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-xs text-slate-400 font-medium">
+                            Marks not yet published
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Final Calculation Summary */}
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                    <div>
+                      <div className="text-[10px] font-bold text-slate-400 uppercase">
+                        Final Total (Internal + Semester)
+                      </div>
+                      <div className="text-lg font-black text-slate-900">
+                        {sub.final_marks !== undefined &&
+                        sub.final_marks !== null ? (
+                          <>
+                            {sub.final_marks}{" "}
+                            <span className="text-xs text-slate-400 font-normal">
+                              / 100
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-xs text-slate-400 font-medium">
+                            Results Pending
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-bold ${
+                          sub.status === "Published"
+                            ? "bg-emerald-100 text-emerald-800"
+                            : "bg-amber-100 text-amber-800"
+                        }`}
+                      >
+                        {sub.status}
+                      </span>
                     </div>
                   </div>
                 </div>
+              ))}
+            </div>
+          )}
+
+          {/* TAB 3: DETAILED LAB CARDS */}
+          {activeTab === "lab" && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {labResults.map((sub, idx) => (
+                <div
+                  key={idx}
+                  className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs hover:border-purple-300 transition-all space-y-4"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-purple-50 text-purple-700">
+                        {sub.subject_code || "PRACTICAL LAB"}
+                      </span>
+                      <h3 className="text-base font-black text-slate-900 mt-1">
+                        {sub.subject}
+                      </h3>
+                      <p className="text-xs text-slate-400 font-medium">
+                        Department: {sub.department}
+                      </p>
+                    </div>
+                    <div>{getGradeBadge(sub.grade)}</div>
+                  </div>
+
+                  {/* Lab Components */}
+                  <div className="grid grid-cols-2 gap-2.5 bg-slate-50/80 p-3.5 rounded-xl border border-slate-150">
+                    <div className="bg-purple-50/80 p-2.5 rounded-lg border border-purple-200">
+                      <div className="text-[10px] font-extrabold text-purple-700 uppercase">
+                        Lab Internal (Day-to-Day)
+                      </div>
+                      <div className="text-base font-black text-purple-950 mt-0.5">
+                        {sub.lab_internal !== undefined &&
+                        sub.lab_internal !== null ? (
+                          <>
+                            {sub.lab_internal}{" "}
+                            <span className="text-xs text-purple-500 font-normal">
+                              /30
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-xs text-slate-400 font-medium">
+                            Marks not yet published
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                      <div className="text-[10px] font-extrabold text-slate-400 uppercase">
+                        Lab External (Viva & Practical)
+                      </div>
+                      <div className="text-base font-black text-slate-900 mt-0.5">
+                        {sub.lab_external !== undefined &&
+                        sub.lab_external !== null ? (
+                          <>
+                            {sub.lab_external}{" "}
+                            <span className="text-xs text-slate-400 font-normal">
+                              /70
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-xs text-slate-400 font-medium">
+                            Marks not yet published
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Final Calculation Summary */}
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                    <div>
+                      <div className="text-[10px] font-bold text-slate-400 uppercase">
+                        Final Practical Marks
+                      </div>
+                      <div className="text-lg font-black text-slate-900">
+                        {sub.final_marks !== undefined &&
+                        sub.final_marks !== null ? (
+                          <>
+                            {sub.final_marks}{" "}
+                            <span className="text-xs text-slate-400 font-normal">
+                              / 100
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-xs text-slate-400 font-medium">
+                            Results Pending
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-bold ${
+                          sub.status === "Published"
+                            ? "bg-emerald-100 text-emerald-800"
+                            : "bg-amber-100 text-amber-800"
+                        }`}
+                      >
+                        {sub.status}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* TAB 4: GRADING SCALE CONFIGURATION */}
+          {activeTab === "grade_scale" && (
+            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-5 sm:p-6 space-y-4">
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900">
+                  Official University Grading System
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Standard autonomous college grading boundary configuration
+                  applied across Theory and Lab subjects.
+                </p>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border border-slate-200 rounded-xl overflow-hidden">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase font-black text-[10px]">
+                      <th className="py-3 px-4">Grade</th>
+                      <th className="py-3 px-4">Marks Range (Out of 100)</th>
+                      <th className="py-3 px-4 text-center">
+                        Grade Points (GP)
+                      </th>
+                      <th className="py-3 px-4">
+                        Performance Qualitative Description
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-medium">
+                    {gradeScale.map((item, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50/60">
+                        <td className="py-3 px-4 font-black">
+                          {getGradeBadge(item.grade)}
+                        </td>
+                        <td className="py-3 px-4 font-bold text-slate-800">
+                          {item.min_marks}% — {item.max_marks}%
+                        </td>
+                        <td className="py-3 px-4 text-center font-black text-blue-600">
+                          {item.grade_points}
+                        </td>
+                        <td className="py-3 px-4 text-slate-600 font-semibold">
+                          {item.description}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
-          </div>
-        </div>
+          )}
+        </>
       )}
     </div>
   );

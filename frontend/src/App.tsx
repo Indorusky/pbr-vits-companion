@@ -28,6 +28,7 @@ import AcademicHistory from './pages/AcademicHistory';
 import AcademicHealth from './pages/AcademicHealth';
 import FacultyChat from './pages/FacultyChat';
 import StudentMessages from './pages/StudentMessages';
+import FacultyExaminations from './pages/FacultyExaminations';
 
 const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode, allowedRoles?: string[] }) => {
   const { isAuthenticated, user } = useAuth();
@@ -115,6 +116,7 @@ function AppRoutes() {
 
                       {/* Faculty Routes */}
                       <Route path="/faculty-dashboard" element={<ProtectedRoute allowedRoles={['faculty', 'admin']}><FacultyDashboard /></ProtectedRoute>} />
+                      <Route path="/faculty-examinations" element={<ProtectedRoute allowedRoles={['faculty', 'admin']}><FacultyExaminations /></ProtectedRoute>} />
                       <Route path="/student-messages" element={<ProtectedRoute allowedRoles={['faculty', 'admin']}><StudentMessages /></ProtectedRoute>} />
                       <Route path="/manage-students" element={<ProtectedRoute allowedRoles={['faculty', 'admin']}><ManageStudents /></ProtectedRoute>} />
                       

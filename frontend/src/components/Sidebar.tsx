@@ -1,21 +1,21 @@
 import { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { 
-  Home, 
-  MessageSquare, 
-  BookOpen, 
-  User, 
-  Settings, 
-  LogOut, 
-  Users, 
-  FileText, 
-  Calendar, 
-  Percent, 
-  BarChart3, 
-  ClipboardList, 
-  Megaphone, 
-  Sparkles, 
-  HelpCircle, 
+import {
+  Home,
+  MessageSquare,
+  BookOpen,
+  User,
+  Settings,
+  LogOut,
+  Users,
+  FileText,
+  Calendar,
+  Percent,
+  BarChart3,
+  ClipboardList,
+  Megaphone,
+  Sparkles,
+  HelpCircle,
   Bell,
   Building,
   Menu,
@@ -63,7 +63,7 @@ const Sidebar = () => {
     { name: 'Academic Health', icon: TrendingUp, path: '/academic-health' },
     { name: 'Timetable', icon: Calendar, path: '/timetable' },
     { name: 'Attendance', icon: Percent, path: '/attendance' },
-    { name: 'Internal Marks', icon: BarChart3, path: '/marks' },
+    { name: 'Examinations & Marks', icon: BarChart3, path: '/marks' },
     { name: 'Academic History', icon: FileText, path: '/history' },
     { name: 'Assignments', icon: ClipboardList, path: '/assignments' },
     { name: 'Study Materials', icon: BookOpen, path: '/study' },
@@ -78,6 +78,7 @@ const Sidebar = () => {
 
   const facultyNavItems = [
     { name: 'Dashboard', icon: Home, path: '/faculty-dashboard' },
+    { name: 'Examinations', icon: BarChart3, path: '/faculty-examinations' },
     { name: 'Student Messages', icon: MessageSquare, path: '/student-messages' },
     { name: 'Timetable', icon: Calendar, path: '/timetable' },
     { name: 'Manage Students', icon: Users, path: '/manage-students' },
@@ -90,6 +91,7 @@ const Sidebar = () => {
 
   const adminNavItems = [
     { name: 'Dashboard', icon: Home, path: '/admin-dashboard' },
+    { name: 'Examinations', icon: BarChart3, path: '/faculty-examinations' },
     { name: 'Timetable', icon: Calendar, path: '/timetable' },
     { name: 'Career & Placements', icon: FileText, path: '/placements' },
     { name: 'Manage Users', icon: Users, path: '/manage-users' },
@@ -142,7 +144,7 @@ const Sidebar = () => {
           {user?.role === 'admin' && (
             <span className="bg-purple-100 text-purple-700 text-[9px] px-1.5 py-0.5 rounded-md font-bold uppercase shrink-0">Admin</span>
           )}
-          <button 
+          <button
             onClick={() => setMobileMenuOpen(false)}
             className="md:hidden p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg"
           >
@@ -181,10 +183,9 @@ const Sidebar = () => {
             to={item.path}
             onClick={() => setMobileMenuOpen(false)}
             className={({ isActive }) =>
-              `flex items-center space-x-3 px-3 py-2 text-sm rounded-xl transition-all duration-200 ${
-                isActive
-                  ? 'bg-blue-50 text-blue-600 font-semibold shadow-sm'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              `flex items-center space-x-3 px-3 py-2 text-sm rounded-xl transition-all duration-200 ${isActive
+                ? 'bg-blue-50 text-blue-600 font-semibold shadow-sm'
+                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
               }`
             }
           >
@@ -201,10 +202,9 @@ const Sidebar = () => {
             to="/profile"
             onClick={() => setMobileMenuOpen(false)}
             className={({ isActive }) =>
-              `flex items-center space-x-3 px-3 py-2 text-sm rounded-xl transition-all duration-200 ${
-                isActive
-                  ? 'bg-blue-50 text-blue-600 font-semibold shadow-sm'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              `flex items-center space-x-3 px-3 py-2 text-sm rounded-xl transition-all duration-200 ${isActive
+                ? 'bg-blue-50 text-blue-600 font-semibold shadow-sm'
+                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
               }`
             }
           >
@@ -216,10 +216,9 @@ const Sidebar = () => {
           to="/settings"
           onClick={() => setMobileMenuOpen(false)}
           className={({ isActive }) =>
-            `flex items-center space-x-3 px-3 py-2 text-sm rounded-xl transition-all duration-200 ${
-              isActive
-                ? 'bg-blue-50 text-blue-600 font-semibold shadow-sm'
-                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+            `flex items-center space-x-3 px-3 py-2 text-sm rounded-xl transition-all duration-200 ${isActive
+              ? 'bg-blue-50 text-blue-600 font-semibold shadow-sm'
+              : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
             }`
           }
         >
@@ -251,7 +250,7 @@ const Sidebar = () => {
           </div>
         </div>
 
-        <button 
+        <button
           onClick={() => {
             setMobileMenuOpen(false);
             handleLogout();
@@ -301,9 +300,9 @@ const Sidebar = () => {
       {/* 3. Mobile Slide-Over Drawer Modal */}
       {mobileMenuOpen && (
         <div className="fixed inset-0 z-50 flex md:hidden">
-          <div 
-            className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity" 
-            onClick={() => setMobileMenuOpen(false)} 
+          <div
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity"
+            onClick={() => setMobileMenuOpen(false)}
           />
           <div className="relative w-72 max-w-[85vw] bg-white h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-left duration-200">
             {renderNavContent()}
@@ -335,10 +334,9 @@ export const MobileBottomNav = () => {
           key={item.name}
           to={item.path}
           className={({ isActive }) =>
-            `flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all ${
-              isActive
-                ? 'text-blue-600 font-extrabold bg-blue-50/80'
-                : 'text-slate-400 hover:text-slate-600 font-semibold'
+            `flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all ${isActive
+              ? 'text-blue-600 font-extrabold bg-blue-50/80'
+              : 'text-slate-400 hover:text-slate-600 font-semibold'
             }`
           }
         >
