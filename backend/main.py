@@ -3229,7 +3229,52 @@ def get_assignments(
         query = query.filter(models.Assignment.semester == semester)
     if subject and subject != "All":
         query = query.filter(models.Assignment.subject.ilike(f"%{subject}%"))
-    return query.order_by(models.Assignment.id.desc()).all()
+    assignments = query.order_by(models.Assignment.id.desc()).all()
+
+    # Bulk-load all submissions for the returned assignments in one query
+    assignment_ids = [a.id for a in assignments]
+    all_subs: list[models.AssignmentSubmission] = []
+    if assignment_ids:
+        all_subs = db.query(models.AssignmentSubmission).filter(
+            models.AssignmentSubmission.assignment_id.in_(assignment_ids)
+        ).all()
+
+    # Build a lookup: assignment_id -> {roll_number -> SubmissionSummary}
+    sub_map: dict[int, dict] = {a.id: {} for a in assignments}
+    for sub in all_subs:
+        roll_key = sub.student_roll or str(sub.student_id)
+        sub_map[sub.assignment_id][roll_key] = schemas.SubmissionSummary(
+            studentId=str(sub.student_id),
+            studentName=sub.student_name or "",
+            rollNumber=roll_key,
+            submittedFile=sub.file_name,
+            submittedAt=sub.submitted_at,
+            comments=sub.submission_text,
+            score=sub.marks_awarded,
+            feedback=sub.feedback,
+            status=sub.status or "Submitted"
+        )
+
+    # Attach submissions dict to each assignment before returning
+    result = []
+    for a in assignments:
+        resp = schemas.AssignmentResponse(
+            id=a.id,
+            title=a.title,
+            description=a.description,
+            subject=a.subject,
+            department=a.department,
+            semester=a.semester,
+            faculty_username=a.faculty_username,
+            faculty_name=a.faculty_name,
+            deadline=a.deadline,
+            total_points=a.total_points,
+            attachment_url=a.attachment_url,
+            created_at=a.created_at,
+            submissions=sub_map.get(a.id, {})
+        )
+        result.append(resp)
+    return result
 
 @app.post("/assignments", response_model=schemas.AssignmentResponse)
 def create_assignment(
@@ -3331,6 +3376,32 @@ def get_assignment_submissions(
     db: Session = Depends(get_db)
 ):
     return db.query(models.AssignmentSubmission).filter(models.AssignmentSubmission.assignment_id == id).all()
+
+@app.post("/assignments/{id}/grade")
+def grade_assignment_submission(
+    id: int,
+    student_roll: str,
+    marks_awarded: int,
+    feedback: Optional[str] = None,
+    current_user: models.User = Depends(require_faculty),
+    db: Session = Depends(get_db)
+):
+    """Faculty grades a specific student submission by roll number."""
+    assign = db.query(models.Assignment).filter(models.Assignment.id == id).first()
+    if not assign:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+    sub = db.query(models.AssignmentSubmission).filter(
+        models.AssignmentSubmission.assignment_id == id,
+        models.AssignmentSubmission.student_roll == student_roll
+    ).first()
+    if not sub:
+        raise HTTPException(status_code=404, detail="Submission not found for this student")
+    sub.marks_awarded = marks_awarded
+    sub.feedback = feedback or ""
+    sub.status = "Graded"
+    db.commit()
+    db.refresh(sub)
+    return {"message": "Grade saved", "marks_awarded": sub.marks_awarded, "status": sub.status}
 
 @app.get("/student/submissions", response_model=List[schemas.AssignmentSubmissionResponse])
 def get_my_assignment_submissions(

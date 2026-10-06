@@ -213,6 +213,21 @@ class AssignmentBase(BaseModel):
 class AssignmentCreate(AssignmentBase):
     pass
 
+class SubmissionSummary(BaseModel):
+    """Lightweight submission info embedded inside AssignmentResponse."""
+    studentId: str
+    studentName: str
+    rollNumber: str
+    submittedFile: Optional[str] = None
+    submittedAt: str
+    comments: Optional[str] = None
+    score: Optional[int] = None
+    feedback: Optional[str] = None
+    status: str  # 'Submitted' | 'Graded' | 'Resubmitted'
+
+    class Config:
+        from_attributes = True
+
 class AssignmentResponse(BaseModel):
     id: int
     title: str
@@ -226,6 +241,8 @@ class AssignmentResponse(BaseModel):
     total_points: Optional[int] = 100
     attachment_url: Optional[str] = None
     created_at: Optional[str] = None
+    # Submissions dict keyed by student roll number (populated dynamically)
+    submissions: Optional[Dict[str, SubmissionSummary]] = {}
 
     class Config:
         from_attributes = True
