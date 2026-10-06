@@ -63,6 +63,7 @@ class ChatResponse(BaseModel):
 class TimetableEntryBase(BaseModel):
     department: str
     semester: str
+    section: Optional[str] = "Section A"
     day: str
     period: int
     subject: str
@@ -417,9 +418,120 @@ class FacultyChatConversationOut(BaseModel):
     student: Optional[StudentInfoSummary] = None
     faculty: Optional[FacultyInfoSummary] = None
 
+# -------------------------------------------------------------
+# Examination & Marks Redesign Schemas
+# -------------------------------------------------------------
+
+class GradeConfigItem(BaseModel):
+    grade: str
+    min_marks: float
+    max_marks: float
+    grade_points: int
+    description: str
+
+class GradeConfigUpdateRequest(BaseModel):
+    scale: List[GradeConfigItem]
+
+class AcademicSubjectBase(BaseModel):
+    code: str
+    name: str
+    department: str
+    year: str
+    semester: str
+    subject_type: str = "THEORY"  # "THEORY" or "LAB"
+    credits: int = 3
+    assigned_faculty: Optional[str] = None
+
+class AcademicSubjectCreate(AcademicSubjectBase):
+    pass
+
+class AcademicSubjectResponse(AcademicSubjectBase):
+    id: int
+
     class Config:
         from_attributes = True
 
+class ExaminationCreate(BaseModel):
+    subject: str
+    subject_code: Optional[str] = None
+    subject_type: str = "THEORY"  # "THEORY" or "LAB"
+    exam_type: str  # "MID_1", "MID_2", "SEMESTER", "LAB_INTERNAL", "LAB_EXTERNAL"
+    department: str
+    year: str
+    semester: str
+    section: str = "Section A"
+    academic_session: Optional[str] = "2025-2026"
+    max_marks: Optional[float] = None
 
+class ExaminationResponse(BaseModel):
+    id: int
+    subject: str
+    subject_code: Optional[str] = None
+    subject_type: str
+    exam_type: str
+    department: str
+    year: str
+    semester: str
+    section: str
+    academic_session: str
+    max_marks: float
+    is_published: int
+    published_at: Optional[str] = None
+    created_by: Optional[str] = None
+    created_at: str
+    updated_at: str
+    total_students: Optional[int] = 0
+    marks_entered_count: Optional[int] = 0
 
+    class Config:
+        from_attributes = True
 
+class BulkStudentMarkItem(BaseModel):
+    student_id: int
+    marks: Optional[float] = None
+
+class BulkMarkEntryRequest(BaseModel):
+    marks: List[BulkStudentMarkItem]
+    action: str = "save_draft"  # "save_draft" or "publish"
+
+class StudentExamEnrolledRow(BaseModel):
+    student_id: int
+    roll_number: str
+    name: str
+    department: str
+    year: str
+    semester: str
+    section: Optional[str] = None
+    mark_id: Optional[int] = None
+    marks: Optional[float] = None
+    is_published: int = 0
+    updated_at: Optional[str] = None
+
+class StudentComponentResult(BaseModel):
+    exam_id: int
+    exam_type: str
+    marks: float
+    max_marks: float
+    is_published: int
+    published_at: Optional[str] = None
+
+class StudentSubjectResultReport(BaseModel):
+    subject: str
+    subject_code: Optional[str] = None
+    subject_type: str  # "THEORY" or "LAB"
+    department: str
+    semester: str
+    components: Dict[str, StudentComponentResult]
+    # Theory fields
+    mid1_marks: Optional[float] = None
+    mid2_marks: Optional[float] = None
+    internal_marks: Optional[float] = None
+    semester_marks: Optional[float] = None
+    # Lab fields
+    lab_internal: Optional[float] = None
+    lab_external: Optional[float] = None
+    # Common calculated fields
+    final_marks: Optional[float] = None
+    grade: Optional[str] = None
+    grade_points: Optional[int] = None
+    status: str  # "Published", "Partially Published", "Marks not yet published"

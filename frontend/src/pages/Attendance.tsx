@@ -50,7 +50,10 @@ const Attendance = () => {
 
   // Time simulation & window configurations
   const [windowConfig, setWindowConfig] = useState({ start: '08:00', end: '10:00' });
-  const [simDate, setSimDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [simDate, setSimDate] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  });
   const [simTime, setSimTime] = useState('09:00'); // Default inside the window
   const [useTimeOverride, setUseTimeOverride] = useState(false);
 
@@ -85,15 +88,26 @@ const Attendance = () => {
     if (!user?.id) return;
     const studentSem = user?.semester || '4-1';
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const activeDateObj = (useTimeOverride && simDate) ? new Date(simDate) : new Date();
+
+    // FIX: Parse date strings as LOCAL time, not UTC.
+    // `new Date('YYYY-MM-DD')` treats the string as UTC midnight → wrong day-of-week in IST (+5:30).
+    // `new Date(y, m-1, d)` uses the local timezone, giving the correct local day.
+    const parseDateLocal = (dateStr: string): Date => {
+      const [y, m, d] = dateStr.split('-').map(Number);
+      return new Date(y, m - 1, d);
+    };
+
+    const activeDateObj = (useTimeOverride && simDate)
+      ? parseDateLocal(simDate)
+      : new Date();
     const todayDayName = dayNames[activeDateObj.getDay()] || 'Monday';
-    const todayStr = activeDateObj.toISOString().split('T')[0];
+    const todayStr = `${activeDateObj.getFullYear()}-${String(activeDateObj.getMonth() + 1).padStart(2, '0')}-${String(activeDateObj.getDate()).padStart(2, '0')}`;
     const normDept = getNormalizedDepartment(user?.department || 'Computer Science and Engineering (CSE)');
 
     // 1. Fetch live timetable entries from backend / database (including added extra classes)
     let todaySchedule: UnifiedPeriodSchedule[] = [];
     try {
-      const ttRes = await fetch(`${API_BASE_URL}/timetable?department=${encodeURIComponent(normDept)}&semester=${encodeURIComponent(studentSem)}&day=${todayDayName}`, {
+      const ttRes = await fetch(`${API_BASE_URL}/timetable?department=${encodeURIComponent(normDept)}&semester=${encodeURIComponent(studentSem)}&section=${encodeURIComponent(user?.section || 'Section A')}&day=${todayDayName}`, {
         headers: {
           'x-requester-username': user?.username || 'student',
           'x-requester-role': 'student'
@@ -124,7 +138,7 @@ const Attendance = () => {
     } catch { /* ignore network error, fallback used */ }
 
     if (todaySchedule.length === 0) {
-      todaySchedule = getTimetableScheduleForDay(studentSem, todayDayName);
+      todaySchedule = getTimetableScheduleForDay(studentSem, todayDayName, normDept, user?.section || 'Section A');
     }
     todaySchedule.sort((a, b) => a.period - b.period);
 
@@ -139,15 +153,25 @@ const Attendance = () => {
       if (res.ok) {
         const data = await res.json();
         
-        // Align history records with student's exact timetable schedule for each day
-        const sanitizedHistory = (data.history && data.history.length > 0 ? data.history : [{ date: todayStr }]).map((h: any) => {
+        // Align history records with student's exact timetable schedule for each day.
+        // Ensure today always appears first in the calendar log.
+        const historyList: any[] = (data.history && Array.isArray(data.history)) ? [...data.history] : [];
+        if (!historyList.some((h: any) => h.date === todayStr)) {
+          historyList.unshift({ date: todayStr, records: [] });
+        }
+        const rawHistory = historyList.sort((a: any, b: any) => b.date.localeCompare(a.date));
+
+        const sanitizedHistory = rawHistory.map((h: any) => {
           const hDateStr = h.date || todayStr;
-          const hDayName = dayNames[new Date(hDateStr).getDay()] || 'Monday';
+          // FIX: parse as local date to get correct day-of-week in IST
+          const [hy, hm, hd] = hDateStr.split('-').map(Number);
+          const hDateObj = new Date(hy, hm - 1, hd);
+          const hDayName = dayNames[hDateObj.getDay()] || 'Monday';
           
           // Use todaySchedule if today/simDate, else fallback day schedule
           const baseSched = (hDateStr === todayStr && todaySchedule.length > 0) 
             ? todaySchedule 
-            : getTimetableScheduleForDay(studentSem, hDayName);
+            : getTimetableScheduleForDay(studentSem, hDayName, normDept, user?.section || 'Section A');
 
           const allPeriodsMap = new Map<number, UnifiedPeriodSchedule>();
           baseSched.forEach(item => allPeriodsMap.set(item.period, item));
@@ -373,7 +397,7 @@ const Attendance = () => {
     const wEndMin = sMin + 15;
 
     const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     const targetDate = useTimeOverride ? simDate : todayStr;
     const isTargetDay = (recordDate === targetDate);
 
@@ -598,6 +622,10 @@ const Attendance = () => {
                       localStorage.setItem(subjKey, JSON.stringify(successResult));
                     } catch { /* ignore */ }
 
+                    window.dispatchEvent(new CustomEvent('pbr_attendance_marked', {
+                      detail: { period: effectivePeriod, subject: effectiveSubject, date: simDate }
+                    }));
+
                     setVerifyResult(successResult);
                     setVerifyStep('success');
                     fetchDashboardData();
@@ -625,6 +653,10 @@ const Attendance = () => {
                         localStorage.setItem(periodKey, JSON.stringify(data));
                         localStorage.setItem(subjKey, JSON.stringify(data));
                       } catch { /* ignore */ }
+
+                      window.dispatchEvent(new CustomEvent('pbr_attendance_marked', {
+                        detail: { period: effectivePeriod, subject: effectiveSubject, date: simDate }
+                      }));
 
                       setVerifyResult(data);
                       setVerifyStep('success');

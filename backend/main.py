@@ -20,7 +20,8 @@ def auto_migrate_db():
         models.JobPosting, models.JobApplicationRecord,
         models.Assignment, models.AssignmentSubmission,
         models.Announcement, models.Quiz, models.QuizSubmission,
-        models.FacultyStudentConversation, models.FacultyStudentMessage
+        models.FacultyStudentConversation, models.FacultyStudentMessage,
+        models.AcademicSubject, models.Examination, models.ExamMark
     ]
     
     dialect = engine.dialect.name
@@ -66,7 +67,10 @@ def auto_migrate_db():
             "UPDATE users SET approval_status = 'Approved' WHERE approval_status IS NULL",
             "UPDATE faculties SET approval_status = 'Approved' WHERE approval_status IS NULL",
             "UPDATE face_enrollments SET enrollment_count = 1 WHERE enrollment_count IS NULL",
-            "UPDATE face_enrollments SET reset_request_status = 'None' WHERE reset_request_status IS NULL"
+            "UPDATE face_enrollments SET reset_request_status = 'None' WHERE reset_request_status IS NULL",
+            "UPDATE timetable_entries SET section = 'Section A' WHERE section IS NULL OR section = ''",
+            "DELETE FROM timetable_entries WHERE semester LIKE '%,%'",
+            "UPDATE users SET section = 'Section A' WHERE role = 'student' AND (section IS NULL OR section = '')"
         ]
         for b_sql in backfills:
             try:
@@ -266,6 +270,189 @@ FACULTY_MASTER_ALL = [
 INSTITUTION_NAME = "Parvathareddy Babul Reddy Visvodaya Institute of Technology & Science (Autonomous)"
 DEPT_CSE = "Computer Science and Engineering"
 
+ACADEMIC_DEPARTMENTS = [
+    ("CSE", "Computer Science and Engineering (CSE)"),
+    ("AI", "CSE AI"),
+    ("AIML", "CSE AIML"),
+    ("ECE", "Electronics and Communication Engineering (ECE)"),
+    ("EEE", "Electrical and Electronics Engineering (EEE)"),
+    ("CIVIL", "Civil Engineering")
+]
+
+ALL_ACADEMIC_SEMESTERS = ["1-1", "1-2", "1-3", "2-1", "2-2", "3-1", "3-2", "4-1", "4-2"]
+
+ACADEMIC_SUBJECTS_CATALOG = {
+    "CSE": {
+        "1-1": [
+            'Engineering Mathematics-I (Calculus & Linear Algebra)',
+            'Engineering Physics',
+            'Communicative English',
+            'Programming for Problem Solving using C',
+            'Basic Electrical & Electronics Engineering (BEEE)',
+            'Engineering Drawing & Computer Graphics',
+            'Programming in C Laboratory',
+            'Engineering Physics Laboratory',
+            'English Language Communication Skills Lab'
+        ],
+        "1-2": [
+            'Engineering Mathematics-II (Differential Equations & Vector Calculus)',
+            'Engineering Chemistry',
+            'Data Structures & Algorithms',
+            'Basic Civil & Mechanical Engineering',
+            'Python Programming & IT Workshop',
+            'Data Structures Laboratory',
+            'Engineering Chemistry Laboratory',
+            'Python Programming Laboratory'
+        ],
+        "1-3": [
+            'Discrete Computational Structures',
+            'Applied Physics & Semiconductor Devices',
+            'Object-Oriented Design & Paradigms',
+            'Digital Logic & Computer Organization',
+            'Hardware & System Prototyping Laboratory',
+            'Programming Foundations Laboratory'
+        ],
+        "2-1": [
+            'Discrete Mathematics & Graph Theory',
+            'Computer Organization & Architecture (COA)',
+            'Object Oriented Programming through Java',
+            'Digital Logic Design (DLD)',
+            'Database Management Systems (DBMS)',
+            'Managerial Economics & Financial Analysis (MEFA)',
+            'Java Programming Lab',
+            'DBMS Laboratory'
+        ],
+        "2-2": [
+            'Operating Systems (OS)',
+            'Design & Analysis of Algorithms (DAA)',
+            'Formal Languages & Automata Theory (FLAT)',
+            'Probability & Statistics',
+            'Software Engineering & Agile Methodologies',
+            'Operating Systems Laboratory',
+            'Algorithms Laboratory'
+        ],
+        "3-1": [
+            'Computer Networks (CN)',
+            'Web Technologies & Full Stack Development',
+            'Artificial Intelligence & Machine Learning',
+            'Professional Elective-I (Advanced Java / Unix)',
+            'Open Elective-I',
+            'Computer Networks & Web Tech Lab',
+            'AI & Machine Learning Lab'
+        ],
+        "3-2": [
+            'Compiler Design (CD)',
+            'Cloud Computing & Virtualization',
+            'Data Warehousing & Data Mining',
+            'Professional Elective-II (Cyber Security / Mobile App Dev)',
+            'Open Elective-II',
+            'Compiler Design Lab',
+            'Cloud Computing Lab'
+        ],
+        "4-1": [
+            'Generative AI & Deep Learning',
+            'Cryptography & Network Security (CNS)',
+            'Big Data Analytics (BDA)',
+            'MLOps & Model Deployment',
+            'Professional Elective-III',
+            'Open Elective-III',
+            'Deep Learning & GenAI Lab',
+            'Major Project Phase-I'
+        ],
+        "4-2": [
+            'Management Science & Entrepreneurship',
+            'Professional Elective-IV (Distributed Systems)',
+            'Open Elective-IV',
+            'Comprehensive Technical Seminar',
+            'Major Project Phase-II / Industry Internship'
+        ]
+    },
+    "AI": {
+        "1-1": ['Mathematics-I', 'Engineering Chemistry', 'Programming in C', 'Communicative English', 'C Programming Lab'],
+        "1-2": ['Mathematics-II', 'Data Structures', 'Python Programming', 'Basic Electronics', 'Python Lab'],
+        "1-3": ['Logic in Computer Science', 'Foundations of Data Science', 'Object Oriented Programming', 'Electronics Lab'],
+        "2-1": ['Discrete Mathematics', 'Intro to AI', 'DBMS', 'Knowledge Representation', 'AI Programming Lab'],
+        "2-2": ['Machine Learning', 'Probability & Statistics', 'Operating Systems', 'Intelligent Systems', 'ML Lab'],
+        "3-1": ['Deep Learning', 'Computer Vision', 'NLP', 'Data Mining', 'Deep Learning Lab'],
+        "3-2": ['Reinforcement Learning', 'AI Ethics', 'Pattern Recognition', 'Neural Networks', 'RL Lab'],
+        "4-1": ['Generative AI', 'Expert Systems', 'AI in Robotics', 'Project Phase-I', 'GenAI Lab'],
+        "4-2": ['Advanced AI Elective', 'AI in Healthcare', 'Major Project Phase-II', 'Seminar']
+    },
+    "AIML": {
+        "1-1": ['Mathematics-I', 'Applied Physics', 'Programming in C', 'English', 'C Programming Lab'],
+        "1-2": ['Mathematics-II', 'Python Programming', 'Data Structures', 'Basic Electronics', 'Python Lab'],
+        "1-3": ['Linear Algebra for ML', 'Computational Thinking', 'Data Exploration', 'Algorithms Lab'],
+        "2-1": ['Discrete Mathematics', 'Intro to ML', 'DBMS', 'Computer Organization', 'ML Lab'],
+        "2-2": ['Deep Learning', 'Statistical Learning', 'Operating Systems', 'Algorithms', 'Deep Learning Lab'],
+        "3-1": ['NLP', 'Computer Vision', 'Reinforcement Learning', 'Data Warehouse', 'NLP Lab'],
+        "3-2": ['MLOps', 'Big Data Analytics', 'Generative AI', 'Optimization Techniques', 'MLOps Lab'],
+        "4-1": ['Advanced ML', 'Predictive Modeling', 'AI in Finance', 'Project Phase-I', 'Project Lab'],
+        "4-2": ['Business Intelligence', 'Ethics in AI/ML', 'Major Project Phase-II', 'Seminar']
+    },
+    "ECE": {
+        "1-1": ['Mathematics-I', 'Engineering Physics', 'Programming in C', 'Engineering Graphics', 'C Programming Lab'],
+        "1-2": ['Mathematics-II', 'Network Analysis', 'Electronic Devices', 'Data Structures', 'Devices Lab'],
+        "1-3": ['Circuit Simulation', 'Signals Foundations', 'Applied Electromagnetics', 'Hardware Lab'],
+        "2-1": ['Signals & Systems', 'Digital Electronics', 'Analog Circuits', 'Random Variables', 'Analog Lab'],
+        "2-2": ['Control Systems', 'Electromagnetic Waves', 'Analog Communications', 'Microprocessors', 'Microprocessor Lab'],
+        "3-1": ['Digital Communications', 'VLSI Design', 'DSP', 'Antennas & Propagation', 'VLSI Lab'],
+        "3-2": ['Embedded Systems', 'Computer Networks', 'Information Theory', 'DSP Lab', 'Embedded Lab'],
+        "4-1": ['Microwave Engineering', 'Optical Communications', 'Satellite Communication', 'Project Phase-I', 'Microwave Lab'],
+        "4-2": ['Wireless Networks', 'Radar Systems', 'Major Project Phase-II', 'Seminar']
+    },
+    "EEE": {
+        "1-1": ['Mathematics-I', 'Engineering Chemistry', 'Programming in C', 'Engineering Graphics', 'C Programming Lab'],
+        "1-2": ['Mathematics-II', 'Basic Electrical Engineering', 'Network Analysis', 'Data Structures', 'BEE Lab'],
+        "1-3": ['Electrical Measurements Basics', 'Electromagnetic Principles', 'Computational Tools', 'Simulation Lab'],
+        "2-1": ['Electrical Circuit Analysis', 'DC Machines & Transformers', 'Electromagnetic Fields', 'Electronic Circuits', 'Machines Lab'],
+        "2-2": ['AC Machines', 'Control Systems', 'Power Systems-I', 'Digital Electronics', 'Control Lab'],
+        "3-1": ['Power Electronics', 'Power Systems-II', 'Electrical Measurements', 'Microprocessors', 'Power Electronics Lab'],
+        "3-2": ['Power System Analysis', 'DSP', 'Renewable Energy Systems', 'Drives & Control', 'DSP Lab'],
+        "4-1": ['Switchgear & Protection', 'White Coal Processing', 'Smart Grid', 'Project Phase-I', 'Power Systems Lab'],
+        "4-2": ['High Voltage Engineering', 'Industrial Automation', 'Major Project Phase-II', 'Seminar']
+    },
+    "CIVIL": {
+        "1-1": ['Mathematics-I', 'Engineering Physics', 'Engineering Mechanics', 'English', 'Engineering Drawing'],
+        "1-2": ['Mathematics-II', 'Engineering Chemistry', 'Strength of Materials-I', 'Programming in C', 'C Programming Lab'],
+        "1-3": ['Engineering Geology Basics', 'Civil Materials Science', 'Structural Graphics', 'Geology Lab'],
+        "2-1": ['Fluid Mechanics-I', 'Surveying-I', 'Strength of Materials-II', 'Building Materials', 'Surveying Lab'],
+        "2-2": ['Fluid Mechanics-II', 'Surveying-II', 'Structural Analysis-I', 'Geotechnical Engineering-I', 'Geotech Lab'],
+        "3-1": ['Structural Analysis-II', 'Geotechnical Engineering-II', 'Environmental Engineering-I', 'Transportation Engineering-I', 'Environmental Lab'],
+        "3-2": ['RCC Design', 'Environmental Engineering-II', 'Transportation Engineering-II', 'Water Resources', 'RCC Lab'],
+        "4-1": ['Steel Structures Design', 'Estimation & Costing', 'Construction Management', 'Project Phase-I', 'CAD Lab'],
+        "4-2": ['Bridge Engineering', 'Prestressed Concrete', 'Major Project Phase-II', 'Seminar']
+    }
+}
+
+def get_dept_catalog_key(department: str) -> str:
+    d = (department or "").lower()
+    if "aiml" in d:
+        return "AIML"
+    if "ai" in d:
+        return "AI"
+    if "cse" in d or "computer" in d:
+        return "CSE"
+    if "eee" in d or "electrical" in d:
+        return "EEE"
+    if "ece" in d or "electronics" in d:
+        return "ECE"
+    if "civil" in d:
+        return "CIVIL"
+    return "CSE"
+
+def get_dept_full_name(dept_code: str) -> str:
+    for code, name in ACADEMIC_DEPARTMENTS:
+        if code == dept_code:
+            return name
+    return "Computer Science and Engineering (CSE)"
+
+def get_subjects_for_class(department: str, semester: str) -> List[str]:
+    key = get_dept_catalog_key(department)
+    clean_sem = (semester.split(',')[0].strip() if semester and ',' in semester else (semester or "1-1"))
+    if clean_sem not in ACADEMIC_SUBJECTS_CATALOG.get(key, {}):
+        clean_sem = "1-1"
+    return ACADEMIC_SUBJECTS_CATALOG.get(key, {}).get(clean_sem, [])
+
 def seed_timetable(db: Session):
     try:
         # Build timetable mapping for assigned departments, subjects, semesters
@@ -439,148 +626,9 @@ def seed_timetable(db: Session):
             else:
                 return f"{dept_code} LH-101"
 
-        # 6 Departments
-        departments = [
-            ("CSE", "Computer Science and Engineering (CSE)"),
-            ("AI", "CSE AI"),
-            ("AIML", "CSE AIML"),
-            ("ECE", "Electronics and Communication Engineering (ECE)"),
-            ("EEE", "Electrical and Electronics Engineering (EEE)"),
-            ("CIVIL", "Civil Engineering")
-        ]
-        
+        departments = ACADEMIC_DEPARTMENTS
         semesters = ["1-1", "1-2", "2-1", "2-2", "3-1", "3-2", "4-1", "4-2"]
-        
-        # Subjects Map
-        subjects_map = {
-            "CSE": {
-                "1-1": [
-                    'Engineering Mathematics-I (Calculus & Linear Algebra)',
-                    'Engineering Physics',
-                    'Communicative English',
-                    'Programming for Problem Solving using C',
-                    'Basic Electrical & Electronics Engineering (BEEE)',
-                    'Engineering Drawing & Computer Graphics',
-                    'Programming in C Laboratory',
-                    'Engineering Physics Laboratory',
-                    'English Language Communication Skills Lab'
-                ],
-                "1-2": [
-                    'Engineering Mathematics-II (Differential Equations & Vector Calculus)',
-                    'Engineering Chemistry',
-                    'Data Structures & Algorithms',
-                    'Basic Civil & Mechanical Engineering',
-                    'Python Programming & IT Workshop',
-                    'Data Structures Laboratory',
-                    'Engineering Chemistry Laboratory',
-                    'Python Programming Laboratory'
-                ],
-                "2-1": [
-                    'Discrete Mathematics & Graph Theory',
-                    'Computer Organization & Architecture (COA)',
-                    'Object Oriented Programming through Java',
-                    'Digital Logic Design (DLD)',
-                    'Database Management Systems (DBMS)',
-                    'Managerial Economics & Financial Analysis (MEFA)',
-                    'Java Programming Lab',
-                    'DBMS Laboratory'
-                ],
-                "2-2": [
-                    'Operating Systems (OS)',
-                    'Design & Analysis of Algorithms (DAA)',
-                    'Formal Languages & Automata Theory (FLAT)',
-                    'Probability & Statistics',
-                    'Software Engineering & Agile Methodologies',
-                    'Operating Systems Laboratory',
-                    'Algorithms Laboratory'
-                ],
-                "3-1": [
-                    'Computer Networks (CN)',
-                    'Web Technologies & Full Stack Development',
-                    'Artificial Intelligence & Machine Learning',
-                    'Professional Elective-I (Advanced Java / Unix)',
-                    'Open Elective-I',
-                    'Computer Networks & Web Tech Lab',
-                    'AI & Machine Learning Lab'
-                ],
-                "3-2": [
-                    'Compiler Design (CD)',
-                    'Cloud Computing & Virtualization',
-                    'Data Warehousing & Data Mining',
-                    'Professional Elective-II (Cyber Security / Mobile App Dev)',
-                    'Open Elective-II',
-                    'Compiler Design Lab',
-                    'Cloud Computing Lab'
-                ],
-                "4-1": [
-                    'Generative AI & Deep Learning',
-                    'Cryptography & Network Security (CNS)',
-                    'Big Data Analytics (BDA)',
-                    'MLOps & Model Deployment',
-                    'Professional Elective-III',
-                    'Open Elective-III',
-                    'Deep Learning & GenAI Lab',
-                    'Major Project Phase-I'
-                ],
-                "4-2": [
-                    'Management Science & Entrepreneurship',
-                    'Professional Elective-IV (Distributed Systems)',
-                    'Open Elective-IV',
-                    'Comprehensive Technical Seminar',
-                    'Major Project Phase-II / Industry Internship'
-                ]
-            },
-            "AI": {
-                "1-1": ['Mathematics-I', 'Engineering Chemistry', 'Programming in C', 'Communicative English', 'C Programming Lab'],
-                "1-2": ['Mathematics-II', 'Data Structures', 'Python Programming', 'Basic Electronics', 'Python Lab'],
-                "2-1": ['Discrete Mathematics', 'Intro to AI', 'DBMS', 'Knowledge Representation', 'AI Programming Lab'],
-                "2-2": ['Machine Learning', 'Probability & Statistics', 'Operating Systems', 'Intelligent Systems', 'ML Lab'],
-                "3-1": ['Deep Learning', 'Computer Vision', 'NLP', 'Data Mining', 'Deep Learning Lab'],
-                "3-2": ['Reinforcement Learning', 'AI Ethics', 'Pattern Recognition', 'Neural Networks', 'RL Lab'],
-                "4-1": ['Generative AI', 'Expert Systems', 'AI in Robotics', 'Project Phase-I', 'GenAI Lab'],
-                "4-2": ['Advanced AI Elective', 'AI in Healthcare', 'Major Project Phase-II', 'Seminar']
-            },
-            "AIML": {
-                "1-1": ['Mathematics-I', 'Applied Physics', 'Programming in C', 'English', 'C Programming Lab'],
-                "1-2": ['Mathematics-II', 'Python Programming', 'Data Structures', 'Basic Electronics', 'Python Lab'],
-                "2-1": ['Discrete Mathematics', 'Intro to ML', 'DBMS', 'Computer Organization', 'ML Lab'],
-                "2-2": ['Deep Learning', 'Statistical Learning', 'Operating Systems', 'Algorithms', 'Deep Learning Lab'],
-                "3-1": ['NLP', 'Computer Vision', 'Reinforcement Learning', 'Data Warehouse', 'NLP Lab'],
-                "3-2": ['MLOps', 'Big Data Analytics', 'Generative AI', 'Optimization Techniques', 'MLOps Lab'],
-                "4-1": ['Advanced ML', 'Predictive Modeling', 'AI in Finance', 'Project Phase-I', 'Project Lab'],
-                "4-2": ['Business Intelligence', 'Ethics in AI/ML', 'Major Project Phase-II', 'Seminar']
-            },
-            "ECE": {
-                "1-1": ['Mathematics-I', 'Engineering Physics', 'Programming in C', 'Engineering Graphics', 'C Programming Lab'],
-                "1-2": ['Mathematics-II', 'Network Analysis', 'Electronic Devices', 'Data Structures', 'Devices Lab'],
-                "2-1": ['Signals & Systems', 'Digital Electronics', 'Analog Circuits', 'Random Variables', 'Analog Lab'],
-                "2-2": ['Control Systems', 'Electromagnetic Waves', 'Analog Communications', 'Microprocessors', 'Microprocessor Lab'],
-                "3-1": ['Digital Communications', 'VLSI Design', 'DSP', 'Antennas & Propagation', 'VLSI Lab'],
-                "3-2": ['Embedded Systems', 'Computer Networks', 'Information Theory', 'DSP Lab', 'Embedded Lab'],
-                "4-1": ['Microwave Engineering', 'Optical Communications', 'Satellite Communication', 'Project Phase-I', 'Microwave Lab'],
-                "4-2": ['Wireless Networks', 'Radar Systems', 'Major Project Phase-II', 'Seminar']
-            },
-            "EEE": {
-                "1-1": ['Mathematics-I', 'Engineering Chemistry', 'Programming in C', 'Engineering Graphics', 'C Programming Lab'],
-                "1-2": ['Mathematics-II', 'Basic Electrical Engineering', 'Network Analysis', 'Data Structures', 'BEE Lab'],
-                "2-1": ['Electrical Circuit Analysis', 'DC Machines & Transformers', 'Electromagnetic Fields', 'Electronic Circuits', 'Machines Lab'],
-                "2-2": ['AC Machines', 'Control Systems', 'Power Systems-I', 'Digital Electronics', 'Control Lab'],
-                "3-1": ['Power Electronics', 'Power Systems-II', 'Electrical Measurements', 'Microprocessors', 'Power Electronics Lab'],
-                "3-2": ['Power System Analysis', 'DSP', 'Renewable Energy Systems', 'Drives & Control', 'DSP Lab'],
-                "4-1": ['Switchgear & Protection', 'White Coal Processing', 'Smart Grid', 'Project Phase-I', 'Power Systems Lab'],
-                "4-2": ['High Voltage Engineering', 'Industrial Automation', 'Major Project Phase-II', 'Seminar']
-            },
-            "CIVIL": {
-                "1-1": ['Mathematics-I', 'Engineering Physics', 'Engineering Mechanics', 'English', 'Engineering Drawing'],
-                "1-2": ['Mathematics-II', 'Engineering Chemistry', 'Strength of Materials-I', 'Programming in C', 'C Programming Lab'],
-                "2-1": ['Fluid Mechanics-I', 'Surveying-I', 'Strength of Materials-II', 'Building Materials', 'Surveying Lab'],
-                "2-2": ['Fluid Mechanics-II', 'Surveying-II', 'Structural Analysis-I', 'Geotechnical Engineering-I', 'Geotech Lab'],
-                "3-1": ['Structural Analysis-II', 'Geotechnical Engineering-II', 'Environmental Engineering-I', 'Transportation Engineering-I', 'Environmental Lab'],
-                "3-2": ['RCC Design', 'Environmental Engineering-II', 'Transportation Engineering-II', 'Water Resources', 'RCC Lab'],
-                "4-1": ['Steel Structures Design', 'Estimation & Costing', 'Construction Management', 'Project Phase-I', 'CAD Lab'],
-                "4-2": ['Bridge Engineering', 'Prestressed Concrete', 'Major Project Phase-II', 'Seminar']
-            }
-        }
+        subjects_map = ACADEMIC_SUBJECTS_CATALOG
 
         timings = [
             ("9:00 AM", "10:30 AM"),
@@ -626,6 +674,7 @@ def seed_timetable(db: Session):
                         entry = models.TimetableEntry(
                             department=dept_name,
                             semester=sem,
+                            section="Section A",
                             day=day,
                             period=period_num,
                             subject=subject_name,
@@ -665,6 +714,122 @@ def seed_timetable(db: Session):
     except Exception as e:
         print("Error seeding timetable:", e)
 
+def seed_academic_subjects_if_needed(db: Session):
+    prefix_map = {
+        "CSE": "CS",
+        "AI": "AI",
+        "AIML": "AM",
+        "ECE": "EC",
+        "EEE": "EE",
+        "CIVIL": "CE"
+    }
+
+    for dept_code, dept_full_name in ACADEMIC_DEPARTMENTS:
+        prefix = prefix_map.get(dept_code, "CS")
+        dept_catalog = ACADEMIC_SUBJECTS_CATALOG.get(dept_code, {})
+        for sem, subjs in dept_catalog.items():
+            year = "1st Year" if sem.startswith("1") else (
+                "2nd Year" if sem.startswith("2") else (
+                    "3rd Year" if sem.startswith("3") else "4th Year"
+                )
+            )
+            for idx, name in enumerate(subjs):
+                name_clean = name.strip()
+                existing = db.query(models.AcademicSubject).filter(
+                    models.AcademicSubject.department == dept_full_name,
+                    models.AcademicSubject.semester == sem,
+                    models.AcademicSubject.name == name_clean
+                ).first()
+                if not existing:
+                    stype = "LAB" if any(k in name_clean.lower() for k in ["lab", "laboratory", "project", "seminar", "workshop"]) else "THEORY"
+                    credits = 4 if "project" in name_clean.lower() else (2 if stype == "LAB" else 3)
+                    sem_num = sem.replace("-", "")
+                    code = f"{prefix}{sem_num}{idx+1:02d}"
+                    sub = models.AcademicSubject(
+                        code=code,
+                        name=name_clean,
+                        department=dept_full_name,
+                        year=year,
+                        semester=sem,
+                        subject_type=stype,
+                        credits=credits
+                    )
+                    db.add(sub)
+    db.commit()
+
+def seed_class_students_if_needed(db: Session):
+    try:
+        sample_students = [
+            ("cse_1_1_student_01", "Aarav Sharma", "25CSE101", "Computer Science and Engineering (CSE)", "1st Year", "1-1", "Section A"),
+            ("cse_1_1_student_02", "Ananya Patel", "25CSE102", "Computer Science and Engineering (CSE)", "1st Year", "1-1", "Section A"),
+            ("cse_1_2_student_01", "Rohan Verma", "25CSE201", "Computer Science and Engineering (CSE)", "1st Year", "1-2", "Section A"),
+            ("cse_2_1_student_01", "Sneha Reddy", "24CSE101", "Computer Science and Engineering (CSE)", "2nd Year", "2-1", "Section A"),
+            ("cse_2_2_student_01", "Rahul Nair", "24CSE201", "Computer Science and Engineering (CSE)", "2nd Year", "2-2", "Section A"),
+            ("cse_3_1_secb_student", "Karthik Nair", "23CSE201", "Computer Science and Engineering (CSE)", "3rd Year", "3-1", "Section B"),
+            ("cse_3_2_student_01", "Pooja Hegde", "23CSE301", "Computer Science and Engineering (CSE)", "3rd Year", "3-2", "Section A"),
+            ("cse_4_2_student_01", "Divya Krishnan", "22CSE101", "Computer Science and Engineering (CSE)", "4th Year", "4-2", "Section A")
+        ]
+        p_hash = get_password_hash("Password123!")
+        for uname, name, roll, dept, yr, sem, sec in sample_students:
+            u = db.query(models.User).filter(models.User.username == uname).first()
+            if not u:
+                u = models.User(
+                    username=uname,
+                    hashed_password=p_hash,
+                    role=models.RoleEnum.student,
+                    name=name,
+                    roll_number=roll,
+                    department=dept,
+                    year=yr,
+                    semester=sem,
+                    section=sec,
+                    approval_status="Approved"
+                )
+                db.add(u)
+                db.commit()
+                db.refresh(u)
+
+            s = db.query(models.Student).filter(models.Student.user_id == u.id).first()
+            if not s:
+                s = models.Student(
+                    user_id=u.id,
+                    name=name,
+                    roll_number=roll,
+                    department=dept,
+                    year=yr,
+                    semester=sem,
+                    section=sec
+                )
+                db.add(s)
+                db.commit()
+            else:
+                s.semester = sem
+                s.section = sec
+                s.department = dept
+                db.commit()
+
+        # Also sync any existing student users where semester/section is empty or null
+        existing_studs = db.query(models.User).filter(models.User.role == models.RoleEnum.student).all()
+        for u in existing_studs:
+            s_rec = db.query(models.Student).filter(models.Student.user_id == u.id).first()
+            changed = False
+            if not u.semester and s_rec and s_rec.semester:
+                u.semester = s_rec.semester
+                changed = True
+            elif not u.semester:
+                u.semester = "1-1"
+                changed = True
+            if not u.section and s_rec and s_rec.section:
+                u.section = s_rec.section
+                changed = True
+            elif not u.section:
+                u.section = "Section A"
+                changed = True
+            if changed:
+                db.commit()
+    except Exception as e:
+        print("Notice seeding class students:", e)
+
 # Auto-seed the database if no users exist
 def seed_data():
     db = database.SessionLocal()
@@ -691,6 +856,8 @@ def seed_data():
             print("Seeding finished successfully.")
         
         seed_timetable(db)
+        seed_academic_subjects_if_needed(db)
+        seed_class_students_if_needed(db)
     except Exception as e:
         print("Error seeding database:", e)
     finally:
@@ -1665,59 +1832,66 @@ def check_timetable_conflicts(db: Session, entry: schemas.TimetableEntryCreate, 
                 detail=f"Room conflict: Room/Lab '{entry.room}' is already occupied by class '{e.subject}' on {entry.day} period {entry.period}."
             )
 
-def ensure_timetable_seeded(db: Session, department: str, semester: str):
+def ensure_timetable_seeded(db: Session, department: str, semester: str, section: Optional[str] = "Section A"):
     dept_norm = get_normalized_department(department) if department else "Computer Science and Engineering (CSE)"
-    sem_str = semester or "4-1"
+    sem_str = semester.split(',')[0].strip() if semester and ',' in semester else (semester or "1-1")
+    sec_str = section or "Section A"
 
-    # Count how many records exist for this department & semester
-    all_sem_entries = db.query(models.TimetableEntry).filter(
-        models.TimetableEntry.semester == sem_str
+    # 1. Clean up corrupt legacy records
+    db.query(models.TimetableEntry).filter(
+        models.TimetableEntry.semester.like('%,%')
+    ).delete(synchronize_session=False)
+
+    # 2. Get the specific subjects for this semester
+    sem_subjects = get_subjects_for_class(dept_norm, sem_str)
+    if not sem_subjects:
+        sem_subjects = ACADEMIC_SUBJECTS_CATALOG["CSE"]["1-1"]
+
+    # 3. Check existing entries for this department, semester, and section
+    matching_entries = db.query(models.TimetableEntry).filter(
+        models.TimetableEntry.semester == sem_str,
+        (models.TimetableEntry.section == sec_str) | (models.TimetableEntry.section == None)
     ).all()
-    
-    matching_entries = [t for t in all_sem_entries if normalize_dept_name(t.department) == normalize_dept_name(dept_norm)]
+    matching_entries = [t for t in matching_entries if normalize_dept_name(t.department) == normalize_dept_name(dept_norm)]
+
+    faculties = [
+        "Dr. DODLA SRUJAN CHANDRA REDDY",
+        "Dr. GANUGULA VIJAY KUMAR",
+        "Dr. KUNI VENKATA SUBBAIAH",
+        "Dr. NUKAMREDDY SRINAD REDDY",
+        "Dr. BONTHALA VAMSEE MOHAN",
+        "Dr. POLEBOINA VENKATA N RAJESWARI"
+    ]
+    times = [
+        ("08:00 AM", "09:00 AM"),
+        ("09:00 AM", "10:00 AM"),
+        ("10:15 AM", "11:15 AM"),
+        ("11:15 AM", "12:15 PM")
+    ]
+    days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+
+    sec_offset = 2 if "B" in sec_str.upper() else (4 if "C" in sec_str.upper() else 0)
 
     if len(matching_entries) < 20:
-        subjects = ["Generative AI", "MLOps & Model Deployment", "Deep Learning", "Cloud Computing Lab"]
-        if sem_str.startswith("1"):
-            subjects = ["Linear Algebra & Calculus", "Engineering Physics", "Programming in C", "Engineering Drawing"]
-        elif sem_str.startswith("2"):
-            subjects = ["Data Structures", "DBMS", "OOP (Java)", "Digital Logic & Computer Organization"]
-        elif sem_str.startswith("3"):
-            subjects = ["Software Engineering", "Machine Learning", "Artificial Intelligence", "Computer Networks"]
-        elif sem_str.startswith("4"):
-            subjects = ["Generative AI", "MLOps & Model Deployment", "Deep Learning", "Cloud Computing Lab"]
-
-        faculties = [
-            "Dr. DODLA SRUJAN CHANDRA REDDY",
-            "Dr. GANUGULA VIJAY KUMAR",
-            "Dr. KUNI VENKATA SUBBAIAH",
-            "Dr. NUKAMREDDY SRINAD REDDY"
-        ]
-        times = [
-            ("08:00 AM", "09:00 AM"),
-            ("09:00 AM", "10:00 AM"),
-            ("10:15 AM", "11:15 AM"),
-            ("11:15 AM", "12:15 PM")
-        ]
-        days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-
         for d_idx, day_name in enumerate(days):
             for p_idx in range(4):
                 period_num = p_idx + 1
                 has_slot = any(e.day == day_name and e.period == period_num for e in matching_entries)
                 if not has_slot:
-                    subj_name = subjects[(d_idx + p_idx) % len(subjects)]
+                    subj_name = sem_subjects[(d_idx * 2 + p_idx + sec_offset) % len(sem_subjects)]
                     fac_name = faculties[(p_idx + d_idx) % len(faculties)]
                     t_start, t_end = times[p_idx]
-                    room_no = f"LH-{(int(sem_str[0]) if sem_str[0].isdigit() else 4) * 100 + period_num}"
+                    room_no = f"LH-{(int(sem_str[0]) if sem_str[0].isdigit() else 1) * 100 + period_num}"
+                    stype = "Laboratory" if any(k in subj_name.lower() for k in ["lab", "workshop", "project", "seminar"]) or p_idx == 3 else "Lecture"
 
                     entry = models.TimetableEntry(
                         department=dept_norm,
                         semester=sem_str,
+                        section=sec_str,
                         day=day_name,
                         period=period_num,
                         subject=subj_name,
-                        subject_type="Lecture" if p_idx < 3 else "Laboratory",
+                        subject_type=stype,
                         faculty_username=fac_name,
                         room=room_no,
                         start_time=t_start,
@@ -1725,40 +1899,79 @@ def ensure_timetable_seeded(db: Session, department: str, semester: str):
                     )
                     db.add(entry)
         db.commit()
+    else:
+        # Check and repair outdated subjects if any existing entries had mismatched subjects
+        changed = False
+        for e in matching_entries:
+            if e.section is None:
+                e.section = sec_str
+                changed = True
+            if e.subject not in sem_subjects:
+                d_idx = days.index(e.day) if e.day in days else 0
+                p_idx = (e.period - 1) if (e.period and 1 <= e.period <= 4) else 0
+                e.subject = sem_subjects[(d_idx * 2 + p_idx + sec_offset) % len(sem_subjects)]
+                e.subject_type = "Laboratory" if any(k in e.subject.lower() for k in ["lab", "workshop", "project", "seminar"]) or p_idx == 3 else "Lecture"
+                changed = True
+        if changed:
+            db.commit()
 
 @app.get("/timetable", response_model=List[schemas.TimetableEntryResponse])
 def get_timetable(
     department: Optional[str] = None,
     semester: Optional[str] = None,
+    section: Optional[str] = None,
     day: Optional[str] = None,
     faculty_username: Optional[str] = None,
     requester_username: Optional[str] = Header(None, alias="x-requester-username"),
     requester_role: Optional[str] = Header(None, alias="x-requester-role"),
     db: Session = Depends(get_db)
 ):
-    cache_key = f"tt_{department or ''}_{semester or ''}_{day or ''}_{faculty_username or ''}"
+    dept_target = department or "Computer Science and Engineering (CSE)"
+    sem_target = semester.split(',')[0].strip() if semester and ',' in semester else (semester or "1-1")
+    sec_target = section or "Section A"
+
+    # Enforce student identity if student requester
+    if requester_username and requester_role == "student":
+        stud_user = db.query(models.User).filter(models.User.username == requester_username).first()
+        if stud_user:
+            s_rec = db.query(models.Student).filter(models.Student.user_id == stud_user.id).first()
+            if stud_user.department or (s_rec and s_rec.department):
+                dept_target = stud_user.department or s_rec.department
+            if stud_user.semester or (s_rec and s_rec.semester):
+                s_sem = stud_user.semester or s_rec.semester
+                if s_sem and not semester:
+                    sem_target = s_sem.split(',')[0].strip()
+            if stud_user.section or (s_rec and s_rec.section):
+                s_sec = stud_user.section or s_rec.section
+                if s_sec and not section:
+                    sec_target = s_sec
+
+    cache_key = f"tt_{dept_target}_{sem_target}_{sec_target}_{day or ''}_{faculty_username or ''}"
     cached_res = get_from_backend_cache(cache_key, ttl_seconds=60)
     if cached_res is not None:
         return cached_res
 
-    dept_target = department or "Computer Science and Engineering (CSE)"
-    sem_target = semester or "4-1"
     try:
-        ensure_timetable_seeded(db, dept_target, sem_target)
+        ensure_timetable_seeded(db, dept_target, sem_target, sec_target)
     except Exception as e:
         print(f"Error seeding timetable: {e}")
 
     query = db.query(models.TimetableEntry)
-    if semester:
-        query = query.filter(models.TimetableEntry.semester == semester)
+    if sem_target:
+        query = query.filter(models.TimetableEntry.semester == sem_target)
+    if sec_target:
+        query = query.filter(
+            (models.TimetableEntry.section == sec_target) | 
+            (models.TimetableEntry.section == None)
+        )
     if day:
         query = query.filter(models.TimetableEntry.day == day)
     if faculty_username:
         query = query.filter(models.TimetableEntry.faculty_username == faculty_username)
 
     results = query.all()
-    if department:
-        target_norm = normalize_dept_name(department)
+    if dept_target:
+        target_norm = normalize_dept_name(dept_target)
         results = [t for t in results if normalize_dept_name(t.department) == target_norm]
 
     # Deduplicate by (day, period) to prevent duplicate rows from ever returning
@@ -1885,6 +2098,28 @@ def get_config_val(db: Session, key: str, default: str) -> str:
     except Exception:
         return default
 
+def parse_time_str_to_minutes(time_str: Optional[str]) -> Optional[int]:
+    if not time_str:
+        return None
+    s = time_str.strip().upper()
+    try:
+        if "AM" in s or "PM" in s:
+            parts = s.split()
+            time_parts = parts[0].split(":")
+            h = int(time_parts[0])
+            m = int(time_parts[1]) if len(time_parts) > 1 else 0
+            if "PM" in s and h != 12:
+                h += 12
+            if "AM" in s and h == 12:
+                h = 0
+            return h * 60 + m
+        parts = s.split(":")
+        h = int(parts[0])
+        m = int(parts[1]) if len(parts) > 1 else 0
+        return h * 60 + m
+    except Exception:
+        return None
+
 def ensure_daily_attendance_records(db: Session, date_str: str, student_id_filter: Optional[int] = None):
     # Only verify attendance beginning on 27 August 2026
     if date_str < "2026-08-27":
@@ -1923,14 +2158,13 @@ def ensure_daily_attendance_records(db: Session, date_str: str, student_id_filte
                 if date_str < today_str:
                     is_window_passed = True
                 elif date_str == today_str:
-                    try:
-                        start_clean = entry.start_time[:5]
-                        start_dt = datetime.datetime.strptime(start_clean, "%H:%M")
-                        end_dt = start_dt + datetime.timedelta(minutes=15)
-                        end_time_str = end_dt.strftime("%H:%M")
-                        if now_time_str > end_time_str:
+                    start_mins = parse_time_str_to_minutes(entry.start_time)
+                    if start_mins is not None:
+                        curr_mins = now.hour * 60 + now.minute
+                        # Window passes 15 minutes after class start
+                        if curr_mins > (start_mins + 15):
                             is_window_passed = True
-                    except Exception:
+                    else:
                         if now_time_str > entry.start_time:
                             is_window_passed = True
                             
@@ -2425,10 +2659,23 @@ def get_student_attendance_dashboard(
             "subject": r.subject,
             "status": r.status,
             "verification_method": r.verification_method,
-            "confidence_score": r.confidence_score
+            "confidence_score": r.confidence_score,
+            # Include timing fields so frontend FRS window logic works correctly
+            "start_time": getattr(r, 'start_time', None),
+            "end_time": getattr(r, 'end_time', None),
+            "room": getattr(r, 'room', None),
+            "faculty_username": getattr(r, 'faculty_username', None),
         })
 
-    calendar_history = [{"date": d, "records": recs} for d, recs in calendar_map.items()]
+    # Always ensure today is present in the calendar history
+    if today_str not in calendar_map:
+        calendar_map[today_str] = []
+
+    calendar_history = sorted(
+        [{"date": d, "records": recs} for d, recs in calendar_map.items()],
+        key=lambda x: x["date"],
+        reverse=True  # newest date first so today appears at top in frontend
+    )
 
     # Face registration status & biometric reset request
     face_enrolled = db.query(models.FaceEnrollment).filter(
@@ -4006,7 +4253,929 @@ def mark_conversation_read(
     return {"success": True, "conversation_id": conversation_id}
 
 
+# =============================================================
+# EXAMINATION & MARKS REDESIGN MODULE
+# =============================================================
 
+DEFAULT_GRADE_SCALE = [
+    {"grade": "S", "min_marks": 90.0, "max_marks": 100.0, "grade_points": 10, "description": "Outstanding"},
+    {"grade": "A", "min_marks": 80.0, "max_marks": 89.99, "grade_points": 9, "description": "Excellent"},
+    {"grade": "B", "min_marks": 70.0, "max_marks": 79.99, "grade_points": 8, "description": "Very Good"},
+    {"grade": "C", "min_marks": 60.0, "max_marks": 69.99, "grade_points": 7, "description": "Good"},
+    {"grade": "D", "min_marks": 50.0, "max_marks": 59.99, "grade_points": 6, "description": "Satisfactory"},
+    {"grade": "F", "min_marks": 0.0, "max_marks": 49.99, "grade_points": 0, "description": "Fail"}
+]
 
+def get_active_grade_scale(db: Session) -> list:
+    cfg = db.query(models.SystemConfig).filter(models.SystemConfig.key == "grade_scale_config").first()
+    if cfg and cfg.value:
+        try:
+            parsed = json.loads(cfg.value)
+            if isinstance(parsed, list) and len(parsed) > 0:
+                return parsed
+        except Exception:
+            pass
+    # Persist default
+    cfg = models.SystemConfig(key="grade_scale_config", value=json.dumps(DEFAULT_GRADE_SCALE))
+    db.merge(cfg)
+    db.commit()
+    return DEFAULT_GRADE_SCALE
 
+def calculate_theory_internal(mid1_marks: Optional[float], mid2_marks: Optional[float]) -> Optional[float]:
+    """
+    The internal component is calculated from Mid-1 and Mid-2.
+    Rule:
+    The higher-scoring mid receives 80% weight.
+    The lower-scoring mid receives 20% weight.
+    Formula:
+    higher_mid_contribution = (higher_mid_marks / 30) * 24
+    lower_mid_contribution = (lower_mid_marks / 30) * 6
+    internal_marks = higher_mid_contribution + lower_mid_contribution
+    Result is out of 30.
+    """
+    if mid1_marks is None and mid2_marks is None:
+        return None
+    if mid1_marks is not None and mid2_marks is None:
+        return round((mid1_marks / 30.0) * 24.0, 2)
+    if mid2_marks is not None and mid1_marks is None:
+        return round((mid2_marks / 30.0) * 24.0, 2)
+    
+    higher = max(mid1_marks, mid2_marks)
+    lower = min(mid1_marks, mid2_marks)
+    higher_contrib = (higher / 30.0) * 24.0
+    lower_contrib = (lower / 30.0) * 6.0
+    return round(higher_contrib + lower_contrib, 2)
 
+def calculate_theory_final(internal_marks: Optional[float], semester_marks: Optional[float]) -> Optional[float]:
+    """
+    Final marks = internal_marks (out of 30) + semester_exam_marks (out of 70) = max 100
+    """
+    if internal_marks is None and semester_marks is None:
+        return None
+    total = (internal_marks or 0.0) + (semester_marks or 0.0)
+    return round(total, 2)
+
+def calculate_lab_final(lab_internal: Optional[float], lab_external: Optional[float]) -> Optional[float]:
+    """
+    Final lab marks = lab_internal (out of 30) + lab_external (out of 70) = max 100
+    """
+    if lab_internal is None and lab_external is None:
+        return None
+    total = (lab_internal or 0.0) + (lab_external or 0.0)
+    return round(total, 2)
+
+def calculate_grade_from_marks(final_marks: Optional[float], scale: list):
+    if final_marks is None:
+        return None, None
+    for item in scale:
+        if float(item["min_marks"]) <= final_marks <= float(item["max_marks"]):
+            return item["grade"], item.get("grade_points", 0)
+    if final_marks >= 90.0:
+        return "S", 10
+    return "F", 0
+
+def check_faculty_exam_authorization(faculty_user: models.User, subject: str, department: str, db: Session) -> bool:
+    user_role = faculty_user.role.value if hasattr(faculty_user.role, 'value') else str(faculty_user.role)
+    if user_role == "admin":
+        return True
+    if user_role != "faculty":
+        return False
+    
+    fac = db.query(models.Faculty).filter(
+        (models.Faculty.user_id == faculty_user.id) |
+        (models.Faculty.faculty_id == faculty_user.username) |
+        (models.Faculty.name == faculty_user.name) |
+        (models.Faculty.email == faculty_user.email)
+    ).first()
+
+    subj_norm = subject.strip().lower()
+
+    # Collect all assigned subjects
+    all_assigned_subjs = []
+    if fac and fac.assigned_subjects:
+        all_assigned_subjs.extend([s.strip().lower() for s in fac.assigned_subjects.split(",") if s.strip()])
+    if faculty_user.subjects:
+        all_assigned_subjs.extend([s.strip().lower() for s in faculty_user.subjects.split(",") if s.strip()])
+
+    tt_matches = db.query(models.TimetableEntry).filter(
+        (models.TimetableEntry.faculty_username == faculty_user.username) |
+        (models.TimetableEntry.faculty_username == (fac.name if fac else ""))
+    ).all()
+    for entry in tt_matches:
+        if entry.subject:
+            all_assigned_subjs.append(entry.subject.strip().lower())
+
+    if all_assigned_subjs:
+        for a in all_assigned_subjs:
+            if a in subj_norm or subj_norm in a:
+                return True
+        return False
+
+    # If no specific subjects assigned, check department strict match
+    user_dept = get_normalized_department(faculty_user.department or (fac.department if fac else "")).lower()
+    exam_dept = get_normalized_department(department).lower()
+    return bool(user_dept) and (user_dept == exam_dept)
+
+# --- Endpoints ---
+
+@app.get("/examinations/filters")
+def get_examination_filters(
+    semester: Optional[str] = None,
+    department: Optional[str] = None,
+    current_user: models.User = Depends(require_student_or_above),
+    db: Session = Depends(get_db)
+):
+    seed_academic_subjects_if_needed(db)
+    user_role = current_user.role.value if hasattr(current_user.role, 'value') else str(current_user.role)
+
+    all_departments = [
+        "Computer Science and Engineering (CSE)",
+        "CSE AI",
+        "CSE AIML",
+        "Electronics and Communication Engineering (ECE)",
+        "Electrical and Electronics Engineering (EEE)",
+        "Civil Engineering"
+    ]
+    years = ["1st Year", "2nd Year", "3rd Year", "4th Year"]
+    semesters = ["1-1", "1-2", "2-1", "2-2", "3-1", "3-2", "4-1", "4-2"]
+    sections = ["Section A", "Section B", "Section C"]
+
+    exam_types_theory = [
+        {"key": "MID_1", "label": "Mid Examination 1 (Max 30)", "max_marks": 30.0},
+        {"key": "MID_2", "label": "Mid Examination 2 (Max 30)", "max_marks": 30.0},
+        {"key": "SEMESTER", "label": "Semester Examination (Max 70)", "max_marks": 70.0}
+    ]
+    exam_types_lab = [
+        {"key": "LAB_INTERNAL", "label": "Lab Internal (Max 30)", "max_marks": 30.0},
+        {"key": "LAB_EXTERNAL", "label": "Lab External (Max 70)", "max_marks": 70.0}
+    ]
+
+    # Query subjects from AcademicSubject
+    sub_query = db.query(models.AcademicSubject)
+    if semester:
+        sub_query = sub_query.filter(models.AcademicSubject.semester == semester)
+    if department:
+        target_dept_norm = normalize_dept_name(department)
+        all_subs = sub_query.all()
+        subjects_query = [s for s in all_subs if normalize_dept_name(s.department) == target_dept_norm]
+    else:
+        subjects_query = sub_query.all()
+
+    # Faculty-tailored or full
+    if user_role == "faculty":
+        fac = db.query(models.Faculty).filter(
+            (models.Faculty.user_id == current_user.id) |
+            (models.Faculty.faculty_id == current_user.username)
+        ).first()
+
+        authorized_depts = [current_user.department] if current_user.department else all_departments
+        if fac and fac.department and fac.department not in authorized_depts:
+            authorized_depts.append(fac.department)
+
+        user_subjects = []
+        for s in subjects_query:
+            if check_faculty_exam_authorization(current_user, s.name, s.department, db):
+                user_subjects.append({
+                    "id": s.id,
+                    "code": s.code,
+                    "name": s.name,
+                    "department": s.department,
+                    "semester": s.semester,
+                    "year": s.year,
+                    "subject_type": s.subject_type
+                })
+        
+        # If no specific subjects assigned, give department subjects
+        if not user_subjects:
+            for s in subjects_query:
+                user_subjects.append({
+                    "id": s.id,
+                    "code": s.code,
+                    "name": s.name,
+                    "department": s.department,
+                    "semester": s.semester,
+                    "year": s.year,
+                    "subject_type": s.subject_type
+                })
+
+        return {
+            "departments": authorized_depts,
+            "years": years,
+            "semesters": semesters,
+            "sections": sections,
+            "subjects": user_subjects,
+            "exam_types_theory": exam_types_theory,
+            "exam_types_lab": exam_types_lab
+        }
+
+    # Admin / Student gets full lists
+    sub_list = [{
+        "id": s.id,
+        "code": s.code,
+        "name": s.name,
+        "department": s.department,
+        "semester": s.semester,
+        "year": s.year,
+        "subject_type": s.subject_type
+    } for s in subjects_query]
+
+    return {
+        "departments": all_departments,
+        "years": years,
+        "semesters": semesters,
+        "sections": sections,
+        "subjects": sub_list,
+        "exam_types_theory": exam_types_theory,
+        "exam_types_lab": exam_types_lab
+    }
+
+@app.get("/examinations/grade-config")
+def get_grade_configuration_endpoint(
+    db: Session = Depends(get_db)
+):
+    return get_active_grade_scale(db)
+
+@app.put("/admin/examinations/grade-config")
+def update_grade_configuration_endpoint(
+    req: schemas.GradeConfigUpdateRequest,
+    current_user: models.User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    scale_data = [item.dict() for item in req.scale]
+    cfg = db.query(models.SystemConfig).filter(models.SystemConfig.key == "grade_scale_config").first()
+    if not cfg:
+        cfg = models.SystemConfig(key="grade_scale_config", value=json.dumps(scale_data))
+        db.add(cfg)
+    else:
+        cfg.value = json.dumps(scale_data)
+    db.commit()
+    return {"success": True, "scale": scale_data}
+
+@app.get("/examinations")
+def list_examinations(
+    department: Optional[str] = None,
+    year: Optional[str] = None,
+    semester: Optional[str] = None,
+    section: Optional[str] = None,
+    subject: Optional[str] = None,
+    subject_type: Optional[str] = None,
+    exam_type: Optional[str] = None,
+    current_user: models.User = Depends(require_student_or_above),
+    db: Session = Depends(get_db)
+):
+    user_role = current_user.role.value if hasattr(current_user.role, 'value') else str(current_user.role)
+    query = db.query(models.Examination)
+
+    if department:
+        query = query.filter(models.Examination.department.ilike(f"%{department}%"))
+    if year:
+        query = query.filter(models.Examination.year == year)
+    if semester:
+        query = query.filter(models.Examination.semester == semester)
+    if section:
+        query = query.filter(models.Examination.section == section)
+    if subject:
+        query = query.filter(models.Examination.subject.ilike(f"%{subject}%"))
+    if subject_type:
+        query = query.filter(models.Examination.subject_type == subject_type)
+    if exam_type:
+        query = query.filter(models.Examination.exam_type == exam_type)
+
+    exams = query.order_by(models.Examination.id.desc()).all()
+
+    # If faculty, filter to authorized
+    res = []
+    for ex in exams:
+        if user_role == "faculty" and not check_faculty_exam_authorization(current_user, ex.subject, ex.department, db):
+            continue
+
+        marks_entered = db.query(models.ExamMark).filter(models.ExamMark.exam_id == ex.id).count()
+        # Find enrolled count
+        stud_query = db.query(models.User).filter(
+            models.User.role == models.RoleEnum.student,
+            models.User.department.ilike(f"%{ex.department[:15]}%")
+        )
+        if ex.semester:
+            stud_query = stud_query.filter(models.User.semester == ex.semester)
+        total_studs = stud_query.count()
+
+        res.append({
+            "id": ex.id,
+            "subject": ex.subject,
+            "subject_code": ex.subject_code,
+            "subject_type": ex.subject_type,
+            "exam_type": ex.exam_type,
+            "department": ex.department,
+            "year": ex.year,
+            "semester": ex.semester,
+            "section": ex.section,
+            "academic_session": ex.academic_session,
+            "max_marks": ex.max_marks,
+            "is_published": ex.is_published,
+            "published_at": ex.published_at,
+            "created_by": ex.created_by,
+            "created_at": ex.created_at,
+            "updated_at": ex.updated_at,
+            "total_students": total_studs,
+            "marks_entered_count": marks_entered
+        })
+    return res
+
+@app.post("/examinations")
+def create_or_get_examination(
+    req: schemas.ExaminationCreate,
+    current_user: models.User = Depends(require_faculty),
+    db: Session = Depends(get_db)
+):
+    if not check_faculty_exam_authorization(current_user, req.subject, req.department, db):
+        raise HTTPException(
+            status_code=403,
+            detail=f"Access forbidden: You are not authorized to manage exams for subject '{req.subject}' in department '{req.department}'."
+        )
+
+    # Determine default max_marks and subject_type
+    subject_type = req.subject_type.upper() if req.subject_type else "THEORY"
+    exam_type = req.exam_type.upper()
+
+    if exam_type in ["MID_1", "MID_2", "LAB_INTERNAL"]:
+        default_max = 30.0
+    elif exam_type in ["SEMESTER", "LAB_EXTERNAL"]:
+        default_max = 70.0
+    else:
+        default_max = 30.0
+
+    max_marks = float(req.max_marks) if req.max_marks is not None else default_max
+
+    # Check existing examination
+    existing = db.query(models.Examination).filter(
+        models.Examination.subject == req.subject,
+        models.Examination.exam_type == exam_type,
+        models.Examination.department == req.department,
+        models.Examination.semester == req.semester,
+        models.Examination.section == req.section,
+        models.Examination.academic_session == (req.academic_session or "2025-2026")
+    ).first()
+
+    now_iso = datetime.datetime.now().isoformat()
+    if existing:
+        return existing
+
+    new_exam = models.Examination(
+        subject=req.subject,
+        subject_code=req.subject_code,
+        subject_type=subject_type,
+        exam_type=exam_type,
+        department=req.department,
+        year=req.year,
+        semester=req.semester,
+        section=req.section,
+        academic_session=req.academic_session or "2025-2026",
+        max_marks=max_marks,
+        is_published=0,
+        created_by=current_user.username,
+        created_at=now_iso,
+        updated_at=now_iso
+    )
+    db.add(new_exam)
+    db.commit()
+    db.refresh(new_exam)
+    return new_exam
+
+@app.get("/examinations/{exam_id}/students", response_model=List[schemas.StudentExamEnrolledRow])
+def get_examination_students(
+    exam_id: int,
+    current_user: models.User = Depends(require_faculty),
+    db: Session = Depends(get_db)
+):
+    exam = db.query(models.Examination).filter(models.Examination.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Examination not found.")
+
+    if not check_faculty_exam_authorization(current_user, exam.subject, exam.department, db):
+        raise HTTPException(
+            status_code=403,
+            detail=f"Access forbidden: You are not authorized to view students for subject '{exam.subject}'."
+        )
+
+    target_dept_norm = normalize_dept_name(exam.department)
+    target_sem = (exam.semester or "").strip()
+    target_sec_norm = (exam.section or "Section A").replace("Section", "").strip().lower()
+
+    # Query students and match exact class (department + semester + section)
+    all_students = db.query(models.User).filter(
+        models.User.role == models.RoleEnum.student
+    ).order_by(models.User.roll_number.asc()).all()
+
+    filtered_students = []
+    for s in all_students:
+        s_rec = db.query(models.Student).filter(models.Student.user_id == s.id).first()
+        s_dept = s.department or (s_rec.department if s_rec else None) or ""
+        s_sem = s.semester or (s_rec.semester if s_rec else None) or ""
+        s_sec = s.section or (s_rec.section if s_rec else None) or "Section A"
+
+        if normalize_dept_name(s_dept) != target_dept_norm:
+            continue
+        if s_sem != target_sem:
+            continue
+        s_sec_norm = s_sec.replace("Section", "").strip().lower()
+        if s_sec_norm != target_sec_norm:
+            continue
+        filtered_students.append((s, s_rec, s_sec))
+
+    # Existing marks map
+    marks = db.query(models.ExamMark).filter(models.ExamMark.exam_id == exam.id).all()
+    mark_map = {m.student_id: m for m in marks}
+
+    res = []
+    for s, s_rec, s_sec in filtered_students:
+        m = mark_map.get(s.id)
+        res.append(schemas.StudentExamEnrolledRow(
+            student_id=s.id,
+            roll_number=s.roll_number or (s_rec.roll_number if s_rec else None) or s.username,
+            name=s.name or (s_rec.name if s_rec else None) or s.username,
+            department=s.department or (s_rec.department if s_rec else None) or exam.department,
+            year=s.year or (s_rec.year if s_rec else None) or exam.year,
+            semester=s.semester or (s_rec.semester if s_rec else None) or exam.semester,
+            section=s_sec,
+            mark_id=m.id if m else None,
+            marks=m.marks if m else None,
+            is_published=m.is_published if m else 0,
+            updated_at=m.updated_at if m else None
+        ))
+    return res
+
+@app.post("/examinations/{exam_id}/marks/bulk")
+def save_examination_marks_bulk(
+    exam_id: int,
+    req: schemas.BulkMarkEntryRequest,
+    current_user: models.User = Depends(require_faculty),
+    db: Session = Depends(get_db)
+):
+    exam = db.query(models.Examination).filter(models.Examination.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Examination not found.")
+
+    if not check_faculty_exam_authorization(current_user, exam.subject, exam.department, db):
+        raise HTTPException(
+            status_code=403,
+            detail="Access forbidden: You are not authorized to record marks for this examination."
+        )
+
+    is_publish = (req.action.lower() == "publish")
+    now_iso = datetime.datetime.now().isoformat()
+
+    # Pre-validate all items
+    for item in req.marks:
+        if item.marks is not None:
+            if item.marks < 0:
+                raise HTTPException(status_code=400, detail=f"Marks cannot be negative. (Student ID: {item.student_id})")
+            if item.marks > exam.max_marks:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Marks cannot exceed maximum {exam.max_marks}. Awarded: {item.marks} for Student ID {item.student_id}"
+                )
+
+        stud = db.query(models.User).filter(models.User.id == item.student_id).first()
+        if not stud:
+            raise HTTPException(status_code=400, detail=f"Student ID {item.student_id} not found in database.")
+
+    # Save marks
+    saved_count = 0
+    for item in req.marks:
+        if item.marks is None:
+            continue
+
+        existing = db.query(models.ExamMark).filter(
+            models.ExamMark.exam_id == exam.id,
+            models.ExamMark.student_id == item.student_id
+        ).first()
+
+        mark_pub_state = 1 if is_publish else (existing.is_published if existing else 0)
+
+        if existing:
+            existing.marks = float(item.marks)
+            existing.is_published = mark_pub_state
+            existing.updated_at = now_iso
+        else:
+            new_m = models.ExamMark(
+                exam_id=exam.id,
+                student_id=item.student_id,
+                marks=float(item.marks),
+                is_published=mark_pub_state,
+                created_at=now_iso,
+                updated_at=now_iso
+            )
+            db.add(new_m)
+        saved_count += 1
+
+        # Also update legacy Mark record if published for dashboard compatibility
+        if mark_pub_state == 1:
+            try:
+                legacy_comp = "Midterm 1" if exam.exam_type == "MID_1" else (
+                    "Midterm 2" if exam.exam_type == "MID_2" else (
+                        "Final Exam" if exam.exam_type == "SEMESTER" else exam.exam_type
+                    )
+                )
+                leg_mark = db.query(models.Mark).filter(
+                    models.Mark.student_id == item.student_id,
+                    models.Mark.subject == exam.subject,
+                    models.Mark.semester == exam.semester,
+                    models.Mark.assessment_type == legacy_comp
+                ).first()
+                if leg_mark:
+                    leg_mark.marks = int(round(item.marks))
+                    leg_mark.updated_at = now_iso
+                else:
+                    db.add(models.Mark(
+                        student_id=item.student_id,
+                        subject=exam.subject,
+                        faculty_username=current_user.username,
+                        semester=exam.semester,
+                        department=exam.department,
+                        assessment_type=legacy_comp,
+                        marks=int(round(item.marks)),
+                        updated_at=now_iso
+                    ))
+            except Exception:
+                pass
+
+    if is_publish:
+        exam.is_published = 1
+        exam.published_at = now_iso
+
+    exam.updated_at = now_iso
+    db.commit()
+
+    return {
+        "success": True,
+        "action": req.action,
+        "is_published": exam.is_published,
+        "saved_count": saved_count
+    }
+
+@app.post("/examinations/{exam_id}/publish")
+def publish_examination_endpoint(
+    exam_id: int,
+    current_user: models.User = Depends(require_faculty),
+    db: Session = Depends(get_db)
+):
+    exam = db.query(models.Examination).filter(models.Examination.id == exam_id).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="Examination not found.")
+
+    if not check_faculty_exam_authorization(current_user, exam.subject, exam.department, db):
+        raise HTTPException(
+            status_code=403,
+            detail="Access forbidden: You are not authorized to publish marks for this examination."
+        )
+
+    now_iso = datetime.datetime.now().isoformat()
+    exam.is_published = 1
+    exam.published_at = now_iso
+    exam.updated_at = now_iso
+
+    db.query(models.ExamMark).filter(models.ExamMark.exam_id == exam.id).update(
+        {"is_published": 1, "updated_at": now_iso},
+        synchronize_session=False
+    )
+    db.commit()
+    return {"success": True, "message": f"All marks for {exam.subject} ({exam.exam_type}) have been published successfully."}
+
+@app.get("/student/examinations", response_model=List[schemas.StudentSubjectResultReport])
+def get_student_examinations_endpoint(
+    semester: Optional[str] = None,
+    current_user: models.User = Depends(require_student_or_above),
+    db: Session = Depends(get_db)
+):
+    # Enforce Student Privacy: student can ONLY read their own marks
+    student_id = current_user.id
+    target_sem = semester or current_user.semester or "1-1"
+    if ',' in target_sem:
+        target_sem = target_sem.split(',')[0].strip()
+    scale = get_active_grade_scale(db)
+
+    # 1. Fetch academic subjects for student's department & semester
+    dept_norm = get_normalized_department(current_user.department or "Computer Science and Engineering (CSE)")
+    subjects = db.query(models.AcademicSubject).filter(
+        models.AcademicSubject.semester == target_sem
+    ).all()
+
+    filtered_subjs = [s for s in subjects if normalize_dept_name(s.department) == normalize_dept_name(dept_norm)]
+    if not filtered_subjs:
+        # Fallback to catalog if AcademicSubject not yet populated
+        cat_subjs = get_subjects_for_class(dept_norm, target_sem)
+        prefix = get_dept_catalog_key(dept_norm)[:2].upper()
+        sem_num = target_sem.replace("-", "")
+        filtered_subjs = [
+            models.AcademicSubject(
+                code=f"{prefix}{sem_num}{idx+1:02d}",
+                name=name,
+                department=dept_norm,
+                year="1st Year" if target_sem.startswith("1") else ("2nd Year" if target_sem.startswith("2") else ("3rd Year" if target_sem.startswith("3") else "4th Year")),
+                semester=target_sem,
+                subject_type="LAB" if any(k in name.lower() for k in ["lab", "laboratory", "project", "seminar", "workshop"]) else "THEORY",
+                credits=4 if "project" in name.lower() else (2 if "lab" in name.lower() else 3)
+            )
+            for idx, name in enumerate(cat_subjs)
+        ]
+
+    # Also collect any examinations created for this student's semester & department
+    dept_exams = db.query(models.Examination).filter(
+        models.Examination.semester == target_sem,
+        models.Examination.is_published == 1  # ONLY PUBLISHED EXAMS!
+    ).all()
+
+    exam_map = {ex.id: ex for ex in dept_exams}
+
+    # Fetch ONLY published marks for this student
+    student_marks = db.query(models.ExamMark).filter(
+        models.ExamMark.student_id == student_id,
+        models.ExamMark.is_published == 1,
+        models.ExamMark.exam_id.in_(list(exam_map.keys())) if exam_map else False
+    ).all() if exam_map else []
+
+    # Map marks by subject and exam_type
+    subject_exam_marks: Dict[str, Dict[str, models.ExamMark]] = {}
+    for sm in student_marks:
+        ex = exam_map.get(sm.exam_id)
+        if not ex:
+            continue
+        subj_name = ex.subject
+        if subj_name not in subject_exam_marks:
+            subject_exam_marks[subj_name] = {}
+        subject_exam_marks[subj_name][ex.exam_type] = sm
+
+    # Prepare list of subjects to display
+    display_subjects = []
+    seen_subjects = set()
+
+    for s in filtered_subjs:
+        if s.name not in seen_subjects:
+            display_subjects.append({
+                "name": s.name,
+                "code": s.code,
+                "type": s.subject_type,
+                "dept": s.department
+            })
+            seen_subjects.add(s.name)
+
+    for ex in dept_exams:
+        if ex.subject not in seen_subjects:
+            display_subjects.append({
+                "name": ex.subject,
+                "code": ex.subject_code or "SUB",
+                "type": ex.subject_type,
+                "dept": ex.department
+            })
+            seen_subjects.add(ex.subject)
+
+    # Build report for each subject
+    report = []
+    for sub in display_subjects:
+        subj_name = sub["name"]
+        subj_type = sub["type"].upper()
+        marks_dict = subject_exam_marks.get(subj_name, {})
+
+        components_out = {}
+        for etype, mark_rec in marks_dict.items():
+            ex_rec = exam_map[mark_rec.exam_id]
+            components_out[etype] = schemas.StudentComponentResult(
+                exam_id=ex_rec.id,
+                exam_type=etype,
+                marks=mark_rec.marks,
+                max_marks=ex_rec.max_marks,
+                is_published=mark_rec.is_published,
+                published_at=ex_rec.published_at
+            )
+
+        if subj_type == "THEORY":
+            mid1_m = marks_dict.get("MID_1").marks if marks_dict.get("MID_1") else None
+            mid2_m = marks_dict.get("MID_2").marks if marks_dict.get("MID_2") else None
+            sem_m = marks_dict.get("SEMESTER").marks if marks_dict.get("SEMESTER") else None
+
+            # Calculate internal out of 30 using 80/20 formula
+            internal_m = calculate_theory_internal(mid1_m, mid2_m)
+            final_m = calculate_theory_final(internal_m, sem_m)
+            grade_let, grade_pts = calculate_grade_from_marks(final_m, scale) if (internal_m is not None and sem_m is not None) else (None, None)
+
+            status = "Published" if (mid1_m is not None and mid2_m is not None and sem_m is not None) else (
+                "Partially Published" if (mid1_m is not None or mid2_m is not None or sem_m is not None) else "Marks not yet published"
+            )
+
+            report.append(schemas.StudentSubjectResultReport(
+                subject=subj_name,
+                subject_code=sub["code"],
+                subject_type=subj_type,
+                department=sub["dept"],
+                semester=target_sem,
+                components=components_out,
+                mid1_marks=mid1_m,
+                mid2_marks=mid2_m,
+                internal_marks=internal_m,
+                semester_marks=sem_m,
+                final_marks=final_m,
+                grade=grade_let,
+                grade_points=grade_pts,
+                status=status
+            ))
+        else: # LAB
+            lab_int = marks_dict.get("LAB_INTERNAL").marks if marks_dict.get("LAB_INTERNAL") else None
+            lab_ext = marks_dict.get("LAB_EXTERNAL").marks if marks_dict.get("LAB_EXTERNAL") else None
+
+            final_m = calculate_lab_final(lab_int, lab_ext)
+            grade_let, grade_pts = calculate_grade_from_marks(final_m, scale) if (lab_int is not None and lab_ext is not None) else (None, None)
+
+            status = "Published" if (lab_int is not None and lab_ext is not None) else (
+                "Partially Published" if (lab_int is not None or lab_ext is not None) else "Marks not yet published"
+            )
+
+            report.append(schemas.StudentSubjectResultReport(
+                subject=subj_name,
+                subject_code=sub["code"],
+                subject_type=subj_type,
+                department=sub["dept"],
+                semester=target_sem,
+                components=components_out,
+                lab_internal=lab_int,
+                lab_external=lab_ext,
+                final_marks=final_m,
+                grade=grade_let,
+                grade_points=grade_pts,
+                status=status
+            ))
+
+    return report
+
+@app.get("/faculty/examinations/overview")
+def get_faculty_examinations_overview(
+    department: str,
+    semester: str,
+    section: str,
+    subject: str,
+    current_user: models.User = Depends(require_faculty),
+    db: Session = Depends(get_db)
+):
+    if not check_faculty_exam_authorization(current_user, subject, department, db):
+        raise HTTPException(
+            status_code=403,
+            detail="Access forbidden: You are not authorized to view this class."
+        )
+
+    scale = get_active_grade_scale(db)
+
+    # Fetch exams for this subject
+    exams = db.query(models.Examination).filter(
+        models.Examination.subject == subject,
+        models.Examination.department == department,
+        models.Examination.semester == semester,
+        models.Examination.section == section
+    ).all()
+    exam_dict = {ex.exam_type: ex for ex in exams}
+
+    target_dept_norm = normalize_dept_name(department)
+    target_sem = (semester or "").strip()
+    target_sec_norm = (section or "Section A").replace("Section", "").strip().lower()
+
+    # Fetch students enrolled strictly in this class
+    all_students = db.query(models.User).filter(
+        models.User.role == models.RoleEnum.student
+    ).order_by(models.User.roll_number.asc()).all()
+
+    matched_students = []
+    for s in all_students:
+        s_rec = db.query(models.Student).filter(models.Student.user_id == s.id).first()
+        s_dept = s.department or (s_rec.department if s_rec else None) or ""
+        s_sem = s.semester or (s_rec.semester if s_rec else None) or ""
+        s_sec = s.section or (s_rec.section if s_rec else None) or "Section A"
+
+        if normalize_dept_name(s_dept) != target_dept_norm:
+            continue
+        if s_sem != target_sem:
+            continue
+        s_sec_norm = s_sec.replace("Section", "").strip().lower()
+        if s_sec_norm != target_sec_norm:
+            continue
+        matched_students.append(s)
+
+    # Fetch all marks for these exams
+    exam_ids = [ex.id for ex in exams]
+    all_marks = db.query(models.ExamMark).filter(
+        models.ExamMark.exam_id.in_(exam_ids)
+    ).all() if exam_ids else []
+
+    # Map: student_id -> exam_type -> ExamMark
+    stud_marks: Dict[int, Dict[str, models.ExamMark]] = {}
+    for m in all_marks:
+        if m.student_id not in stud_marks:
+            stud_marks[m.student_id] = {}
+        for ex in exams:
+            if ex.id == m.exam_id:
+                stud_marks[m.student_id][ex.exam_type] = m
+
+    is_lab = any("LAB" in (ex.subject_type or "").upper() for ex in exams) or "Lab" in subject
+
+    rows = []
+    for s in matched_students:
+        m_map = stud_marks.get(s.id, {})
+        if is_lab:
+            lint = m_map.get("LAB_INTERNAL").marks if m_map.get("LAB_INTERNAL") else None
+            lext = m_map.get("LAB_EXTERNAL").marks if m_map.get("LAB_EXTERNAL") else None
+            final_m = calculate_lab_final(lint, lext)
+            grade_let, _ = calculate_grade_from_marks(final_m, scale) if (lint is not None and lext is not None) else (None, None)
+
+            rows.append({
+                "student_id": s.id,
+                "roll_number": s.roll_number or s.username,
+                "name": s.name or s.username,
+                "lab_internal": lint,
+                "lab_external": lext,
+                "final_marks": final_m,
+                "grade": grade_let,
+                "lab_internal_published": m_map.get("LAB_INTERNAL").is_published if m_map.get("LAB_INTERNAL") else 0,
+                "lab_external_published": m_map.get("LAB_EXTERNAL").is_published if m_map.get("LAB_EXTERNAL") else 0
+            })
+        else:
+            m1 = m_map.get("MID_1").marks if m_map.get("MID_1") else None
+            m2 = m_map.get("MID_2").marks if m_map.get("MID_2") else None
+            sem = m_map.get("SEMESTER").marks if m_map.get("SEMESTER") else None
+
+            int_m = calculate_theory_internal(m1, m2)
+            final_m = calculate_theory_final(int_m, sem)
+            grade_let, _ = calculate_grade_from_marks(final_m, scale) if (int_m is not None and sem is not None) else (None, None)
+
+            rows.append({
+                "student_id": s.id,
+                "roll_number": s.roll_number or s.username,
+                "name": s.name or s.username,
+                "mid1": m1,
+                "mid2": m2,
+                "internal": int_m,
+                "semester": sem,
+                "final_marks": final_m,
+                "grade": grade_let,
+                "mid1_published": m_map.get("MID_1").is_published if m_map.get("MID_1") else 0,
+                "mid2_published": m_map.get("MID_2").is_published if m_map.get("MID_2") else 0,
+                "semester_published": m_map.get("SEMESTER").is_published if m_map.get("SEMESTER") else 0
+            })
+
+    return {
+        "subject": subject,
+        "is_lab": is_lab,
+        "department": department,
+        "semester": semester,
+        "section": section,
+        "students": rows
+    }
+
+@app.get("/examinations/subjects")
+def get_all_academic_subjects(
+    department: Optional[str] = None,
+    semester: Optional[str] = None,
+    subject_type: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    seed_academic_subjects_if_needed(db)
+    query = db.query(models.AcademicSubject)
+    if department:
+        query = query.filter(models.AcademicSubject.department.ilike(f"%{department}%"))
+    if semester:
+        query = query.filter(models.AcademicSubject.semester == semester)
+    if subject_type:
+        query = query.filter(models.AcademicSubject.subject_type == subject_type.upper())
+    return query.order_by(models.AcademicSubject.id.asc()).all()
+
+@app.post("/admin/examinations/subjects")
+def create_or_update_academic_subject(
+    req: schemas.AcademicSubjectCreate,
+    current_user: models.User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    existing = db.query(models.AcademicSubject).filter(
+        models.AcademicSubject.code == req.code
+    ).first()
+    if existing:
+        existing.name = req.name
+        existing.department = req.department
+        existing.year = req.year
+        existing.semester = req.semester
+        existing.subject_type = req.subject_type.upper()
+        existing.credits = req.credits
+        existing.assigned_faculty = req.assigned_faculty
+        db.commit()
+        db.refresh(existing)
+        return existing
+
+    new_sub = models.AcademicSubject(
+        code=req.code,
+        name=req.name,
+        department=req.department,
+        year=req.year,
+        semester=req.semester,
+        subject_type=req.subject_type.upper(),
+        credits=req.credits,
+        assigned_faculty=req.assigned_faculty
+    )
+    db.add(new_sub)
+    db.commit()
+    db.refresh(new_sub)
+    return new_sub

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Enum, ForeignKey
+from sqlalchemy import Column, Integer, String, Enum, ForeignKey, Float, UniqueConstraint
 from sqlalchemy.orm import relationship
 import enum
 from database import Base
@@ -50,6 +50,7 @@ class TimetableEntry(Base):
     id = Column(Integer, primary_key=True, index=True)
     department = Column(String(255), index=True)
     semester = Column(String(255), index=True)
+    section = Column(String(50), nullable=True, default="Section A")
     day = Column(String(255), index=True)
     period = Column(Integer)  # 1, 2, 3, or 4
     subject = Column(String(255))
@@ -291,6 +292,66 @@ class FacultyStudentMessage(Base):
     conversation = relationship("FacultyStudentConversation", foreign_keys=[conversation_id])
     sender = relationship("User", foreign_keys=[sender_id])
 
+class SubjectTypeEnum(str, enum.Enum):
+    THEORY = "THEORY"
+    LAB = "LAB"
 
+class ExamTypeEnum(str, enum.Enum):
+    MID_1 = "MID_1"
+    MID_2 = "MID_2"
+    SEMESTER = "SEMESTER"
+    LAB_INTERNAL = "LAB_INTERNAL"
+    LAB_EXTERNAL = "LAB_EXTERNAL"
 
+class AcademicSubject(Base):
+    __tablename__ = "academic_subjects"
 
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String(50), index=True)
+    name = Column(String(255), index=True)
+    department = Column(String(255), index=True)
+    year = Column(String(50))
+    semester = Column(String(50))
+    subject_type = Column(String(50), default="THEORY")  # THEORY or LAB
+    credits = Column(Integer, default=3)
+    assigned_faculty = Column(String(255), nullable=True)
+
+class Examination(Base):
+    __tablename__ = "examinations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    subject = Column(String(255), index=True)
+    subject_code = Column(String(50), nullable=True)
+    subject_type = Column(String(50), default="THEORY")  # THEORY or LAB
+    exam_type = Column(String(50), index=True)  # MID_1, MID_2, SEMESTER, LAB_INTERNAL, LAB_EXTERNAL
+    department = Column(String(255), index=True)
+    year = Column(String(50), index=True)
+    semester = Column(String(50), index=True)
+    section = Column(String(50), index=True, default="Section A")
+    academic_session = Column(String(50), default="2025-2026")
+    max_marks = Column(Float, default=30.0)
+    is_published = Column(Integer, default=0)  # 0 for draft, 1 for published
+    published_at = Column(String(255), nullable=True)
+    created_by = Column(String(255), nullable=True)  # Faculty username
+    created_at = Column(String(255))
+    updated_at = Column(String(255))
+
+    marks = relationship("ExamMark", back_populates="examination", cascade="all, delete-orphan")
+
+class ExamMark(Base):
+    __tablename__ = "exam_marks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    exam_id = Column(Integer, ForeignKey("examinations.id", ondelete="CASCADE"), index=True)
+    student_id = Column(Integer, ForeignKey("users.id"), index=True)
+    marks = Column(Float, nullable=False)
+    is_published = Column(Integer, default=0)  # 0 for draft, 1 for published
+    created_at = Column(String(255))
+    updated_at = Column(String(255))
+
+    examination = relationship("Examination", back_populates="marks")
+    student = relationship("User", foreign_keys=[student_id])
+
+    __table_args__ = (
+        UniqueConstraint('exam_id', 'student_id', name='uq_exam_student_mark'),
+    )

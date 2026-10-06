@@ -21,6 +21,14 @@ export const SUBJECTS_DATABASE: Record<string, Record<string, string[]>> = {
       'Engineering Chemistry Laboratory',
       'Python Programming Laboratory'
     ],
+    '1-3': [
+      'Discrete Computational Structures',
+      'Applied Physics & Semiconductor Devices',
+      'Object-Oriented Design & Paradigms',
+      'Digital Logic & Computer Organization',
+      'Hardware & System Prototyping Laboratory',
+      'Programming Foundations Laboratory'
+    ],
     '2-1': [
       'Discrete Mathematics & Graph Theory',
       'Computer Organization & Architecture (COA)',
@@ -289,15 +297,17 @@ export const formatMinutesToHHMM = (totalMin: number): string => {
   return `${hh}:${mm}`;
 };
 
-export const getTimetableScheduleForDay = (sem: string = '4-1', dayName: string = 'Monday'): UnifiedPeriodSchedule[] => {
-  let subjects = ["Generative AI", "MLOps & Model Deployment", "Deep Learning", "Cloud Computing Lab"];
-  if (sem.startsWith("1")) {
-    subjects = ["Linear Algebra & Calculus", "Engineering Physics", "Programming in C", "Engineering Drawing"];
-  } else if (sem.startsWith("2")) {
-    subjects = ["Data Structures", "DBMS", "OOP (Java)", "Digital Logic & Computer Org"];
-  } else if (sem.startsWith("3")) {
-    subjects = ["Software Engineering", "Machine Learning", "Artificial Intelligence", "Computer Networks"];
-  }
+export const getTimetableScheduleForDay = (
+  sem: string = '1-1',
+  dayName: string = 'Monday',
+  dept: string = 'Computer Science and Engineering (CSE)',
+  section: string = 'Section A'
+): UnifiedPeriodSchedule[] => {
+  const normDept = getNormalizedDepartment(dept);
+  const cleanSem = sem && sem.includes(',') ? sem.split(',')[0].trim() : (sem || '1-1');
+  const available = (SUBJECTS_DATABASE[normDept] && SUBJECTS_DATABASE[normDept][cleanSem])
+    || (SUBJECTS_DATABASE['Computer Science and Engineering (CSE)'] && SUBJECTS_DATABASE['Computer Science and Engineering (CSE)'][cleanSem])
+    || ["Engineering Mathematics", "Core Engineering", "Programming Coursework", "Engineering Laboratory"];
 
   const faculties = [
     "Dr. DODLA SRUJAN CHANDRA REDDY",
@@ -318,10 +328,11 @@ export const getTimetableScheduleForDay = (sem: string = '4-1', dayName: string 
   let dIdx = daysList.findIndex(d => d.toLowerCase() === dayName.toLowerCase());
   if (dIdx === -1) dIdx = 0; // default to Monday
 
-  const semNum = parseInt(sem.charAt(0)) || 4;
+  const semNum = parseInt(cleanSem.charAt(0)) || 1;
+  const secOffset = section.toLowerCase().includes('b') ? 2 : (section.toLowerCase().includes('c') ? 4 : 0);
 
   return times.slice(0, 4).map((t, pIdx) => {
-    const subjName = subjects[(dIdx + pIdx) % subjects.length];
+    const subjName = available[(dIdx * 2 + pIdx + secOffset) % available.length];
     const facName = faculties[(pIdx + dIdx) % faculties.length];
     const roomNo = `LH-${semNum * 100 + (pIdx + 1)}`;
 

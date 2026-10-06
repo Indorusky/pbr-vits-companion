@@ -57,10 +57,12 @@ const Timetable = () => {
   const isAdmin = user?.role === 'admin';
   const canManage = isFaculty || isAdmin;
 
-  // Selected Department & Semester
+  // Selected Department, Semester & Section
   const defaultDept = getNormalizedDepartment(user?.department || 'Computer Science and Engineering (CSE)');
   const [selectedDept, setSelectedDept] = useState<string>(defaultDept);
   const [selectedSem, setSelectedSem] = useState<string>(user?.semester || '1-1');
+  const [selectedSection, setSelectedSection] = useState<string>(user?.section || 'Section A');
+  const [scheduleMode, setScheduleMode] = useState<'class' | 'exam'>('class');
   const [activeDay, setActiveDay] = useState<string>('Monday');
   const [viewMode, setViewMode] = useState<'department' | 'my-classes'>(isFaculty ? 'department' : 'department');
 
@@ -77,6 +79,7 @@ const Timetable = () => {
   // Form state
   const [formDept, setFormDept] = useState<string>(selectedDept);
   const [formSem, setFormSem] = useState<string>(selectedSem);
+  const [formSection, setFormSection] = useState<string>(selectedSection);
   const [formDay, setFormDay] = useState<string>(activeDay);
   const [formPeriod, setFormPeriod] = useState<number>(3); // Default to Afternoon Period 3
   const [formStartTime, setFormStartTime] = useState<string>('1:00 PM');
@@ -100,6 +103,7 @@ const Timetable = () => {
   const openAddModal = () => {
     setFormDept(selectedDept);
     setFormSem(selectedSem);
+    setFormSection(selectedSection);
     setFormDay(activeDay);
     setFormFaculty(user?.name || user?.username || '');
     const shortDept = formDept.includes('CSE') ? 'CSE' : formDept.includes('ECE') ? 'ECE' : formDept.includes('EEE') ? 'EEE' : 'CIVIL';
@@ -119,6 +123,7 @@ const Timetable = () => {
       } else {
         params.append('department', selectedDept);
         params.append('semester', selectedSem);
+        params.append('section', selectedSection);
       }
 
       url += `?${params.toString()}`;
@@ -149,7 +154,7 @@ const Timetable = () => {
       const daysList = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
       const generated: TimetableRecord[] = [];
       daysList.forEach(dayName => {
-        const daySched = getTimetableScheduleForDay(selectedSem, dayName);
+        const daySched = getTimetableScheduleForDay(selectedSem, dayName, selectedDept, selectedSection);
         daySched.forEach(item => {
           generated.push({
             id: Math.floor(Math.random() * 100000),
@@ -174,7 +179,7 @@ const Timetable = () => {
 
   useEffect(() => {
     fetchTimetable();
-  }, [selectedDept, selectedSem, viewMode, user]);
+  }, [selectedDept, selectedSem, selectedSection, viewMode, user]);
 
   // Handle Form Submit
   const handleCreateEntry = async (e: React.FormEvent) => {
@@ -190,6 +195,7 @@ const Timetable = () => {
     const payload = {
       department: formDept,
       semester: formSem,
+      section: formSection,
       day: formDay,
       period: Number(formPeriod),
       subject: formSubject.trim(),
@@ -326,9 +332,29 @@ const Timetable = () => {
           </div>
         </div>
 
-        {/* Action Controls for Faculty / Admin */}
+        {/* Action Controls for Faculty / Admin and Schedule Switcher */}
         <div className="flex flex-wrap items-center gap-3">
-          {isFaculty && (
+          {/* Timetable Mode Toggle */}
+          <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
+            <button
+              onClick={() => setScheduleMode('class')}
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                scheduleMode === 'class' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Class Timetable
+            </button>
+            <button
+              onClick={() => setScheduleMode('exam')}
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                scheduleMode === 'exam' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Examination Timetable
+            </button>
+          </div>
+
+          {isFaculty && scheduleMode === 'class' && (
             <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
               <button
                 onClick={() => setViewMode('department')}
@@ -349,7 +375,7 @@ const Timetable = () => {
             </div>
           )}
 
-          {canManage && (
+          {canManage && scheduleMode === 'class' && (
             <button
               onClick={openAddModal}
               className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-sm rounded-xl shadow-md hover:shadow-lg transition-all transform active:scale-95"
@@ -362,9 +388,9 @@ const Timetable = () => {
       </header>
 
       {/* Filter / Selector Bar */}
-      {viewMode === 'department' && (
+      {(viewMode === 'department' || scheduleMode === 'exam') && (
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             {/* Department Dropdown */}
             <div className="flex items-center gap-3 flex-1">
               <Building className="w-5 h-5 text-blue-600 shrink-0" />
@@ -395,7 +421,7 @@ const Timetable = () => {
             {/* Semester Tabs */}
             <div className="flex-1">
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
-                Semester
+                Semester / Year
               </label>
               <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 overflow-x-auto scrollbar-none gap-1">
                 {ALL_SEMESTERS.map((sem) => (
@@ -415,43 +441,154 @@ const Timetable = () => {
                 ))}
               </div>
             </div>
+
+            {/* Section Tabs */}
+            <div className="w-full lg:w-auto">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
+                Section
+              </label>
+              <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 gap-1">
+                {['Section A', 'Section B', 'Section C'].map((sec) => (
+                  <button
+                    key={sec}
+                    onClick={() => setSelectedSection(sec)}
+                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all shrink-0 ${
+                      selectedSection === sec
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                    }`}
+                  >
+                    {sec}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Weekday Selector Tabs */}
-      <div className="flex border-b border-slate-200 overflow-x-auto scrollbar-none pb-2 gap-2">
-        {days.map((day) => {
-          const count = sessions.filter(s => s.day === day).length;
-          return (
-            <button
-              key={day}
-              onClick={() => setActiveDay(day)}
-              className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all shrink-0 flex items-center gap-2 ${
-                activeDay === day
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-              }`}
-            >
-              <span>{day}</span>
-              <span
-                className={`text-xs px-2 py-0.5 rounded-full font-bold ${
+      {/* Weekday Selector Tabs (Only in class schedule mode) */}
+      {scheduleMode === 'class' && (
+        <div className="flex border-b border-slate-200 overflow-x-auto scrollbar-none pb-2 gap-2">
+          {days.map((day) => {
+            const count = sessions.filter(s => s.day === day).length;
+            return (
+              <button
+                key={day}
+                onClick={() => setActiveDay(day)}
+                className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all shrink-0 flex items-center gap-2 ${
                   activeDay === day
-                    ? 'bg-white/20 text-white'
-                    : count > 0
-                    ? 'bg-emerald-100 text-emerald-800'
-                    : 'bg-slate-100 text-slate-500'
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
                 }`}
               >
-                {count} {count === 1 ? 'class' : 'classes'}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+                <span>{day}</span>
+                <span
+                  className={`text-xs px-2 py-0.5 rounded-full font-bold ${
+                    activeDay === day
+                      ? 'bg-white/20 text-white'
+                      : count > 0
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : 'bg-slate-100 text-slate-500'
+                  }`}
+                >
+                  {count} {count === 1 ? 'class' : 'classes'}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Content Area */}
-      {loading ? (
+      {scheduleMode === 'exam' ? (
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+            <div>
+              <h2 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
+                <Award className="w-5 h-5 text-indigo-600" />
+                <span>Examination Schedule — {selectedDept}</span>
+              </h2>
+              <p className="text-xs text-slate-500 font-medium mt-1">
+                Semester {selectedSem} • {selectedSection} • Mid-Term & End-Semester Official Schedule
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs bg-indigo-50 text-indigo-700 font-bold px-3 py-1.5 rounded-xl border border-indigo-100">
+                Academic Session: 2025-2026
+              </span>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider bg-slate-50">
+                  <th className="py-3 px-4">Course / Subject</th>
+                  <th className="py-3 px-4">Component</th>
+                  <th className="py-3 px-4">Exam Session & Timing</th>
+                  <th className="py-3 px-4">Max Marks</th>
+                  <th className="py-3 px-4">Venue / Hall</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-xs">
+                {((SUBJECTS_DATABASE[getNormalizedDepartment(selectedDept)] && SUBJECTS_DATABASE[getNormalizedDepartment(selectedDept)][selectedSem]) || []).map((subName: string, idx: number) => {
+                  const isLab = subName.toLowerCase().includes('lab') || subName.toLowerCase().includes('practice') || subName.toLowerCase().includes('workshop');
+                  return (
+                    <React.Fragment key={subName}>
+                      <tr className="hover:bg-slate-50/70 transition-colors">
+                        <td className="py-3.5 px-4 font-bold text-slate-900" rowSpan={isLab ? 2 : 3}>
+                          <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-blue-600"></span>
+                            <span>{subName}</span>
+                          </div>
+                          <span className="text-[10px] text-slate-400 block mt-0.5">
+                            {isLab ? 'Practical / Lab Course' : 'Theory Core / Elective'}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-4 font-semibold text-blue-700">
+                          {isLab ? 'Lab Internal Assessment' : 'Mid Examination 1'}
+                        </td>
+                        <td className="py-2.5 px-4 text-slate-700 font-medium">
+                          {isLab ? '02:00 PM - 05:00 PM' : '10:00 AM - 12:00 PM'}
+                        </td>
+                        <td className="py-2.5 px-4 font-bold text-slate-800">
+                          30
+                        </td>
+                        <td className="py-2.5 px-4 text-slate-600 font-medium">
+                          {isLab ? 'Computing Lab 1' : `${selectedDept.includes('CSE') ? 'CSE' : 'ENG'} Hall ${101 + idx}`}
+                        </td>
+                      </tr>
+                      {!isLab && (
+                        <tr className="hover:bg-slate-50/70 transition-colors bg-slate-50/30">
+                          <td className="py-2.5 px-4 font-semibold text-indigo-700">Mid Examination 2</td>
+                          <td className="py-2.5 px-4 text-slate-700 font-medium">10:00 AM - 12:00 PM</td>
+                          <td className="py-2.5 px-4 font-bold text-slate-800">30</td>
+                          <td className="py-2.5 px-4 text-slate-600 font-medium">
+                            {`${selectedDept.includes('CSE') ? 'CSE' : 'ENG'} Hall ${101 + idx}`}
+                          </td>
+                        </tr>
+                      )}
+                      <tr className="hover:bg-slate-50/70 transition-colors">
+                        <td className="py-2.5 px-4 font-semibold text-emerald-700">
+                          {isLab ? 'Semester End Lab Exam' : 'Semester End Theory Exam'}
+                        </td>
+                        <td className="py-2.5 px-4 text-slate-700 font-medium">
+                          {isLab ? '02:00 PM - 05:00 PM' : '10:00 AM - 01:00 PM'}
+                        </td>
+                        <td className="py-2.5 px-4 font-bold text-slate-800">70</td>
+                        <td className="py-2.5 px-4 text-slate-600 font-medium">
+                          {isLab ? 'Computing Lab 1' : `Main Exam Center LH-${201 + (idx % 4)}`}
+                        </td>
+                      </tr>
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : loading ? (
         <div className="py-20 text-center space-y-3 bg-white rounded-2xl border border-slate-200">
           <div className="w-10 h-10 border-4 border-slate-200 border-t-blue-600 rounded-full animate-spin mx-auto" />
           <p className="text-sm text-slate-500 font-bold">Loading timetable schedule from database...</p>
@@ -645,8 +782,8 @@ const Timetable = () => {
             </div>
 
             <form onSubmit={handleCreateEntry} className="space-y-4">
-              {/* Department & Semester */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Department, Semester & Section */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
                     Department *
@@ -678,6 +815,24 @@ const Timetable = () => {
                     {ALL_SEMESTERS.map((sem) => (
                       <option key={sem} value={sem}>
                         Semester {sem}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Section *
+                  </label>
+                  <select
+                    value={formSection}
+                    onChange={(e) => setFormSection(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 text-slate-800 text-sm font-semibold rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    required
+                  >
+                    {['Section A', 'Section B', 'Section C'].map((sec) => (
+                      <option key={sec} value={sec}>
+                        {sec}
                       </option>
                     ))}
                   </select>
